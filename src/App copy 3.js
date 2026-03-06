@@ -53,10 +53,19 @@ const GLOBAL_CSS = `
 
   /* ─ Checkbox ─ */
   .rp-checkbox-label {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 14px; border: 1.5px solid #e8e3dc; border-radius: 8px;
-    cursor: pointer; font-size: 13px; font-weight: 500; color: #4a4540;
-    transition: all 0.15s; background: #f8f7f4; user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border: 1.5px solid #e8e3dc;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a4540;
+    transition: all 0.15s;
+    background: #f8f7f4;
+    user-select: none;
   }
   .rp-checkbox-label:hover { border-color: #1a1814; background: #ffffff; }
   .rp-checkbox-label.checked { border-color: #1a1814; background: #f0ede8; color: #1a1814; }
@@ -190,6 +199,7 @@ function buildShareText(program, sharerName, link, isFounder = false) {
     );
   }
 
+  // Normal referrer version
   const audienceStr = program?.audience?.length
     ? `Perfect if you're in ${program.audience.join(' or ')}.\n\n`
     : '';
@@ -203,25 +213,16 @@ function buildShareText(program, sharerName, link, isFounder = false) {
   );
 }
 
-// ─── FORCE MAIN DOMAIN (Second / bulletproof option) ─────────────────────────
+// ─── Normalize share link ─────────────────────────────────────────────────────
 function getFullShareLink(rawLink) {
   if (!rawLink) return '';
-
-  // Strip any host the backend might have sent and keep only the path
-  let path = rawLink;
-  try {
-    const url = new URL(rawLink);
-    path = url.pathname;                 // e.g. /refer/ref-44ccbd6703cb
-  } catch (e) {
-    // not a full URL → treat as path already
-  }
-
-  // Clean leading slashes and prepend current origin (your main domain)
-  path = path.replace(/^\/+/, '/');
-  return `${window.location.origin}${path}`;
+  if (rawLink.startsWith('http')) return rawLink;
+  const base = window.location.origin;
+  let path = rawLink.startsWith('/') ? rawLink.slice(1) : rawLink;
+  return `${base}/${path}`;
 }
 
-// ─── Panel, CopyBtn, ShareActions (unchanged) ────────────────────────────────
+// ─── Panel wrapper ────────────────────────────────────────────────────────────
 function Panel({ icon, iconBg, iconColor, title, sub, children }) {
   return (
     <div className="rp-card" style={{ overflow: 'hidden', marginBottom: '20px' }}>
@@ -239,6 +240,7 @@ function Panel({ icon, iconBg, iconColor, title, sub, children }) {
   );
 }
 
+// ─── Copy button ──────────────────────────────────────────────────────────────
 function CopyBtn({ text }) {
   const [status, setStatus] = useState('COPY');
   const copy = () => {
@@ -253,6 +255,7 @@ function CopyBtn({ text }) {
   );
 }
 
+// ─── Share actions ────────────────────────────────────────────────────────────
 function ShareActions({ link, shareText }) {
   const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
   const liUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link)}`;
@@ -260,6 +263,7 @@ function ShareActions({ link, shareText }) {
   return (
     <div>
       <Label>Share your link</Label>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: C.accentBg, border: `1px solid ${C.border}`, borderRadius: '9px', padding: '11px 14px', marginBottom: '14px' }}>
         <code style={{ flex: 1, fontSize: '12px', color: C.inkMid, fontFamily: 'monospace', wordBreak: 'break-all', lineHeight: 1.5 }}>
           {link}
@@ -352,7 +356,8 @@ export default function App() {
 
   const createProgram = async (e) => {
     e.preventDefault();
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/register-program`, {
         method: 'POST',
@@ -373,7 +378,8 @@ export default function App() {
   const handleShareSubmit = async (e) => {
     e.preventDefault();
     if (!sharerName.trim()) return setError('Name is required');
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/${code}/share`, {
         method: 'POST',
@@ -394,7 +400,7 @@ export default function App() {
   const isFounder = mode === 'create' || (mode === 'public' && sharerName && program?.founderName === sharerName);
 
   const creatorShareText = buildShareText({ ...createData }, createData.username, shareLink, true);
-  const publicShareText  = buildShareText(program, sharerName, shareLink, isFounder);
+  const publicShareText = buildShareText(program, sharerName, shareLink, isFounder);
 
   return (
     <>
@@ -477,13 +483,8 @@ export default function App() {
                   </div>
                 </FieldGroup>
 
-                <FieldGroup label="Describe the service" required>
-                  <input className="rp-input" name="contactEmail" placeholder="A tool to build the world" value={createData.contactEmail} onChange={handleCreateChange} required />
-                </FieldGroup>
-
-                <FieldGroup label="Calendly Link">
-                  <input className="rp-input" name="calendlyLink" placeholder="https://calendly.com/yourname" value={createData.calendlyLink} onChange={handleCreateChange} />
-                </FieldGroup>
+                <FieldGroup label="Describe the service" required><input className="rp-input" name="contactEmail"  placeholder="A tool to build the world" value={createData.contactEmail} onChange={handleCreateChange} required /></FieldGroup>
+                <FieldGroup label="Calendly Link"><input className="rp-input" name="calendlyLink" placeholder="https://calendly.com/yourname" value={createData.calendlyLink} onChange={handleCreateChange} /></FieldGroup>
               </Panel>
 
               <button type="submit" disabled={loading} className="rp-btn-primary rp-fade-up-2">
@@ -498,6 +499,7 @@ export default function App() {
               <Panel icon="✓" iconBg={C.greenBg} iconColor={C.green} title="Program created!" sub="Your referral program is live — share it anywhere">
                 <ShareActions link={shareLink} shareText={creatorShareText} />
               </Panel>
+
               <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: '10px', padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                 <svg width="14" height="14" viewBox="0 0 20 20" fill={C.inkFaint} style={{ marginTop: '1px', flexShrink: 0 }}><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
                 <p style={{ fontSize: '12px', color: C.inkFaint, lineHeight: 1.6 }}>
@@ -507,12 +509,27 @@ export default function App() {
             </div>
           )}
 
-          {/* PUBLIC MODE — BEFORE SUCCESS */}
+          {/* PUBLIC MODE — BEFORE SUCCESS (You've been referred) */}
           {mode === 'public' && program && !success && (
             <div className="rp-fade-up-1">
+
               {/* Prominent Company Card */}
-              <div style={{ background: 'white', border: `2px solid ${C.ink}`, borderRadius: '14px', padding: '32px 24px', marginBottom: '32px', textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
-                <h2 style={{ fontFamily: F.serif, fontSize: 'clamp(32px, 6vw, 48px)', fontStyle: 'italic', marginBottom: '16px', lineHeight: 1.05 }}>
+              <div style={{
+                background: 'white',
+                border: `2px solid ${C.ink}`,
+                borderRadius: '14px',
+                padding: '32px 24px',
+                marginBottom: '32px',
+                textAlign: 'center',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
+              }}>
+                <h2 style={{
+                  fontFamily: F.serif,
+                  fontSize: 'clamp(32px, 6vw, 48px)',
+                  fontStyle: 'italic',
+                  marginBottom: '16px',
+                  lineHeight: 1.05
+                }}>
                   {program.companyName}
                 </h2>
 
@@ -523,7 +540,15 @@ export default function App() {
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
                       {program.rewards.map(r => (
-                        <span key={r} style={{ background: C.greenBg, color: C.green, padding: '10px 20px', borderRadius: '999px', fontWeight: 700, fontSize: '15px', border: `1px solid ${C.green}` }}>
+                        <span key={r} style={{
+                          background: C.greenBg,
+                          color: C.green,
+                          padding: '10px 20px',
+                          borderRadius: '999px',
+                          fontWeight: 700,
+                          fontSize: '15px',
+                          border: `1px solid ${C.green}`
+                        }}>
                           {r}
                         </span>
                       ))}
@@ -532,30 +557,47 @@ export default function App() {
                 )}
 
                 {program.calendlyLink && (
-                  <a href={program.calendlyLink} target="_blank" rel="noopener noreferrer" className="rp-btn-primary" style={{ margin: '20px auto 12px', maxWidth: '340px', display: 'block', fontSize: '15px' }}>
+                  <a
+                    href={program.calendlyLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rp-btn-primary"
+                    style={{ margin: '20px auto 12px', maxWidth: '340px', display: 'block', fontSize: '15px' }}
+                  >
                     Book a 15-min call →
                   </a>
                 )}
 
                 {program.contactEmail && (
                   <div style={{ fontSize: '14px', color: C.inkMid }}>
-                     <a href={`mailto:${program.contactEmail}`} style={{ color: C.ink, fontWeight: 600 }}>{program.contactEmail}</a>
+                    Questions? Email <a href={`mailto:${program.contactEmail}`} style={{ color: C.ink, fontWeight: 600 }}>{program.contactEmail}</a>
                   </div>
                 )}
               </div>
 
+              {/* Audience */}
               {program.audience?.length > 0 && (
                 <Panel icon="👥" iconBg={C.accentBg} iconColor={C.inkMid} title="Best suited for" sub="">
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
-                    {program.audience.map(a => <span key={a} className="rp-reward-chip" style={{ fontSize: '13px', padding: '8px 16px' }}>{a}</span>)}
+                    {program.audience.map(a => (
+                      <span key={a} className="rp-reward-chip" style={{ fontSize: '13px', padding: '8px 16px' }}>{a}</span>
+                    ))}
                   </div>
                 </Panel>
               )}
 
+              {/* Generate personal link */}
               <Panel icon="🔗" iconBg={C.accentBg} iconColor={C.inkMid} title="Get your personal referral link" sub="Share it & earn the reward if someone signs up">
                 <form onSubmit={handleShareSubmit}>
                   <FieldGroup label="Your Name" required>
-                    <input className="rp-input" placeholder="How should we credit / thank you?" value={sharerName} onChange={e => { setSharerName(e.target.value); setError(null); }} required autoFocus />
+                    <input
+                      className="rp-input"
+                      placeholder="How should we credit / thank you?"
+                      value={sharerName}
+                      onChange={e => { setSharerName(e.target.value); setError(null); }}
+                      required
+                      autoFocus
+                    />
                   </FieldGroup>
                   <button type="submit" disabled={loading} className="rp-btn-primary" style={{ marginTop: '8px' }}>
                     {loading ? <><Spinner /> Generating…</> : <>Get My Share Link →</>}
@@ -578,12 +620,25 @@ export default function App() {
 
         {/* Footer */}
         <footer style={{ borderTop: `1px solid ${C.border}`, background: C.surface, padding: '20px 32px' }}>
-          <div style={{ maxWidth: '680px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{
+            maxWidth: '680px',
+            margin: '0 auto',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
             <div>
               <span style={{ fontFamily: F.serif, fontStyle: 'italic', fontSize: '17px', color: C.ink }}>RecommendEasy</span>
               <span style={{ marginLeft: '12px', fontSize: '13px', color: C.inkFaint }}>© 2026</span>
             </div>
-            <a href="/" className="rp-btn-ghost" style={{ fontSize: '14px', padding: '11px 18px' }}>
+
+            <a
+              href="/"
+              className="rp-btn-ghost"
+              style={{ fontSize: '14px', padding: '11px 18px' }}
+            >
               ← Add your company as founder
             </a>
           </div>
