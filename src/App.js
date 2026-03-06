@@ -1,7 +1,7 @@
 // src/App.jsx
 import { useState, useEffect } from 'react';
 
-const API_BASE = 'http://localhost:9000/refer';
+const API_BASE = 'https://learntok-backend-2026-24c204fe508e.herokuapp.com/refer';
 
 // ─── Global CSS ────────────────────────────────────────────────────────────────
 const GLOBAL_CSS = `
