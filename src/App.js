@@ -306,7 +306,7 @@ export default function App() {
   };
 
   const handleCreateChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value,  checked } = e.target;
     if (name === 'rewards') {
       setCreateData(prev => ({ ...prev, rewards: checked ? [...prev.rewards, value] : prev.rewards.filter(r => r !== value) }));
     } else if (name === 'audience') {
