@@ -1,7 +1,7 @@
 // src/App.jsx
 import { useState, useEffect } from 'react';
 
-const API_BASE = 'https://learntok-backend-2026-24c204fe508e.herokuapp.com/refer';
+const API_BASE = 'http://localhost:9000/refer';
 
 const GIFT_CARD_REWARDS = ['Amazon Gift Card','Visa Gift Card','Apple Gift Card','Starbucks Gift Card'];
 const REWARD_OPTIONS = [
@@ -687,7 +687,7 @@ function Hero({ onCreate, onSignIn }) {
               {q:'"Set it up on a train ride. Had a referral before arrival."',  n:'Sophie L.', r:'Indie hacker'},
             ].map((t,i)=>(
               <div key={i} style={{background:T.white,border:`1px solid ${T.mist}`,borderRadius:10,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.04)'}}>
-                <div style={{fontSize:13,color:T.slate,lineHeight:1.7,marginBottom:16,fontStyle:'italic',fontFamily:F.display,fontSize:15,fontWeight:300}}>
+                <div style={{fontSize:15,color:T.slate,lineHeight:1.7,marginBottom:16,fontStyle:'italic',fontFamily:F.display,fontWeight:300}}>
                   {t.q}
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:9}}>
@@ -911,6 +911,7 @@ function Dashboard({ auth, onSignOut, onProgramUpdated }) {
   const [error, setError] = useState('');
   const [tab,   setTab]   = useState('overview');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(()=>{ fetch_(); },[]);
 
   const fetch_ = async () => {
@@ -1127,6 +1128,7 @@ export default function App() {
     if ((path==='/dashboard'||q.get('signin')==='1') && auth) { setMode('dashboard'); return; }
     // Homepage + authed → prefill form
     if (auth && path==='/') loadPrefill(auth);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
   // Load founder's existing data to prefill homepage form
@@ -1280,7 +1282,7 @@ export default function App() {
         <nav className="nav">
           <div className="nav-inner">
             <button className="nav-logo" onClick={()=>{setMode('create');setSuccess(false);}}>
-              <em>Easy</em><strong>Recommend</strong>
+              <em>Recommend</em><strong>Easy</strong>
             </button>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
               {mode==='dashboard' ? (
@@ -1552,7 +1554,7 @@ export default function App() {
         <footer style={{background:T.black,padding:'22px 32px'}}>
           <div style={{maxWidth:900,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:14}}>
             <div style={{fontFamily:F.display,fontSize:16,color:'rgba(255,255,255,.6)',fontWeight:300,fontStyle:'italic'}}>
-              <strong style={{fontWeight:600}}>EasyRecommend</strong>
+              Recommend<strong style={{fontWeight:600}}>Easy</strong>
               <span style={{marginLeft:12,fontSize:11,color:'rgba(255,255,255,.25)',fontFamily:F.body}}>© 2026</span>
             </div>
             {mode==='public' && (
