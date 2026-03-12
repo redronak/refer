@@ -9,7 +9,7 @@ const REWARD_OPTIONS = [
   ...GIFT_CARD_REWARDS,
   'Cash via Venmo','Cash via PayPal','DoorDash credit','Airbnb credit',
 ];
-const AUDIENCE_OPTIONS = [
+const AUDIENCE_OPTIONS = [ 
   'SaaS Founders','Revenue Leaders','Customer Success Teams',
   'Product Managers','Sales Ops','Marketing Teams',
 ];
