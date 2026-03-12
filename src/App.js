@@ -1196,7 +1196,7 @@ export default function App() {
         <nav className="nav">
           <div className="nav-inner">
             <button className="nav-logo" onClick={()=>{setMode('create');setSuccess(false);}}>
-              <em>Recommend</em><strong>Easy</strong>
+              <em></em><strong>EasyRecommend</strong>
             </button>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
               {mode==='dashboard' ? (
@@ -1454,7 +1454,7 @@ export default function App() {
         <footer style={{background:T.black,padding:'22px 32px'}}>
           <div style={{maxWidth:900,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:14}}>
             <div style={{fontFamily:F.display,fontSize:16,color:'rgba(255,255,255,.6)',fontWeight:300,fontStyle:'italic'}}>
-              Recommend<strong style={{fontWeight:600}}>Easy</strong>
+              <strong style={{fontWeight:600}}>EasyRecommend</strong>
               <span style={{marginLeft:12,fontSize:11,color:'rgba(255,255,255,.25)',fontFamily:F.body}}>© 2026</span>
             </div>
             {mode==='public' && (

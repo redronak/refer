@@ -1282,7 +1282,7 @@ export default function App() {
         <nav className="nav">
           <div className="nav-inner">
             <button className="nav-logo" onClick={()=>{setMode('create');setSuccess(false);}}>
-              <em>Recommend</em><strong>Easy</strong>
+              <em>Easy</em><strong>Recommend</strong>
             </button>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
               {mode==='dashboard' ? (
