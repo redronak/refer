@@ -23,33 +23,6 @@ function fixUrl(raw) {
   return /^https?:\/\//i.test(raw.trim()) ? raw.trim() : 'https://' + raw.trim();
 }
 
-// ─── Split / join description helpers ─────────────────────────────────────────
-function joinDescription({ about, feat1, feat2, feat3 }) {
-  const parts = [about, feat1, feat2, feat3].map(p => p.trim()).filter(Boolean);
-  return parts.join('\n\n');
-}
-
-function splitDescription(desc = '') {
-  const parts = desc.split(/\n\n+/);
-  return {
-    about: parts[0] || '',
-    feat1: parts[1] || '',
-    feat2: parts[2] || '',
-    feat3: parts[3] || '',
-  };
-}
-
-// ─── Auth persistence (localStorage = stays forever) ──────────────────────────
-function loadAuth() {
-  try { return JSON.parse(localStorage.getItem('re_auth') || 'null'); } catch { return null; }
-}
-function saveAuth(d) {
-  localStorage.setItem('re_auth', JSON.stringify(d));
-}
-function clearAuth() {
-  localStorage.removeItem('re_auth');
-}
-
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const T = {
   white:   '#FFFFFF',
@@ -62,7 +35,9 @@ const T = {
   slate:   '#4A4845',
   ink:     '#1A1916',
   black:   '#0D0C0A',
+  // Accent is pure black with subtle sheen
   accent:  '#0D0C0A',
+  // Status
   emerald: '#166534',
   emeraldBg:'#F0FDF4',
   emeraldBorder:'#BBF7D0',
@@ -99,6 +74,7 @@ body {
 ::-webkit-scrollbar-track { background: ${T.cream}; }
 ::-webkit-scrollbar-thumb { background: ${T.stone}; border-radius: 2px; }
 
+/* ── Animations ── */
 @keyframes spin     { to { transform: rotate(360deg); } }
 @keyframes ticker   { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes fadeUp   { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
@@ -106,7 +82,10 @@ body {
 @keyframes slideUp  { from { opacity:0; transform:translateY(32px); } to { opacity:1; transform:translateY(0); } }
 @keyframes scaleIn  { from { opacity:0; transform:scale(.96); } to { opacity:1; transform:scale(1); } }
 @keyframes pulse    { 0%,100% { opacity:.5; transform:scale(1); } 50% { opacity:1; transform:scale(1.15); } }
-@keyframes shimmer  { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }
+@keyframes shimmer  {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
 
 .aFadeUp  { animation: fadeUp  .6s cubic-bezier(.16,1,.3,1) both; }
 .aFadeUp1 { animation: fadeUp  .6s .08s cubic-bezier(.16,1,.3,1) both; }
@@ -117,78 +96,219 @@ body {
 .aSlideUp { animation: slideUp .5s cubic-bezier(.16,1,.3,1) both; }
 .aScaleIn { animation: scaleIn .35s cubic-bezier(.16,1,.3,1) both; }
 
-.ticker-wrap { overflow: hidden; white-space: nowrap; background: ${T.black}; padding: 10px 0; }
+/* ── Ticker bar ── */
+.ticker-wrap {
+  overflow: hidden; white-space: nowrap;
+  background: ${T.black}; padding: 10px 0;
+}
 .ticker-track { display: inline-flex; animation: ticker 28s linear infinite; }
-.ticker-item { display: inline-flex; align-items: center; gap: 14px; padding: 0 24px; font-size: 10px; font-weight: 600; color: rgba(255,255,255,.45); letter-spacing: .12em; text-transform: uppercase; }
+.ticker-item {
+  display: inline-flex; align-items: center; gap: 14px;
+  padding: 0 24px; font-size: 10px; font-weight: 600;
+  color: rgba(255,255,255,.45); letter-spacing: .12em; text-transform: uppercase;
+}
 .ticker-star { color: rgba(255,255,255,.2); font-size: 9px; }
 
-.nav { position: sticky; top: 0; z-index: 200; background: rgba(250,250,247,.96); backdrop-filter: blur(16px) saturate(1.2); border-bottom: 1px solid ${T.mist}; height: 56px; display: flex; align-items: center; }
-.nav-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 32px; }
-.nav-logo { font-family: ${F.display}; font-size: 22px; font-weight: 300; color: ${T.ink}; letter-spacing: -.02em; cursor: pointer; background: none; border: none; text-decoration: none; display: flex; align-items: baseline; gap: 0; }
+/* ── Nav ── */
+.nav {
+  position: sticky; top: 0; z-index: 200;
+  background: rgba(250,250,247,.96); backdrop-filter: blur(16px) saturate(1.2);
+  border-bottom: 1px solid ${T.mist};
+  height: 56px; display: flex; align-items: center;
+}
+.nav-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 32px;
+}
+.nav-logo {
+  font-family: ${F.display}; font-size: 22px; font-weight: 300; color: ${T.ink};
+  letter-spacing: -.02em; cursor: pointer; background: none; border: none;
+  text-decoration: none; display: flex; align-items: baseline; gap: 0;
+}
 .nav-logo em { font-style: italic; }
 .nav-logo strong { font-weight: 600; }
 
-.nav-live { display: flex; align-items: center; gap: 5px; padding: 4px 10px; background: ${T.emeraldBg}; border: 1px solid ${T.emeraldBorder}; border-radius: 100px; font-size: 10px; font-weight: 600; color: ${T.emerald}; letter-spacing: .06em; }
-.nav-live-dot { width: 5px; height: 5px; border-radius: 50%; background: ${T.emerald}; animation: pulse 2.2s ease-in-out infinite; }
+.nav-live {
+  display: flex; align-items: center; gap: 5px; padding: 4px 10px;
+  background: ${T.emeraldBg}; border: 1px solid ${T.emeraldBorder}; border-radius: 100px;
+  font-size: 10px; font-weight: 600; color: ${T.emerald}; letter-spacing: .06em;
+}
+.nav-live-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: ${T.emerald};
+  animation: pulse 2.2s ease-in-out infinite;
+}
 
-.pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 100px; font-size: 11px; font-weight: 600; letter-spacing: .03em; border: 1px solid ${T.mist}; background: ${T.white}; color: ${T.ash}; transition: all .15s; }
+/* ── Pill badge ── */
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: 100px;
+  font-size: 11px; font-weight: 600; letter-spacing: .03em;
+  border: 1px solid ${T.mist}; background: ${T.white}; color: ${T.ash};
+  transition: all .15s;
+}
 .pill:hover { border-color: ${T.ink}; color: ${T.ink}; background: ${T.fog}; }
 
-.btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: 100%; padding: 15px 28px; background: ${T.black}; border: none; border-radius: 6px; color: ${T.white}; font-family: ${F.body}; font-size: 15px; font-weight: 600; letter-spacing: -.01em; cursor: pointer; transition: background .15s, transform .15s, box-shadow .15s; box-shadow: 0 1px 2px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.08); -webkit-tap-highlight-color: transparent; }
-.btn-primary:hover:not(:disabled) { background: ${T.ink}; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(13,12,10,.22), inset 0 1px 0 rgba(255,255,255,.08); }
+/* ── Buttons ── */
+.btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  width: 100%; padding: 15px 28px;
+  background: ${T.black}; border: none; border-radius: 6px;
+  color: ${T.white}; font-family: ${F.body}; font-size: 15px; font-weight: 600;
+  letter-spacing: -.01em; cursor: pointer;
+  transition: background .15s, transform .15s, box-shadow .15s;
+  box-shadow: 0 1px 2px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.08);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-primary:hover:not(:disabled) {
+  background: ${T.ink}; transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(13,12,10,.22), inset 0 1px 0 rgba(255,255,255,.08);
+}
 .btn-primary:active:not(:disabled) { transform: translateY(0); }
 .btn-primary:disabled { background: ${T.stone}; color: ${T.pebble}; cursor: not-allowed; box-shadow: none; }
 
-.btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px 24px; background: transparent; border: 1.5px solid ${T.mist}; border-radius: 6px; color: ${T.slate}; font-family: ${F.body}; font-size: 14px; font-weight: 500; cursor: pointer; transition: all .15s; -webkit-tap-highlight-color: transparent; }
+.btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 14px 24px;
+  background: transparent; border: 1.5px solid ${T.mist}; border-radius: 6px;
+  color: ${T.slate}; font-family: ${F.body}; font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: all .15s; -webkit-tap-highlight-color: transparent;
+}
 .btn-secondary:hover { border-color: ${T.ink}; color: ${T.ink}; background: ${T.fog}; }
 
-.btn-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: transparent; border: 1.5px solid ${T.mist}; border-radius: 6px; color: ${T.ash}; font-family: ${F.body}; font-size: 12px; font-weight: 500; cursor: pointer; text-decoration: none; transition: all .15s; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+  background: transparent; border: 1.5px solid ${T.mist}; border-radius: 6px;
+  color: ${T.ash}; font-family: ${F.body}; font-size: 12px; font-weight: 500;
+  cursor: pointer; text-decoration: none; transition: all .15s; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
 .btn-ghost:hover { border-color: ${T.ink}; color: ${T.ink}; background: ${T.fog}; }
 
-.fi { width: 100%; padding: 12px 14px; background: ${T.white}; border: 1.5px solid ${T.mist}; border-radius: 6px; font-size: 14px; color: ${T.ink}; font-family: ${F.body}; transition: border-color .15s, box-shadow .15s; outline: none; -webkit-appearance: none; }
+/* ── Inputs ── */
+.fi {
+  width: 100%; padding: 12px 14px;
+  background: ${T.white}; border: 1.5px solid ${T.mist}; border-radius: 6px;
+  font-size: 14px; color: ${T.ink}; font-family: ${F.body};
+  transition: border-color .15s, box-shadow .15s;
+  outline: none; -webkit-appearance: none;
+}
 .fi:focus { border-color: ${T.ink}; box-shadow: 0 0 0 3px rgba(13,12,10,.06); }
 .fi.err   { border-color: ${T.crimson}; box-shadow: 0 0 0 3px rgba(153,27,27,.06); }
 
-.fta { width: 100%; padding: 12px 14px; background: ${T.white}; border: 1.5px solid ${T.mist}; border-radius: 6px; font-size: 14px; color: ${T.ink}; font-family: ${F.body}; transition: border-color .15s; outline: none; resize: vertical; min-height: 90px; line-height: 1.65; -webkit-appearance: none; }
+.fta {
+  width: 100%; padding: 12px 14px;
+  background: ${T.white}; border: 1.5px solid ${T.mist}; border-radius: 6px;
+  font-size: 14px; color: ${T.ink}; font-family: ${F.body};
+  transition: border-color .15s; outline: none; resize: vertical;
+  min-height: 90px; line-height: 1.65; -webkit-appearance: none;
+}
 .fta:focus { border-color: ${T.ink}; box-shadow: 0 0 0 3px rgba(13,12,10,.06); }
-.fta.sm { min-height: 68px; }
 
-.gift-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 11px 14px; background: ${T.fog}; border: 1px solid ${T.mist}; border-radius: 6px; animation: fadeUp .3s ease both; }
+/* ── Gift amount ── */
+.gift-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 10px; padding: 11px 14px;
+  background: ${T.fog}; border: 1px solid ${T.mist}; border-radius: 6px;
+  animation: fadeUp .3s ease both;
+}
 .gift-row label { font-size: 12px; color: ${T.ash}; white-space: nowrap; font-weight: 500; }
-.gift-input { flex: 1; padding: 7px 10px; background: ${T.white}; border: 1.5px solid ${T.mist}; border-radius: 5px; font-size: 14px; color: ${T.ink}; font-family: ${F.body}; outline: none; transition: border-color .15s; }
+.gift-input {
+  flex: 1; padding: 7px 10px;
+  background: ${T.white}; border: 1.5px solid ${T.mist}; border-radius: 5px;
+  font-size: 14px; color: ${T.ink}; font-family: ${F.body}; outline: none;
+  transition: border-color .15s;
+}
 .gift-input:focus { border-color: ${T.ink}; }
 
-.cp { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; background: ${T.white}; border: 1.5px solid ${T.mist}; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 400; color: ${T.slate}; transition: all .15s; user-select: none; -webkit-tap-highlight-color: transparent; }
+/* ── Checkbox pills ── */
+.cp {
+  display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px;
+  background: ${T.white}; border: 1.5px solid ${T.mist}; border-radius: 6px;
+  cursor: pointer; font-size: 13px; font-weight: 400; color: ${T.slate};
+  transition: all .15s; user-select: none; -webkit-tap-highlight-color: transparent;
+}
 .cp:hover  { border-color: ${T.ink}; color: ${T.ink}; }
 .cp.on     { border-color: ${T.ink}; background: ${T.ink}; color: ${T.white}; }
 .cp input  { display: none; }
-.cp-dot    { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; border: 1.5px solid ${T.stone}; transition: all .15s; }
+.cp-dot    {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid ${T.stone}; transition: all .15s;
+}
 .cp.on .cp-dot { background: rgba(255,255,255,.8); border-color: rgba(255,255,255,.4); }
 
-.fl { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: ${T.pebble}; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+/* ── Field label / group ── */
+.fl {
+  font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: ${T.pebble}; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
 .fl-req   { color: ${T.ink}; font-size: 12px; line-height: 1; }
-.fl-opt   { font-size: 8px; font-weight: 600; color: ${T.stone}; letter-spacing: .06em; background: ${T.fog}; border: 1px solid ${T.mist}; border-radius: 3px; padding: 2px 5px; text-transform: uppercase; }
+.fl-opt   {
+  font-size: 8px; font-weight: 600; color: ${T.stone}; letter-spacing: .06em;
+  background: ${T.fog}; border: 1px solid ${T.mist}; border-radius: 3px; padding: 2px 5px;
+  text-transform: uppercase;
+}
 .field-err { font-size: 11.5px; color: ${T.crimson}; margin-top: 5px; display: flex; align-items: center; gap: 4px; }
 
-.banner-err { padding: 12px 16px; background: ${T.crimsonBg}; border: 1px solid ${T.crimsonBorder}; border-radius: 8px; font-size: 13.5px; color: ${T.crimson}; font-weight: 500; margin-bottom: 18px; display: flex; gap: 10px; align-items: flex-start; line-height: 1.5; }
-.banner-ok  { padding: 12px 16px; background: ${T.emeraldBg}; border: 1px solid ${T.emeraldBorder}; border-radius: 8px; font-size: 13.5px; color: ${T.emerald}; font-weight: 500; margin-bottom: 18px; display: flex; gap: 10px; align-items: flex-start; line-height: 1.5; }
+/* ── Banners ── */
+.banner-err {
+  padding: 12px 16px; background: ${T.crimsonBg}; border: 1px solid ${T.crimsonBorder};
+  border-radius: 8px; font-size: 13.5px; color: ${T.crimson}; font-weight: 500;
+  margin-bottom: 18px; display: flex; gap: 10px; align-items: flex-start; line-height: 1.5;
+}
+.banner-ok {
+  padding: 12px 16px; background: ${T.emeraldBg}; border: 1px solid ${T.emeraldBorder};
+  border-radius: 8px; font-size: 13.5px; color: ${T.emerald}; font-weight: 500;
+  margin-bottom: 18px; display: flex; gap: 10px; align-items: flex-start; line-height: 1.5;
+}
 
-.card { background: ${T.white}; border: 1px solid ${T.mist}; border-radius: 10px; overflow: hidden; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.04); transition: border-color .2s, box-shadow .2s; }
+/* ── Card ── */
+.card {
+  background: ${T.white}; border: 1px solid ${T.mist}; border-radius: 10px;
+  overflow: hidden; margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 0 0 0 transparent;
+  transition: border-color .2s, box-shadow .2s;
+}
 .card:hover { border-color: ${T.stone}; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
-.card-head { padding: 13px 18px; border-bottom: 1px solid ${T.mist}; display: flex; align-items: center; gap: 10px; background: ${T.fog}; }
-.card-icon { width: 26px; height: 26px; border-radius: 6px; background: ${T.white}; border: 1px solid ${T.mist}; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+.card-head {
+  padding: 13px 18px; border-bottom: 1px solid ${T.mist};
+  display: flex; align-items: center; gap: 10px; background: ${T.fog};
+}
+.card-icon {
+  width: 26px; height: 26px; border-radius: 6px; background: ${T.white};
+  border: 1px solid ${T.mist}; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; flex-shrink: 0;
+}
 .card-title  { font-size: 13px; font-weight: 600; color: ${T.ink}; }
 .card-sub    { font-size: 11px; color: ${T.pebble}; margin-top: 1px; }
 .card-body   { padding: 18px; }
 
-.copy-btn { padding: 7px 11px; background: ${T.fog}; border: 1px solid ${T.mist}; border-radius: 5px; color: ${T.ash}; font-family: ${F.body}; font-size: 10px; font-weight: 600; cursor: pointer; transition: all .15s; letter-spacing: .06em; white-space: nowrap; }
+/* ── Copy button ── */
+.copy-btn {
+  padding: 7px 11px;
+  background: ${T.fog}; border: 1px solid ${T.mist}; border-radius: 5px;
+  color: ${T.ash}; font-family: ${F.body}; font-size: 10px; font-weight: 600;
+  cursor: pointer; transition: all .15s; letter-spacing: .06em; white-space: nowrap;
+}
 .copy-btn:hover  { border-color: ${T.ink}; color: ${T.ink}; }
 .copy-btn.copied { border-color: ${T.emerald}; color: ${T.emerald}; background: ${T.emeraldBg}; }
 
-.share-ta { width: 100%; padding: 12px 14px; background: ${T.fog}; border: 1.5px solid ${T.mist}; border-radius: 6px; font-family: ${F.body}; font-size: 13px; color: ${T.slate}; line-height: 1.7; resize: none; outline: none; transition: border-color .15s; }
+/* ── Share textarea ── */
+.share-ta {
+  width: 100%; padding: 12px 14px;
+  background: ${T.fog}; border: 1.5px solid ${T.mist}; border-radius: 6px;
+  font-family: ${F.body}; font-size: 13px; color: ${T.slate}; line-height: 1.7;
+  resize: none; outline: none; transition: border-color .15s;
+}
 .share-ta:focus { border-color: ${T.ink}; background: ${T.white}; }
 
-.sh-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 1; min-width: 0; padding: 10px 8px; border: none; border-radius: 6px; font-family: ${F.body}; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none; transition: all .15s; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+/* ── Share buttons ── */
+.sh-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  flex: 1; min-width: 0; padding: 10px 8px; border: none; border-radius: 6px;
+  font-family: ${F.body}; font-size: 12px; font-weight: 600; cursor: pointer;
+  text-decoration: none; transition: all .15s; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
 .sh-li { background: #0A66C2; color: #fff; }
 .sh-li:hover { background: #0958a8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,102,194,.3); }
 .sh-wa { background: #25D366; color: #fff; }
@@ -200,41 +320,67 @@ body {
 .sh-sms { background: ${T.fog}; color: ${T.ink}; border: 1.5px solid ${T.mist}; }
 .sh-sms:hover { background: ${T.mist}; transform: translateY(-1px); }
 
-.stat-strip { display: flex; border: 1px solid ${T.mist}; border-radius: 10px; overflow: hidden; background: ${T.white}; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+/* ── Stats strip ── */
+.stat-strip {
+  display: flex; border: 1px solid ${T.mist}; border-radius: 10px;
+  overflow: hidden; background: ${T.white};
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+}
 .stat-item { flex: 1; padding: 20px 16px; text-align: center; border-right: 1px solid ${T.mist}; }
 .stat-item:last-child { border-right: none; }
 .stat-num  { font-family: ${F.display}; font-size: 36px; font-weight: 300; font-style: italic; color: ${T.ink}; line-height: 1; margin-bottom: 5px; }
 .stat-lbl  { font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: ${T.pebble}; }
 
-.tab-btn { padding: 8px 16px; background: transparent; border: none; border-radius: 6px; font-family: ${F.body}; font-size: 13px; font-weight: 500; color: ${T.pebble}; cursor: pointer; transition: all .15s; white-space: nowrap; }
+/* ── Dashboard tab buttons ── */
+.tab-btn {
+  padding: 8px 16px; background: transparent; border: none; border-radius: 6px;
+  font-family: ${F.body}; font-size: 13px; font-weight: 500; color: ${T.pebble};
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
 .tab-btn:hover:not(.active) { color: ${T.slate}; }
 .tab-btn.active { background: ${T.ink}; color: ${T.white}; font-weight: 600; }
 
-.sharer-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid ${T.fog}; gap: 10px; flex-wrap: wrap; }
+/* ── Sharer row ── */
+.sharer-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 0; border-bottom: 1px solid ${T.fog}; gap: 10px; flex-wrap: wrap;
+}
 .sharer-row:last-child { border-bottom: none; }
 
-.reward-badge { display: inline-flex; align-items: center; padding: 9px 16px; border-radius: 6px; background: ${T.ink}; color: ${T.white}; font-size: 13px; font-weight: 500; }
+/* ── Reward badge (public) ── */
+.reward-badge {
+  display: inline-flex; align-items: center;
+  padding: 9px 16px; border-radius: 6px;
+  background: ${T.ink}; color: ${T.white}; font-size: 13px; font-weight: 500;
+}
 
-.eyebrow { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: ${T.pebble}; display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+/* ── Section eyebrow ── */
+.eyebrow {
+  font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: ${T.pebble}; display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+}
 .eyebrow::after { content:''; flex:1; height:1px; background:${T.mist}; }
 
-.hero-number { font-family: ${F.display}; font-size: 11px; font-weight: 300; font-style: italic; color: ${T.stone}; letter-spacing: .06em; }
-
-.modal-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(250,250,247,.88); backdrop-filter: blur(10px) saturate(1.3); display: flex; align-items: center; justify-content: center; padding: 20px; }
-.modal-box { background: ${T.white}; border: 1px solid ${T.mist}; border-radius: 14px; padding: 36px; width: 100%; max-width: 400px; position: relative; box-shadow: 0 8px 48px rgba(13,12,10,.14), 0 2px 8px rgba(13,12,10,.06); animation: scaleIn .3s cubic-bezier(.16,1,.3,1) both; }
-
-/* ── Description section ── */
-.desc-section {
-  border: 1.5px solid ${T.mist}; border-radius: 8px; overflow: hidden; margin-bottom: 0;
+/* ── Hero decorations ── */
+.hero-number {
+  font-family: ${F.display}; font-size: 11px; font-weight: 300; font-style: italic;
+  color: ${T.stone}; letter-spacing: .06em;
 }
-.desc-section-head {
-  padding: 9px 13px; background: ${T.fog}; border-bottom: 1px solid ${T.mist};
-  font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-  color: ${T.pebble}; display: flex; align-items: center; gap: 8px;
-}
-.desc-section-body { padding: 12px 14px; }
-.desc-section + .desc-section { margin-top: 8px; }
 
+/* ── Modal overlay ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(250,250,247,.88); backdrop-filter: blur(10px) saturate(1.3);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-box {
+  background: ${T.white}; border: 1px solid ${T.mist}; border-radius: 14px;
+  padding: 36px; width: 100%; max-width: 400px; position: relative;
+  box-shadow: 0 8px 48px rgba(13,12,10,.14), 0 2px 8px rgba(13,12,10,.06);
+  animation: scaleIn .3s cubic-bezier(.16,1,.3,1) both;
+}
+
+/* ── Responsive ── */
 @media (max-width: 640px) {
   .hero-title    { font-size: clamp(52px, 14vw, 86px) !important; }
   .hero-pad      { padding: 52px 20px 0 !important; }
@@ -345,44 +491,6 @@ function GiftRow({ reward, value, onChange }) {
   );
 }
 
-// ─── Description fields component ────────────────────────────────────────────
-function DescriptionFields({ values, onChange, errors }) {
-  const sections = [
-    { key: 'about', label: 'About', icon: '◎', placeholder: 'One sentence about what you do — your core value proposition', req: true },
-    { key: 'feat1', label: 'Feature 1', icon: '①', placeholder: 'Key feature or benefit #1', req: false },
-    { key: 'feat2', label: 'Feature 2', icon: '②', placeholder: 'Key feature or benefit #2', req: false },
-    { key: 'feat3', label: 'Feature 3', icon: '③', placeholder: 'Key feature or benefit #3', req: false },
-  ];
-
-  return (
-    <div style={{marginBottom:16}}>
-      <FL req>Description</FL>
-      <div style={{display:'flex',flexDirection:'column',gap:8}}>
-        {sections.map(({ key, label, icon, placeholder, req }) => (
-          <div key={key} className="desc-section">
-            <div className="desc-section-head">
-              <span style={{fontSize:11}}>{icon}</span>
-              {label}
-              {req && <span style={{color:T.ink,fontSize:12,lineHeight:1,fontWeight:700}}>*</span>}
-              {!req && <span style={{fontSize:8,fontWeight:600,color:T.stone,letterSpacing:'.06em',background:T.white,border:`1px solid ${T.mist}`,borderRadius:3,padding:'2px 5px',textTransform:'uppercase',marginLeft:'auto'}}>optional</span>}
-            </div>
-            <div className="desc-section-body">
-              <textarea
-                className={`fta sm${errors?.[key] ? ' err' : ''}`}
-                placeholder={placeholder}
-                value={values[key] || ''}
-                onChange={e => onChange(key, e.target.value)}
-                style={{marginBottom:0}}
-              />
-              {errors?.[key] && <div className="field-err">⚠ {errors[key]}</div>}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function timeAgo(date) {
   const d=Date.now()-new Date(date),m=Math.floor(d/60000);
   if(m<60) return `${m}m ago`;
@@ -428,12 +536,14 @@ function ShareActions({ link, shareText, programName }) {
 
   return (
     <div>
+      {/* Link row */}
       <FL>Your referral link</FL>
       <div style={{display:'flex',alignItems:'center',gap:9,background:T.fog,border:`1.5px solid ${T.mist}`,borderRadius:7,padding:'10px 13px',marginBottom:14}}>
         <code style={{flex:1,fontSize:11.5,color:T.ink,fontFamily:F.mono,wordBreak:'break-all',lineHeight:1.5,fontWeight:500}}>{link}</code>
         <CopyBtn text={link}/>
       </div>
 
+      {/* Message box */}
       <FL>
         Suggested message
         <span style={{fontSize:10,color:T.stone,fontWeight:400,letterSpacing:0,textTransform:'none'}}>— click to select all</span>
@@ -443,6 +553,7 @@ function ShareActions({ link, shareText, programName }) {
         <div style={{position:'absolute',top:9,right:9}}><CopyBtn text={shareText}/></div>
       </div>
 
+      {/* Platform buttons */}
       <FL>Share on</FL>
       <div className="share-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:7,marginBottom:8}}>
         <a className="sh-btn sh-li" href={liUrl} target="_blank" rel="noopener noreferrer">
@@ -483,6 +594,7 @@ function ShareActions({ link, shareText, programName }) {
 function Hero({ onCreate, onSignIn }) {
   return (
     <>
+      {/* Black ticker */}
       <div className="ticker-wrap">
         <div className="ticker-track">
           {[...TICKER_ITEMS,...TICKER_ITEMS].map((t,i)=>(
@@ -492,6 +604,8 @@ function Hero({ onCreate, onSignIn }) {
       </div>
 
       <div className="hero-pad" style={{maxWidth:900,margin:'0 auto',padding:'80px 40px 0'}}>
+
+        {/* Eyebrow */}
         <div className="aFadeUp" style={{display:'flex',alignItems:'center',gap:12,marginBottom:28}}>
           <div style={{width:32,height:1.5,background:T.ink}}/>
           <span style={{fontSize:10,fontWeight:600,letterSpacing:'.16em',textTransform:'uppercase',color:T.ash}}>
@@ -499,6 +613,7 @@ function Hero({ onCreate, onSignIn }) {
           </span>
         </div>
 
+        {/* Headline — giant editorial serif */}
         <h1 className="aFadeUp1 hero-title" style={{
           fontFamily: F.display,
           fontSize: 'clamp(64px, 10vw, 100px)',
@@ -513,10 +628,12 @@ function Hero({ onCreate, onSignIn }) {
           <em style={{fontStyle:'italic',fontWeight:300}}></em>
         </h1>
 
+        {/* Sub */}
         <p className="aFadeUp2" style={{fontSize:17,color:T.ash,lineHeight:1.75,maxWidth:460,marginBottom:44,fontWeight:300}}>
           A viral referral program, live in 3 minutes.<br/>No code. No friction. Pure word-of-mouth.
         </p>
 
+        {/* CTAs */}
         <div className="aFadeUp3 hero-cta-row" style={{display:'flex',alignItems:'center',gap:10,marginBottom:80,flexWrap:'wrap'}}>
           <button onClick={onCreate} className="btn-primary" style={{width:'auto',padding:'13px 28px',fontSize:14,borderRadius:6}}>
             Create your program
@@ -527,6 +644,7 @@ function Hero({ onCreate, onSignIn }) {
           </button>
         </div>
 
+        {/* Stats strip */}
         <div className="aFadeUp4 stat-strip" style={{marginBottom:88}}>
           {[
             {num:'3 min',  lbl:'average setup'},
@@ -541,6 +659,7 @@ function Hero({ onCreate, onSignIn }) {
           ))}
         </div>
 
+        {/* Steps */}
         <div style={{marginBottom:88}}>
           <div className="eyebrow">How it works</div>
           <div className="steps-row" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:24}}>
@@ -558,6 +677,7 @@ function Hero({ onCreate, onSignIn }) {
           </div>
         </div>
 
+        {/* Testimonials */}
         <div style={{marginBottom:88}}>
           <div className="eyebrow">What founders say</div>
           <div className="testimonials" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14}}>
@@ -582,6 +702,7 @@ function Hero({ onCreate, onSignIn }) {
           </div>
         </div>
 
+        {/* Divider before form */}
         <div style={{display:'flex',alignItems:'center',gap:0,marginBottom:52}}>
           <div style={{flex:1,height:1.5,background:T.ink}}/>
           <div style={{padding:'8px 20px',background:T.ink,color:T.white,fontSize:10,fontWeight:600,letterSpacing:'.12em',textTransform:'uppercase'}}>
@@ -616,10 +737,12 @@ function SignInModal({ onClose, onSuccess }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={e=>e.stopPropagation()}>
         <button onClick={onClose} style={{position:'absolute',top:16,right:18,background:'none',border:'none',color:T.pebble,cursor:'pointer',fontSize:18,lineHeight:1,padding:4}}>✕</button>
+
         <div style={{fontFamily:F.display,fontSize:30,fontWeight:300,fontStyle:'italic',color:T.ink,marginBottom:4,lineHeight:1.1}}>
           Welcome back.
         </div>
         <p style={{fontSize:13,color:T.pebble,marginBottom:28,fontWeight:300}}>Sign in to view your dashboard & live stats.</p>
+
         <ErrBanner msg={error}/>
         <form onSubmit={submit}>
           <FG label="Email" req>
@@ -637,13 +760,15 @@ function SignInModal({ onClose, onSuccess }) {
   );
 }
 
-// ─── Parse gift-card amounts ──────────────────────────────────────────────────
+// ─── Parse gift-card amounts from a stored reward string ─────────────────────
+// "Amazon Gift Card ($50)" → { baseReward: "Amazon Gift Card", amount: "50" }
 function parseGiftCardReward(r) {
   const match = r.match(/^(.+?)\s*\(\$(\d+)\)$/);
   if (match && GIFT_CARD_REWARDS.includes(match[1])) return { base: match[1], amt: match[2] };
   return null;
 }
 
+// Convert saved rewards array to { selected[], gcAmounts{} }
 function expandRewards(rewards = []) {
   const selected = [];
   const gcAmounts = {};
@@ -655,18 +780,14 @@ function expandRewards(rewards = []) {
   return { selected, gcAmounts };
 }
 
-// ─── Edit panel ───────────────────────────────────────────────────────────────
+// ─── Edit panel (used in both Dashboard and homepage prefill) ─────────────────
 function EditForm({ initial, auth, onSaved }) {
   const { selected: initSelected, gcAmounts: initGc } = expandRewards(initial.rewards);
-  const initDesc = splitDescription(initial.description || '');
 
   const [form, setForm] = useState({
     username:     initial.username     || '',
     companyName:  initial.companyName  || '',
-    descAbout:    initDesc.about,
-    descFeat1:    initDesc.feat1,
-    descFeat2:    initDesc.feat2,
-    descFeat3:    initDesc.feat3,
+    description:  initial.description  || '',
     website:      (initial.website||'').replace(/^https?:\/\//,''),
     rewards:      initSelected,
     audience:     initial.audience     || [],
@@ -688,11 +809,6 @@ function EditForm({ initial, auth, onSaved }) {
     setError(''); setSaved(false);
   };
 
-  const handleDescChange = (key, val) => {
-    setForm(p => ({ ...p, [`desc${key.charAt(0).toUpperCase()+key.slice(1)}`]: val }));
-    setError(''); setSaved(false);
-  };
-
   const finalRewards = () => form.rewards.map(r =>
     GIFT_CARD_REWARDS.includes(r) && gcAmt[r] ? `${r} ($${gcAmt[r]})` : r
   );
@@ -701,7 +817,7 @@ function EditForm({ initial, auth, onSaved }) {
     const e = {};
     if (!form.username.trim())    e.username    = 'Username required';
     if (!form.companyName.trim()) e.companyName = 'Company name required';
-    if (!form.descAbout.trim())   e.descAbout   = 'About is required';
+    if (!form.description.trim()) e.description = 'Description required';
     if (!form.rewards.length)     e.rewards     = 'Pick at least one reward';
     for (const r of form.rewards)
       if (GIFT_CARD_REWARDS.includes(r) && !gcAmt[r]) e[`gc_${r}`] = `Amount required for ${r}`;
@@ -714,16 +830,11 @@ function EditForm({ initial, auth, onSaved }) {
     if (!validate()) return;
     setSaving(true); setError(''); setSaved(false);
     try {
-      const description = joinDescription({ about: form.descAbout, feat1: form.descFeat1, feat2: form.descFeat2, feat3: form.descFeat3 });
       const payload = {
-        username:     form.username,
-        companyName:  form.companyName,
-        description,
+        ...form,
         website:      fixUrl(form.website),
         calendlyLink: fixUrl(form.calendlyLink),
         rewards:      finalRewards(),
-        audience:     form.audience,
-        contactEmail: form.contactEmail,
       };
       const r = await fetch(`${API_BASE}/dashboard/${auth.referralCode}?token=${auth.token}`, {
         method: 'PATCH',
@@ -738,9 +849,6 @@ function EditForm({ initial, auth, onSaved }) {
     finally { setSaving(false); }
   };
 
-  const descValues = { about: form.descAbout, feat1: form.descFeat1, feat2: form.descFeat2, feat3: form.descFeat3 };
-  const descErrors = { about: fErr.descAbout };
-
   return (
     <form onSubmit={save} noValidate>
       <ErrBanner msg={error}/>
@@ -753,7 +861,9 @@ function EditForm({ initial, auth, onSaved }) {
         <FG label="Company Name" req err={fErr.companyName}>
           <input className={`fi${fErr.companyName?' err':''}`} name="companyName" placeholder="Acme Inc." value={form.companyName} onChange={handleChange}/>
         </FG>
-        <DescriptionFields values={descValues} onChange={handleDescChange} errors={descErrors}/>
+        <FG label="Description" req err={fErr.description}>
+          <textarea className="fta" name="description" placeholder="One sentence about what you do" value={form.description} onChange={handleChange}/>
+        </FG>
         <FG label="Website" opt>
           <input className="fi" name="website" placeholder="yourcompany.com" value={form.website} onChange={handleChange} inputMode="url" autoCapitalize="none"/>
           <div style={{fontSize:11,color:T.stone,marginTop:4}}>https:// added automatically</div>
@@ -832,12 +942,15 @@ function Dashboard({ auth, onSignOut, onProgramUpdated }) {
   const liUrl     = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(program.programLink)}`;
 
   const handleSaved = updates => {
+    // Merge updates into local data so overview reflects changes instantly
     setData(prev => ({ ...prev, program: { ...prev.program, ...updates } }));
     if (onProgramUpdated) onProgramUpdated(updates);
   };
 
   return (
     <div className="aFadeUp page-pad" style={{maxWidth:820,margin:'0 auto',padding:'52px 40px 80px'}}>
+
+      {/* Header */}
       <div className="dash-header" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:36,gap:14}}>
         <div>
           <div style={{fontSize:9,fontWeight:600,letterSpacing:'.14em',textTransform:'uppercase',color:T.pebble,marginBottom:10}}>Dashboard</div>
@@ -849,6 +962,7 @@ function Dashboard({ auth, onSignOut, onProgramUpdated }) {
         <button onClick={onSignOut} className="btn-ghost">Sign out</button>
       </div>
 
+      {/* Stats */}
       <div className="stat-strip" style={{marginBottom:20}}>
         {[
           {num:stats.simulatedVisits||0, lbl:'Profile views'},
@@ -862,6 +976,7 @@ function Dashboard({ auth, onSignOut, onProgramUpdated }) {
         ))}
       </div>
 
+      {/* Share nudge */}
       <div style={{background:T.ink,borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,marginBottom:20,flexWrap:'wrap'}}>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:13,fontWeight:600,color:T.white,marginBottom:3}}>Keep sharing — every post can unlock new referrers</div>
@@ -873,6 +988,7 @@ function Dashboard({ auth, onSignOut, onProgramUpdated }) {
         </a>
       </div>
 
+      {/* Tabs */}
       <div className="tab-scroll" style={{marginBottom:18}}>
         <div className="tabs-row" style={{display:'inline-flex',gap:3,background:T.fog,border:`1px solid ${T.mist}`,borderRadius:8,padding:3}}>
           {[['overview','Overview'],['sharers',`Referrers (${sharers.length})`],['link','Your Link'],['edit','Edit Program']].map(([id,lbl])=>(
@@ -881,10 +997,13 @@ function Dashboard({ auth, onSignOut, onProgramUpdated }) {
         </div>
       </div>
 
+      {/* Tab: overview */}
       {tab==='overview' && (
         <div className="aFadeUp">
           <Card icon="◈" title="Program info" head={
-            <button onClick={()=>setTab('edit')} className="btn-ghost" style={{marginLeft:'auto',fontSize:11}}>✎ Edit</button>
+            <button onClick={()=>setTab('edit')} className="btn-ghost" style={{marginLeft:'auto',fontSize:11}}>
+              ✎ Edit
+            </button>
           }>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:18}}>
               {[
@@ -919,6 +1038,7 @@ function Dashboard({ auth, onSignOut, onProgramUpdated }) {
         </div>
       )}
 
+      {/* Tab: sharers */}
       {tab==='sharers' && (
         <div className="aFadeUp">
           <Card icon="👥" title={`Referrers (${sharers.length})`} sub="People who created personal links from your program" pad={false}>
@@ -949,6 +1069,7 @@ function Dashboard({ auth, onSignOut, onProgramUpdated }) {
         </div>
       )}
 
+      {/* Tab: link */}
       {tab==='link' && (
         <div className="aFadeUp">
           <Card icon="🔗" title="Share your program" sub="The more you share, the more referrers you recruit">
@@ -957,6 +1078,7 @@ function Dashboard({ auth, onSignOut, onProgramUpdated }) {
         </div>
       )}
 
+      {/* Tab: edit */}
       {tab==='edit' && (
         <div className="aFadeUp">
           <div style={{marginBottom:20}}>
@@ -982,18 +1104,15 @@ export default function App() {
   const [showSignIn, setSI]   = useState(false);
   const [fErr,    setFErr]    = useState({});
   const [gcAmt,   setGcAmt]   = useState({});
+  const [auth,    setAuth]    = useState(()=>{try{return JSON.parse(sessionStorage.getItem('re_auth')||'null')}catch{return null}});
 
-  // Auth persisted in localStorage (stays forever until explicit sign out)
-  const [auth, setAuth] = useState(() => loadAuth());
-
+  // prefillData: loaded from API when authed founder visits homepage
   const [prefill, setPrefill] = useState(null);
   const [prefillLoading, setPrefillLoad] = useState(false);
 
-  // Description split into 4 fields
   const [cd, setCd] = useState({
     username:'', email:'', password:'', companyName:'',
-    descAbout:'', descFeat1:'', descFeat2:'', descFeat3:'',
-    website:'', rewards:[], audience:[],
+    description:'', website:'', rewards:[], audience:[],
     contactEmail:'', calendlyLink:'',
   });
   const [sharerName, setSharerName] = useState('');
@@ -1007,29 +1126,27 @@ export default function App() {
     }
     const q = new URLSearchParams(window.location.search);
     if ((path==='/dashboard'||q.get('signin')==='1') && auth) { setMode('dashboard'); return; }
+    // Homepage + authed → prefill form
     if (auth && path==='/') loadPrefill(auth);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
+  // Load founder's existing data to prefill homepage form
   const loadPrefill = async (authData) => {
     setPrefillLoad(true);
     try {
       const r = await fetch(`${API_BASE}/dashboard/${authData.referralCode}?token=${authData.token}`);
       const d = await r.json();
-      if (!r.ok) return;
+      if (!r.ok) return; // silently fail — just show blank form
       const p = d.program;
       const { selected, gcAmounts } = expandRewards(p.rewards || []);
-      const desc = splitDescription(p.description || '');
       setPrefill(p);
       setCd({
         username:     p.username     || '',
         email:        p.email        || '',
-        password:     '',
+        password:     '',  // never prefill password
         companyName:  p.companyName  || '',
-        descAbout:    desc.about,
-        descFeat1:    desc.feat1,
-        descFeat2:    desc.feat2,
-        descFeat3:    desc.feat3,
+        description:  p.description  || '',
         website:      (p.website||'').replace(/^https?:\/\//,''),
         rewards:      selected,
         audience:     p.audience     || [],
@@ -1061,12 +1178,6 @@ export default function App() {
     setError('');
   };
 
-  const handleDescChange = (key, val) => {
-    const fieldKey = `desc${key.charAt(0).toUpperCase()+key.slice(1)}`;
-    setCd(p => ({ ...p, [fieldKey]: val }));
-    setError('');
-  };
-
   const finalRewards = () => cd.rewards.map(r=>
     GIFT_CARD_REWARDS.includes(r)&&gcAmt[r] ? `${r} ($${gcAmt[r]})` : r
   );
@@ -1077,7 +1188,7 @@ export default function App() {
     if (!isUpdate && !cd.email.trim())    e.email = 'Email required';
     if (!isUpdate && !cd.password)        e.password = 'Password required';
     if (!cd.companyName.trim()) e.companyName = 'Company name required';
-    if (!cd.descAbout.trim())   e.descAbout   = 'About is required';
+    if (!cd.description.trim()) e.description = 'Short description required';
     if (!cd.rewards.length)     e.rewards     = 'Pick at least one reward';
     for (const r of cd.rewards)
       if (GIFT_CARD_REWARDS.includes(r)&&!gcAmt[r]) e[`gc_${r}`]=`Amount required for ${r}`;
@@ -1085,6 +1196,7 @@ export default function App() {
     return !Object.keys(e).length;
   };
 
+  // isUpdate = founder already has a program; save via PATCH instead of POST
   const isUpdate = !!prefill && !!auth;
 
   const createProgram = async e => {
@@ -1092,16 +1204,12 @@ export default function App() {
     if (!validate(isUpdate)) { document.getElementById('form-anchor')?.scrollIntoView({behavior:'smooth',block:'start'}); return; }
     setLoad(true); setError('');
     try {
-      // Build joined description from the 4 fields
-      const description = joinDescription({
-        about: cd.descAbout, feat1: cd.descFeat1, feat2: cd.descFeat2, feat3: cd.descFeat3,
-      });
-
       if (isUpdate) {
+        // PATCH existing program
         const payload = {
           username:     cd.username,
           companyName:  cd.companyName,
-          description,
+          description:  cd.description,
           website:      fixUrl(cd.website),
           calendlyLink: fixUrl(cd.calendlyLink),
           rewards:      finalRewards(),
@@ -1118,31 +1226,11 @@ export default function App() {
         setSuccess(true);
         window.scrollTo({top:0,behavior:'smooth'});
       } else {
-        // POST new program — backend returns auth data, so sign in automatically
-        const payload = {
-          ...cd,
-          description,
-          website: fixUrl(cd.website),
-          calendlyLink: fixUrl(cd.calendlyLink),
-          rewards: finalRewards(),
-        };
-        // Remove the split desc fields before sending (backend doesn't know them)
-        delete payload.descAbout;
-        delete payload.descFeat1;
-        delete payload.descFeat2;
-        delete payload.descFeat3;
-
+        // POST new program
+        const payload = {...cd, website:fixUrl(cd.website), calendlyLink:fixUrl(cd.calendlyLink), rewards:finalRewards()};
         const r = await fetch(`${API_BASE}/register-program`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         const d = await r.json();
         if (!r.ok) throw new Error(d.error||'Failed to create');
-
-        // ── Auto sign-in: if the response includes auth fields, persist them ──
-        if (d.token && d.referralCode) {
-          const authData = { token: d.token, referralCode: d.referralCode };
-          saveAuth(authData);
-          setAuth(authData);
-        }
-
         setLink(getShareLink(d.programLink));
         setSuccess(true);
         window.scrollTo({top:0,behavior:'smooth'});
@@ -1167,24 +1255,22 @@ export default function App() {
   };
 
   const signInOk = d => {
-    saveAuth(d);            // persist in localStorage
+    sessionStorage.setItem('re_auth',JSON.stringify(d));
     setAuth(d); setSI(false); setMode('dashboard');
   };
-
   const signOut = () => {
-    clearAuth();            // remove from localStorage
+    sessionStorage.removeItem('re_auth');
     setAuth(null); setPrefill(null); setMode('create');
-    setCd({username:'',email:'',password:'',companyName:'',descAbout:'',descFeat1:'',descFeat2:'',descFeat3:'',website:'',rewards:[],audience:[],contactEmail:'',calendlyLink:''});
+    setCd({username:'',email:'',password:'',companyName:'',description:'',website:'',rewards:[],audience:[],contactEmail:'',calendlyLink:''});
     setGcAmt({});
   };
 
+  // When dashboard edit saves, also update prefill so homepage form stays in sync
   const handleDashboardSaved = updates => {
     setPrefill(prev => prev ? {...prev, ...updates} : prev);
   };
 
-  const descValues = { about: cd.descAbout, feat1: cd.descFeat1, feat2: cd.descFeat2, feat3: cd.descFeat3 };
-  const descErrors = { about: fErr.descAbout };
-  const creatorText = buildShareText({...cd, rewards: finalRewards(), description: joinDescription({about:cd.descAbout,feat1:cd.descFeat1,feat2:cd.descFeat2,feat3:cd.descFeat3})}, cd.username, link, true);
+  const creatorText = buildShareText({...cd, rewards: finalRewards()}, cd.username, link, true);
   const publicText  = buildShareText(program, sharerName, link, false);
 
   return (
@@ -1218,9 +1304,10 @@ export default function App() {
         {/* ── DASHBOARD ── */}
         {mode==='dashboard' && auth && <Dashboard auth={auth} onSignOut={signOut} onProgramUpdated={handleDashboardSaved}/>}
 
-        {/* ── CREATE / EDIT ── */}
+        {/* ── CREATE / EDIT — hero + form ── */}
         {mode==='create' && !success && (
           <>
+            {/* Show hero only for brand-new visitors */}
             {!isUpdate && (
               <Hero
                 onCreate={()=>document.getElementById('form-anchor')?.scrollIntoView({behavior:'smooth',block:'start'})}
@@ -1228,6 +1315,7 @@ export default function App() {
               />
             )}
 
+            {/* Prefill banner when authed */}
             {isUpdate && (
               <div style={{background:T.fog,borderBottom:`1px solid ${T.mist}`,padding:'16px 32px'}}>
                 <div style={{maxWidth:680,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
@@ -1243,6 +1331,8 @@ export default function App() {
             )}
 
             <div id="form-anchor" className="form-pad" style={{maxWidth:680,margin:'0 auto',padding: isUpdate ? '32px 40px 80px' : '0 40px 80px'}}>
+
+              {/* Loading prefill */}
               {prefillLoading && (
                 <div style={{display:'flex',gap:10,alignItems:'center',color:T.pebble,fontSize:13,padding:'32px 0',fontWeight:300}}>
                   <SpinnerDark/> Loading your program details…
@@ -1254,6 +1344,7 @@ export default function App() {
                   <ErrBanner msg={error}/>
                   <form onSubmit={createProgram} noValidate className="aFadeUp">
 
+                    {/* Account card — hide email/password when updating */}
                     <Card icon="◎" title={isUpdate ? 'Your details' : 'Account'} sub={isUpdate ? 'Update your display name' : 'Your login credentials'}>
                       <FG label="Display name" req err={fErr.username}>
                         <input className={`fi${fErr.username?' err':''}`} name="username" placeholder="yourhandle" value={cd.username} onChange={handleChange} autoCapitalize="none"/>
@@ -1279,11 +1370,14 @@ export default function App() {
                       )}
                     </Card>
 
+                    {/* Program card */}
                     <Card icon="◈" title="Program Details" sub="What you're offering and who it's for">
                       <FG label="Company Name" req err={fErr.companyName}>
                         <input className={`fi${fErr.companyName?' err':''}`} name="companyName" placeholder="Acme Inc." value={cd.companyName} onChange={handleChange}/>
                       </FG>
-                      <DescriptionFields values={descValues} onChange={handleDescChange} errors={descErrors}/>
+                      <FG label="Description" req err={fErr.description}>
+                        <textarea className="fta" name="description" placeholder="One sentence about what you do — used in auto-generated share messages" value={cd.description} onChange={handleChange}/>
+                      </FG>
                       <FG label="Website" opt>
                         <input className="fi" name="website" placeholder="yourcompany.com" value={cd.website} onChange={handleChange} inputMode="url" autoCapitalize="none"/>
                         <div style={{fontSize:11,color:T.stone,marginTop:4}}>https:// added automatically</div>
@@ -1343,7 +1437,7 @@ export default function App() {
                 ? <p style={{fontSize:15,color:T.ash,lineHeight:1.7,fontWeight:300}}>Your program has been updated. All your existing referral links still work.</p>
                 : <p style={{fontSize:15,color:T.ash,lineHeight:1.7,fontWeight:300}}>Your referral program is active. A welcome email is heading to your inbox.</p>
               }
-              <p style={{fontSize:12,color:T.pebble,marginTop:6}}>You're signed in — your session is saved for next time.</p>
+              <p style={{fontSize:12,color:T.pebble,marginTop:6}}>Sign in anytime to track referrers and view stats.</p>
             </div>
 
             <Card dark icon="✓" title={isUpdate ? 'Your updated link' : 'Share your program'} sub={isUpdate ? 'Share it again to reach new audiences' : 'The more channels you post on, the more referrers you recruit'}>
@@ -1356,8 +1450,8 @@ export default function App() {
                   ← Edit again
                 </button>
               )}
-              <button onClick={()=>{ setMode('dashboard'); }} className="btn-secondary" style={{width:'auto',padding:'12px 28px'}}>
-                View dashboard →
+              <button onClick={()=>{ if(auth) setMode('dashboard'); else setSI(true); }} className="btn-secondary" style={{width:'auto',padding:'12px 28px'}}>
+                {auth ? 'View dashboard →' : 'Sign in to your dashboard →'}
               </button>
             </div>
           </div>
@@ -1386,13 +1480,7 @@ export default function App() {
                     via <strong style={{fontWeight:600,color:T.ink}}>{program.founderName||'a friend'}</strong>
                   </p>
                   {program.description && (
-                    <div style={{marginTop:14,maxWidth:440}}>
-                      {program.description.split(/\n\n+/).map((para, i) => (
-                        <p key={i} style={{fontSize: i===0 ? 15 : 14, color: i===0 ? T.slate : T.ash, lineHeight:1.7, fontWeight:300, marginBottom: i < program.description.split(/\n\n+/).length-1 ? 10 : 0}}>
-                          {para}
-                        </p>
-                      ))}
-                    </div>
+                    <p style={{fontSize:15,color:T.slate,lineHeight:1.7,maxWidth:440,marginTop:14,fontWeight:300}}>{program.description}</p>
                   )}
                   {program.website && (
                     <a href={fixUrl(program.website)} target="_blank" rel="noopener noreferrer"
@@ -1402,6 +1490,19 @@ export default function App() {
                     </a>
                   )}
                 </div>
+
+               
+
+                {/* {program.audience?.length>0 && (
+                  <div style={{marginBottom:24}}>
+                    <div style={{fontSize:9,fontWeight:600,letterSpacing:'.12em',textTransform:'uppercase',color:T.pebble,marginBottom:9}}>Best for</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
+                      {program.audience.map(a=>(
+                        <span key={a} style={{padding:'6px 12px',background:T.fog,border:`1px solid ${T.mist}`,borderRadius:5,fontSize:12,color:T.slate,fontWeight:400}}>{a}</span>
+                      ))}
+                    </div>
+                  </div>
+                )} */}
 
                 {(program.calendlyLink||program.contactEmail) && (
                   <div style={{display:'flex',gap:9,marginBottom:28,flexWrap:'wrap'}}>
@@ -1418,14 +1519,14 @@ export default function App() {
                 )}
 
                 <Card dark icon="🔗" title="Get your referral link" sub="Enter your name — your link is created instantly">
-                  {program.rewards?.length>0 && (
-                    <div style={{marginBottom:24}}>
-                      <div style={{fontSize:9,fontWeight:600,letterSpacing:'.12em',textTransform:'uppercase',color:T.pebble,marginBottom:10}}>Refer someone & earn</div>
-                      <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
-                        {program.rewards.map(r=><span key={r} className="reward-badge">{r}</span>)}
-                      </div>
+                {program.rewards?.length>0 && (
+                  <div style={{marginBottom:24}}>
+                    <div style={{fontSize:9,fontWeight:600,letterSpacing:'.12em',textTransform:'uppercase',color:T.pebble,marginBottom:10}}>Refer someone & earn</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
+                      {program.rewards.map(r=><span key={r} className="reward-badge">{r}</span>)}
                     </div>
-                  )}
+                  </div>
+                )}
                   <form onSubmit={submitShare}>
                     <FG label="Your Email" req err={fErr.sharerName}>
                       <input className={`fi${fErr.sharerName?' err':''}`} placeholder="How should we credit you?" value={sharerName}
