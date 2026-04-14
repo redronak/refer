@@ -608,6 +608,26 @@ const COUNTRIES = [
   { code:'+60',  flag:'🇲🇾', name:'Malaysia',       placeholder:'1X XXXX XXXX' },
 ];
 
+// ─── Reusable CTA banner (bottom of public pages) ────────────────────────────
+function CtaBanner({ onJoin }) {
+  return (
+    <div style={{margin:'24px 0 0',background:'linear-gradient(135deg,#0F172A,#0D4A45)',borderRadius:16,padding:'28px 24px',textAlign:'center',position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:300,height:300,borderRadius:'50%',background:'radial-gradient(circle,rgba(13,148,136,.2) 0%,transparent 70%)',pointerEvents:'none'}}/>
+      <div style={{position:'relative'}}>
+        <div style={{fontSize:11,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'#2DD4BF',marginBottom:8}}>Ready to start?</div>
+        <p style={{fontSize:14,color:'rgba(248,250,252,.65)',lineHeight:1.6,marginBottom:20}}>
+          Set up a referral program in minutes. Reward people for spreading the word.
+        </p>
+        <button onClick={onJoin}
+          style={{display:'inline-flex',alignItems:'center',gap:8,padding:'12px 24px',background:'linear-gradient(135deg,#0D9488,#059669)',border:'none',borderRadius:10,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",boxShadow:'0 4px 16px rgba(13,148,136,.35)'}}>
+          Join as a Business →
+        </button>
+        <p style={{fontSize:11,color:'rgba(248,250,252,.3)',marginTop:14}}>Free to join · No hidden fees</p>
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOGIN
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -640,8 +660,21 @@ function LoginScreen({ onLogin, clinicId }) {
     try{
       const d=await api('/auth/verify-otp',{method:'POST',body:JSON.stringify({phone:fullPhone,otp:code})});
       setTok(d.token);
-      if(d.isNew||!d.user.name){setStep('profile');}
-      else{saveAuth(d);onLogin(d);}
+      if(d.isNew || !d.user?.name?.trim()){
+        // New user — show profile step
+        setStep('profile');
+      } else {
+        // Existing user with name — fetch fresh profile and log them in directly
+        try {
+          const me = await api('/auth/me',{},d.token);
+          const auth = {...d, user: me.user, token: d.token};
+          saveAuth(auth);
+          onLogin(auth);
+        } catch {
+          // Fallback to verify-otp data if /me fails
+          saveAuth(d); onLogin(d);
+        }
+      }
     }catch(e){setErr(e.message);}finally{setLoad(false);}
   };
   const completeProfile=async()=>{
@@ -1850,7 +1883,7 @@ function ClinicProfilePage({ clinicId, onJoin }) {
   const waMsg = encodeURIComponent(`Hi! I found ${clinic.name} on EasyRecommend. I'd like to get in touch.`);
   const myShareLink = myCode ? `${APP_URL}?r=${myCode}` : '';
   const clinicName = clinic.name || 'this business';
-  const rewardLine = clinic.patientReward ? `\n\nYou get: ${clinic.rewards}.` : '';
+  const rewardLine = clinic.patientReward ? `\n\nYou get: ${clinic.patientReward}.` : '';
   const myShareText = myCode
     ? `Hi! I'm ${myName} — I've been using ${clinicName} and they're great.\n\nIf you're looking for their services, I'd highly recommend them.${rewardLine}\n\nUse my referral link:\n${myShareLink}`
     : '';
@@ -1989,6 +2022,8 @@ function ClinicProfilePage({ clinicId, onJoin }) {
           </div>
         </div>
 
+        <CtaBanner onJoin={onJoin}/>
+
       </div>
     </div>
   );
@@ -2103,6 +2138,8 @@ function ReferrerProfilePage({ refCode, onSignUp }) {
           </div>
         </div>
 
+        <CtaBanner onJoin={onSignUp}/>
+
       </div>
     </div>
   );
@@ -2122,8 +2159,22 @@ export default function App() {
     const a=getAuth();
     if(a?.token){
       api('/auth/me',{},a.token)
-        .then(d=>{const next={...a,user:d.user};saveAuth(next);setAuthData(next);setScreen('app');})
-        .catch(()=>{clearAuth();setAuthData(null);setScreen(refCodeParam?'ref':clinicIdParam?'clinic':'landing');})
+        .then(d=>{
+          const next={...a,user:d.user};
+          saveAuth(next);setAuthData(next);
+          // If on a public page URL, still go to app (they're logged in)
+          setScreen('app');
+        })
+        .catch(e=>{
+          // Only clear auth on actual 401 (expired token) — not network errors
+          if(e.message?.includes('401')||e.message?.includes('Session expired')||e.message?.includes('authenticated')){
+            clearAuth();setAuthData(null);
+            setScreen(refCodeParam?'ref':clinicIdParam?'clinic':'landing');
+          } else {
+            // Network error — keep them logged in with cached data
+            setScreen('app');
+          }
+        })
         .finally(()=>setChecking(false));
     }else{
       setChecking(false);
