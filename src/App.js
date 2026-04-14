@@ -618,10 +618,16 @@ function CtaBanner({ onJoin }) {
         <p style={{fontSize:14,color:'rgba(248,250,252,.65)',lineHeight:1.6,marginBottom:20}}>
           Set up a referral program in minutes. Reward people for spreading the word.
         </p>
-        <button onClick={onJoin}
-          style={{display:'inline-flex',alignItems:'center',gap:8,padding:'12px 24px',background:'linear-gradient(135deg,#0D9488,#059669)',border:'none',borderRadius:10,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",boxShadow:'0 4px 16px rgba(13,148,136,.35)'}}>
-          Join as a Business →
-        </button>
+        <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
+          <button onClick={()=>onJoin('doctor')}
+            style={{display:'inline-flex',alignItems:'center',gap:8,padding:'12px 24px',background:'linear-gradient(135deg,#0D9488,#059669)',border:'none',borderRadius:10,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",boxShadow:'0 4px 16px rgba(13,148,136,.35)'}}>
+            I'm a Business →
+          </button>
+          <button onClick={()=>onJoin('patient')}
+            style={{display:'inline-flex',alignItems:'center',gap:8,padding:'12px 24px',background:'transparent',border:'1.5px solid rgba(255,255,255,.2)',borderRadius:10,color:'rgba(255,255,255,.8)',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+            I'm a Referrer →
+          </button>
+        </div>
         <p style={{fontSize:11,color:'rgba(248,250,252,.3)',marginTop:14}}>Free to join · No hidden fees</p>
       </div>
     </div>
@@ -631,13 +637,13 @@ function CtaBanner({ onJoin }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOGIN
 // ═══════════════════════════════════════════════════════════════════════════════
-function LoginScreen({ onLogin, clinicId }) {
+function LoginScreen({ onLogin, clinicId, initialRole }) {
   const [step,    setStep]   = useState('phone');
   const [cc,      setCc]     = useState(COUNTRIES[0]); // country code object
   const [phone,   setPhone]  = useState('');
   const [otp,     setOtp]    = useState(['','','','','','']);
   const [name,    setName]   = useState('');
-  const [role,    setRole]   = useState('patient');
+  const [role,    setRole]   = useState(initialRole || 'patient');
   const [clinic,  setClinic] = useState('');
   const [token,   setTok]    = useState('');
   const [load,    setLoad]   = useState(false);
@@ -2152,6 +2158,7 @@ export default function App() {
   const [authData,setAuthData]=useState(()=>getAuth());
   const [checking,setChecking]=useState(true);
   const [screen,setScreen]=useState('landing');
+  const [loginRole,setLoginRole]=useState('patient');
   const [clinicIdParam] = useState(()=>new URLSearchParams(window.location.search).get('b'));
   const [refCodeParam]  = useState(()=>new URLSearchParams(window.location.search).get('r'));
 
@@ -2203,10 +2210,10 @@ export default function App() {
   return (
     <>
       <style>{CSS}</style>
-      {screen==='landing' && <LandingPage onGetStarted={()=>setScreen('login')}/>}
-      {screen==='ref'     && <ReferrerProfilePage refCode={refCodeParam} onSignUp={()=>setScreen('login')}/>}
-      {screen==='clinic'  && <ClinicProfilePage clinicId={clinicIdParam} onJoin={()=>setScreen('login')}/>}
-      {screen==='login'   && <LoginScreen onLogin={handleLogin} clinicId={clinicIdParam}/>}
+      {screen==='landing' && <LandingPage onGetStarted={()=>{setLoginRole('patient');setScreen('login');}}/>}
+      {screen==='ref'     && <ReferrerProfilePage refCode={refCodeParam} onSignUp={()=>{setLoginRole('patient');setScreen('login');}}/>}
+      {screen==='clinic'  && <ClinicProfilePage clinicId={clinicIdParam} onJoin={(role)=>{setLoginRole(role||'patient');setScreen('login');}}/>}
+      {screen==='login'   && <LoginScreen onLogin={handleLogin} clinicId={loginRole==='patient'?clinicIdParam:undefined} initialRole={loginRole}/>}
       {screen==='app' && user?.role==='patient' && <PatientDashboard  user={user} token={token} onSignOut={handleSignOut}/>}
       {screen==='app' && user?.role==='doctor'  && <DoctorDashboard   user={user} token={token} onSignOut={handleSignOut}/>}
       {screen==='app' && user?.role==='admin'   && <AdminDashboard    user={user} token={token} onSignOut={handleSignOut}/>}
