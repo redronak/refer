@@ -2419,7 +2419,7 @@ function AuctionBidsPanel({bountyId, bounty, token, onClose, onDecide}){
 }
 
 function ShareBar({url, showToast}){
-// const [copied,setCopied]=useState(false);
+const [copied,setCopied]=useState(false);
   const copy=()=>{
     navigator.clipboard.writeText(url);
     setCopied(true);
@@ -4395,7 +4395,7 @@ function CreatorOnboarding({onComplete, showToast}){
 }
 
 function CreatorSharePopup({url, username, onClose}){
-// const [copied,setCopied]=useState(false);
+const [copied,setCopied]=useState(false);
   const copy=()=>{navigator.clipboard.writeText(url);setCopied(true);setTimeout(()=>setCopied(false),2500);};
   const enc=encodeURIComponent(url);
   const msg=encodeURIComponent("Just launched my creator page — see what I offer and let's work together:");
