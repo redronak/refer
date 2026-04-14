@@ -1872,7 +1872,6 @@ function ClinicProfilePage({ clinicId, onJoin }) {
               <div style={{width:48,height:48,borderRadius:14,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>🏢</div>
               <div>
                 <div style={{fontSize:18,fontWeight:800,color:'#fff',lineHeight:1.1}}>{clinic.name}</div>
-                {clinic.doctorName && <div style={{fontSize:12,color:'rgba(255,255,255,.75)',marginTop:3}}>{clinic.doctorName}</div>}
               </div>
             </div>
           </div>
@@ -1997,92 +1996,20 @@ function ClinicProfilePage({ clinicId, onJoin }) {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // REFERRER PUBLIC PROFILE PAGE  (?r=CODE)
+// Friend of a referrer lands here — sees business info, their reward, referral code
 // ═══════════════════════════════════════════════════════════════════════════════
 function ReferrerProfilePage({ refCode, onSignUp }) {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
 
-  // Inline auth state
-  const [step,    setStep]    = useState('phone'); // 'phone' | 'otp' | 'done'
-  const [cc,      setCc]      = useState(COUNTRIES[0]);
-  const [ccOpen,  setCcOpen]  = useState(false);
-  const [phone,   setPhone]   = useState('');
-  const [otp,     setOtp]     = useState(['','','','','','']);
-  const [authLoad,setAuthLoad]= useState(false);
-  const [authErr, setAuthErr] = useState('');
-  const [myCode,  setMyCode]  = useState(''); // personal referral code after auth
-  const [myName,  setMyName]  = useState('');
-  const [myToken, setMyToken] = useState('');
-  const [nameStep,setNameStep]= useState(false); // if new user needs name
-  const [nameVal, setNameVal] = useState('');
-  const [copied,  setCopied]  = useState(false);
-
-  const fullPhone = `${cc.code}${phone.replace(/\s/g,'')}`;
-
   useEffect(()=>{
     api(`/referrer/${refCode}`)
       .then(d=>setData(d))
       .catch(e=>setError(e.message))
       .finally(()=>setLoading(false));
-
-    // If already logged in, skip auth
-    const a = getAuth();
-    if(a?.token){
-      api('/auth/me',{},a.token).then(d=>{
-        if(d.user?.referralCode){ setMyCode(d.user.referralCode); setMyName(d.user.name||''); setMyToken(a.token); setStep('done'); }
-      }).catch(()=>{});
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
-
-  const sendOtp = async () => {
-    if(!phone.trim()){setAuthErr('Enter your number');return;}
-    setAuthLoad(true);setAuthErr('');
-    try{ await api('/auth/send-otp',{method:'POST',body:JSON.stringify({phone:fullPhone})}); setStep('otp'); }
-    catch(e){setAuthErr(e.message);}finally{setAuthLoad(false);}
-  };
-
-  const verifyOtp = async () => {
-    const code=otp.join('');
-    if(code.length<6){setAuthErr('Enter the 6-digit code');return;}
-    setAuthLoad(true);setAuthErr('');
-    try{
-      const d=await api('/auth/verify-otp',{method:'POST',body:JSON.stringify({phone:fullPhone,otp:code})});
-      if(d.isNew||!d.user?.name){ setMyToken(d.token); setNameStep(true); }
-      else{
-        // existing user — register with clinicId from refCode's clinic
-        const reg=await api('/auth/register',{method:'POST',body:JSON.stringify({name:d.user.name,role:'patient',clinicId:data?.clinic?.id||undefined})},d.token);
-        const auth={...reg,token:reg.token||d.token};
-        saveAuth(auth);
-        setMyCode(reg.user?.referralCode||d.user?.referralCode||'');
-        setMyName(reg.user?.name||d.user?.name||'');
-        setMyToken(reg.token||d.token);
-        setStep('done');
-      }
-    }catch(e){setAuthErr(e.message);}finally{setAuthLoad(false);}
-  };
-
-  const saveName = async () => {
-    if(!nameVal.trim()){setAuthErr('Enter your name');return;}
-    setAuthLoad(true);setAuthErr('');
-    try{
-      const d=await api('/auth/register',{method:'POST',body:JSON.stringify({name:nameVal.trim(),role:'patient',clinicId:data?.clinic?.id||undefined})},myToken);
-      const auth={...d,token:d.token||myToken};
-      saveAuth(auth);
-      setMyCode(d.user?.referralCode||'');
-      setMyName(d.user?.name||nameVal.trim());
-      setMyToken(d.token||myToken);
-      setNameStep(false);
-      setStep('done');
-    }catch(e){setAuthErr(e.message);}finally{setAuthLoad(false);}
-  };
-
-  const handleOtpKey=(i,val)=>{
-    if(!/^\d*$/.test(val))return;
-    const n=[...otp];n[i]=val.slice(-1);setOtp(n);
-    if(val&&i<5)document.getElementById(`ref-otp-${i+1}`)?.focus();
-  };
 
   if(loading) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#F7F9FC'}}><Spin/></div>;
 
@@ -2098,38 +2025,34 @@ function ReferrerProfilePage({ refCode, onSignUp }) {
   );
 
   const { referrer, clinic } = data;
-  const waMsg = clinic?.phone ? encodeURIComponent(`Hi! I was referred by a friend and I'd like to get in touch.`) : '';
-  const myShareLink = myCode ? `${APP_URL}?r=${myCode}` : '';
-  const clinicName  = clinic?.name || 'this business';
-  const rewardLine  = clinic?.patientReward
-    ? `\n\nYou get: ${clinic.patientReward}.`
-    : '';
-  const myShareText = myCode
-    ? `Hi! I'm ${myName} — I've been using ${clinicName} and they're great.\n\nIf you're looking for their services, I'd highly recommend them.${rewardLine}\n\nUse my referral link:\n${myShareLink}`
-    : '';
+  const waMsg = encodeURIComponent(`Hi! I was referred by ${referrer?.name||'a friend'} and I'd like to get in touch.`);
 
   const WA_ICO = <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>;
 
   return (
     <div style={{minHeight:'100vh',background:'#F7F9FC',fontFamily:"'Plus Jakarta Sans','DM Sans',sans-serif"}}>
-      {/* Top bar */}
-      <div style={{background:'#0D9488',padding:'12px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+      <div style={{background:'#0D9488',padding:'12px 20px'}}>
         <span style={{fontWeight:800,fontSize:16,color:'#fff',letterSpacing:'-.02em'}}>Easy<span style={{color:'#CCFBF1'}}>Recommend</span></span>
       </div>
 
       <div style={{maxWidth:480,margin:'0 auto',padding:'20px 20px 60px'}}>
 
-        {/* Business card — compact */}
-        <div className="au card" style={{marginBottom:14,overflow:'hidden'}}>
+        {/* Referred by banner */}
+        {referrer?.name && (
+          <div className="au" style={{background:'rgba(13,148,136,.06)',border:'1px solid rgba(13,148,136,.15)',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:13,color:'#0F172A'}}>
+            👋 <strong>{referrer.name}</strong> recommended this business to you
+          </div>
+        )}
+
+        {/* Business card */}
+        <div className="au1 card" style={{marginBottom:14,overflow:'hidden'}}>
           <div style={{background:'linear-gradient(135deg,#0D9488,#059669)',padding:'20px'}}>
             <div style={{display:'flex',alignItems:'center',gap:14}}>
               <div style={{width:48,height:48,borderRadius:14,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>🏢</div>
-              <div>
-                <div style={{fontSize:18,fontWeight:800,color:'#fff',lineHeight:1.1}}>{clinic?.name || 'Business'}</div>
-                {clinic?.doctorName && <div style={{fontSize:12,color:'rgba(255,255,255,.75)',marginTop:3}}>{clinic.doctorName}</div>}
-              </div>
+              <div style={{fontSize:18,fontWeight:800,color:'#fff',lineHeight:1.1}}>{clinic?.name || 'Business'}</div>
             </div>
           </div>
+
           {/* Contact */}
           {clinic?.phone && (
             <div style={{padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,borderBottom:'1px solid #F1F5F9'}}>
@@ -2146,13 +2069,7 @@ function ReferrerProfilePage({ refCode, onSignUp }) {
               </div>
             </div>
           )}
-          {/* Discount */}
-          {clinic?.patientReward && (
-            <div style={{padding:'12px 16px',background:'#FFFBEB',borderBottom:'1px solid rgba(245,158,11,.15)'}}>
-              <span style={{fontSize:11,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.06em'}}>🎟 Your offer: </span>
-              <span style={{fontSize:13,fontWeight:700,color:'#0F172A'}}>{clinic.patientReward}</span>
-            </div>
-          )}
+
           {/* Services */}
           {clinic?.treatments?.length>0 && (
             <div style={{padding:'10px 16px'}}>
@@ -2165,92 +2082,24 @@ function ReferrerProfilePage({ refCode, onSignUp }) {
           )}
         </div>
 
-        {/* ── INLINE AUTH + SHARE ── */}
-        <div className="au1 card" style={{overflow:'hidden'}}>
+        {/* Reward for the friend */}
+        {clinic?.patientReward && (
+          <div className="au2 card" style={{marginBottom:14,border:'1.5px solid rgba(245,158,11,.25)',background:'#FFFBEB'}}>
+            <div className="card-body">
+              <div style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'#F59E0B',marginBottom:6}}>🎟 Your reward</div>
+              <div style={{fontSize:18,fontWeight:800,color:'#0F172A'}}>{clinic.patientReward}</div>
+              <div style={{fontSize:12,color:'#92400E',marginTop:4}}>Mention your referral code when you visit</div>
+            </div>
+          </div>
+        )}
 
-          <div style={{padding:'16px 18px'}}>
-            {authErr && <div style={{fontSize:12,color:'#EF4444',marginBottom:10,padding:'8px 10px',background:'#FEF2F2',borderRadius:6}}>⚠ {authErr}</div>}
-
-            {/* STEP: phone */}
-            {step==='phone' && !nameStep && (
-              <>
-                <div style={{fontSize:14,fontWeight:700,color:'#0F172A',marginBottom:4}}>Get your personal referral link</div>
-                <p style={{fontSize:12,color:'#64748B',marginBottom:12}}>Enter your number to generate your link and start sharing</p>
-                <div style={{display:'flex',gap:8,marginBottom:10}}>
-                  <div style={{position:'relative',flexShrink:0}}>
-                    <button type="button" onClick={()=>setCcOpen(o=>!o)}
-                      style={{height:'100%',minWidth:80,padding:'10px 8px',background:'#fff',border:'1.5px solid #E8EDF5',borderRadius:10,display:'flex',alignItems:'center',gap:5,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:600,color:'#0F172A',whiteSpace:'nowrap'}}>
-                      <span style={{fontSize:16}}>{cc.flag}</span><span>{cc.code}</span>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5" style={{transform:ccOpen?'rotate(180deg)':'none'}}><path d="M6 9l6 6 6-6"/></svg>
-                    </button>
-                    {ccOpen && (
-                      <div style={{position:'absolute',top:'calc(100% + 4px)',left:0,zIndex:200,background:'#fff',border:'1px solid #E8EDF5',borderRadius:10,boxShadow:'0 8px 24px rgba(0,0,0,.1)',minWidth:200,maxHeight:220,overflowY:'auto'}}>
-                        {COUNTRIES.map(c=>(
-                          <button key={c.code} type="button" onClick={()=>{setCc(c);setCcOpen(false);setPhone('');}}
-                            style={{width:'100%',padding:'9px 12px',background:c.code===cc.code?'rgba(13,148,136,.06)':'transparent',border:'none',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                            <span style={{fontSize:16}}>{c.flag}</span>
-                            <span style={{fontSize:12,flex:1,textAlign:'left',color:'#0F172A'}}>{c.name}</span>
-                            <span style={{fontSize:12,color:'#64748B',fontWeight:600}}>{c.code}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <input className="fi" type="tel" placeholder={cc.placeholder} value={phone}
-                    onChange={e=>{setPhone(e.target.value.replace(/[^\d\s]/g,''));setAuthErr('');}}
-                    onKeyDown={e=>e.key==='Enter'&&sendOtp()} inputMode="numeric" style={{flex:1,fontSize:14}}/>
-                </div>
-                {ccOpen&&<div style={{position:'fixed',inset:0,zIndex:100}} onClick={()=>setCcOpen(false)}/>}
-                <button className="btn btn-primary" onClick={sendOtp} disabled={authLoad} style={{fontSize:14}}>
-                  {authLoad?<><Spin sm white/> Sending…</>:'Get my link →'}
-                </button>
-              </>
-            )}
-
-            {/* STEP: otp */}
-            {step==='otp' && !nameStep && (
-              <>
-                <div style={{fontSize:14,fontWeight:700,color:'#0F172A',marginBottom:4}}>Enter the code</div>
-                <p style={{fontSize:12,color:'#64748B',marginBottom:12}}>Sent to {fullPhone}</p>
-                <div className="otp-wrap" style={{marginBottom:12}}>
-                  {otp.map((v,i)=>(
-                    <input key={i} id={`ref-otp-${i}`} className="otp-input" maxLength={1} value={v} inputMode="numeric"
-                      onChange={e=>handleOtpKey(i,e.target.value)}
-                      onKeyDown={e=>{if(e.key==='Backspace'&&!v&&i>0)document.getElementById(`ref-otp-${i-1}`)?.focus();}}/>
-                  ))}
-                </div>
-                <button className="btn btn-primary" onClick={verifyOtp} disabled={authLoad} style={{fontSize:14,marginBottom:8}}>
-                  {authLoad?<><Spin sm white/> Verifying…</>:'Continue →'}
-                </button>
-                <button className="btn btn-secondary" style={{fontSize:13}} onClick={()=>{setStep('phone');setOtp(['','','','','','']);setAuthErr('')}}>← Change number</button>
-              </>
-            )}
-
-            {/* STEP: name (new user) */}
-            {nameStep && (
-              <>
-                <div style={{fontSize:14,fontWeight:700,color:'#0F172A',marginBottom:4}}>One last thing</div>
-                <p style={{fontSize:12,color:'#64748B',marginBottom:12}}>Your name so the business knows who referred them</p>
-                <input className="fi" placeholder="Your name" value={nameVal} onChange={e=>{setNameVal(e.target.value);setAuthErr('');}} style={{marginBottom:10}} autoFocus/>
-                <button className="btn btn-primary" onClick={saveName} disabled={authLoad} style={{fontSize:14}}>
-                  {authLoad?<><Spin sm white/> Saving…</>:'Get my link →'}
-                </button>
-              </>
-            )}
-
-            {/* STEP: done — show share options */}
-            {step==='done' && myCode && (
-              <>
-                <div style={{fontSize:14,fontWeight:700,color:'#0D9488',marginBottom:4}}>✅ Your referral link is ready!</div>
-                <div style={{background:'#F7F9FC',border:'1px solid #E8EDF5',borderRadius:8,padding:'10px 12px',marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
-                  <code style={{flex:1,fontSize:12,color:'#0F172A',wordBreak:'break-all',fontFamily:'monospace'}}>{myShareLink}</code>
-                  <CopyBtn text={myShareLink} label="Copy"/>
-                </div>
-
-                {/* Editable message */}
-                <ShareMessageCard shareText={myShareText} shareUrl={myShareLink} token={myToken} compact/>
-              </>
-            )}
+        {/* Referral code */}
+        <div className="au3 card">
+          <div className="card-body">
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase',color:'#64748B',marginBottom:10}}>Show this code when you visit</div>
+            <div className="code-box">
+              <div className="code-text">{refCode}</div>
+            </div>
           </div>
         </div>
 
