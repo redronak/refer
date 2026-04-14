@@ -5502,7 +5502,7 @@ export default function App(){
       {page==="profile"   &&<PublicPage username={pageParam} serviceId={serviceId} currentUser={currentUser} onNavigate={navigate} showToast={showToast} onProfileLoad={updateProfileUrl}/>}
       {page==="dashboard" &&currentUser&&<Dashboard currentUser={currentUser} onNavigate={navigate} showToast={showToast}/>}
       {page==="admin"     &&currentUser?.isAdmin&&<AdminPanel currentUser={currentUser} onNavigate={navigate} showToast={showToast}/>}
-
+ 
       <SiteFooter onNavigate={navigate}/>
       {toast&&<Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
     </>
