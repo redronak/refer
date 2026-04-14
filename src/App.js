@@ -1558,7 +1558,7 @@ function CreatorProfileView({profile, bounties, isOwner, currentUser, onNavigate
     CREATOR_CATS.forEach(cat=>{
       const svcs={};
       cat.services.forEach(sv=>{svcs[sv.id]={on:false,price:""};});
-      s[cat.id]={enabled:false,brandsOnly:false,services:svcs};
+      s[cat.id]={enabled:true,brandsOnly:false,services:svcs}; // all expanded by default
     });
     return s;
   };
@@ -1622,7 +1622,7 @@ function CreatorProfileView({profile, bounties, isOwner, currentUser, onNavigate
       const creates=[];
       CREATOR_CATS.forEach(cat=>{
         const cs=editCats[cat.id];
-        if(!cs.enabled) return;
+        // Save any service that is checked (on:true) regardless of category expand state
         cat.services.forEach(sv=>{
           const s=cs.services[sv.id];
           if(!s?.on) return;
@@ -1878,26 +1878,29 @@ function CreatorProfileView({profile, bounties, isOwner, currentUser, onNavigate
               const selCount=Object.values(cs.services).filter(s=>s.on).length;
               return(
                 <div key={cat.id} style={{
-                  background:"rgba(255,255,255,.06)",border:`1.5px solid ${cs.enabled?"rgba(165,180,252,.4)":"rgba(255,255,255,.1)"}`,
+                  background:"rgba(255,255,255,.06)",border:`1.5px solid ${selCount>0?"rgba(165,180,252,.4)":"rgba(255,255,255,.1)"}`,
                   borderRadius:12,marginBottom:8,overflow:"hidden",transition:"border-color .14s"
                 }}>
+                  {/* Header — click to collapse/expand */}
                   <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",cursor:"pointer"}} onClick={()=>toggleEditCat(cat.id)}>
                     <span style={{fontSize:18}}>{cat.icon}</span>
                     <div style={{flex:1}}>
                       <div style={{fontWeight:700,fontSize:13.5,color:"#fff"}}>{cat.label}</div>
-                      {cs.enabled&&selCount>0&&<div style={{fontSize:11,color:"rgba(255,255,255,.5)",marginTop:1}}>{selCount} selected</div>}
+                      {selCount>0
+                        ?<div style={{fontSize:11,color:"#a5b4fc",marginTop:1,fontWeight:600}}>{selCount} service{selCount!==1?"s":""} selected ✓</div>
+                        :<div style={{fontSize:11,color:"rgba(255,255,255,.35)",marginTop:1}}>Click to pick services</div>
+                      }
                     </div>
-                    {cs.enabled&&selCount>0&&<span style={{background:"#6366f1",color:"#fff",borderRadius:100,padding:"2px 9px",fontSize:11,fontWeight:700}}>{selCount}</span>}
-                    <div style={{width:38,height:21,borderRadius:100,background:cs.enabled?"#6366f1":"rgba(255,255,255,.15)",position:"relative",transition:"background .15s",flexShrink:0}}>
-                      <div style={{width:17,height:17,borderRadius:"50%",background:"#fff",position:"absolute",top:2,left:cs.enabled?19:2,transition:"left .15s"}}/>
-                    </div>
+                    {selCount>0&&<span style={{background:"#6366f1",color:"#fff",borderRadius:100,padding:"2px 9px",fontSize:11,fontWeight:700}}>{selCount}</span>}
+                    <span style={{fontSize:16,color:"rgba(255,255,255,.3)",transition:"transform .2s",transform:cs.enabled?"rotate(90deg)":"none",flexShrink:0}}>›</span>
                   </div>
+                  {/* Services — shown when category is expanded (enabled=true) */}
                   {cs.enabled&&(
                     <div style={{borderTop:"1px solid rgba(255,255,255,.08)",padding:"12px 16px"}}>
                       {/* Brands-only toggle */}
                       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"7px 10px",background:"rgba(255,255,255,.05)",borderRadius:7}}>
                         <div style={{width:32,height:18,borderRadius:100,background:cs.brandsOnly?"#6366f1":"rgba(255,255,255,.15)",position:"relative",cursor:"pointer",transition:"background .14s",flexShrink:0}}
-                          onClick={()=>setEditBrandsOnly(cat.id,!cs.brandsOnly)}>
+                          onClick={e=>{e.stopPropagation();setEditBrandsOnly(cat.id,!cs.brandsOnly);}}>
                           <div style={{width:14,height:14,borderRadius:"50%",background:"#fff",position:"absolute",top:2,left:cs.brandsOnly?16:2,transition:"left .14s"}}/>
                         </div>
                         <span style={{fontSize:12,color:"rgba(255,255,255,.6)"}}>🔒 Brands only — hide prices from public</span>
