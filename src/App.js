@@ -1850,7 +1850,7 @@ function ClinicProfilePage({ clinicId, onJoin }) {
   const waMsg = encodeURIComponent(`Hi! I found ${clinic.name} on EasyRecommend. I'd like to get in touch.`);
   const myShareLink = myCode ? `${APP_URL}?r=${myCode}` : '';
   const clinicName = clinic.name || 'this business';
-  const rewardLine = clinic.patientReward ? `\n\nYou get: ${clinic.patientReward}.` : '';
+  const rewardLine = clinic.patientReward ? `\n\nYou get: ${clinic.rewards}.` : '';
   const myShareText = myCode
     ? `Hi! I'm ${myName} — I've been using ${clinicName} and they're great.\n\nIf you're looking for their services, I'd highly recommend them.${rewardLine}\n\nUse my referral link:\n${myShareLink}`
     : '';
