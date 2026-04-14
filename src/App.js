@@ -1219,8 +1219,7 @@ function SuggestModal({onClose,onSubmit}){
 // ─────────────────────────────────────────────────────────────────────────────
 // PAY MODAL — brand verification + Stripe checkout
 // ─────────────────────────────────────────────────────────────────────────────
-const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhzBFvPj1bCOJmYX5mpQDU3FXL2jB8zR1TphQkZ00sCZhaEsZ";
-const STRIPE_SK = "Bearer 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";
+const STRIPE_PK = process.env.REACT_APP_STRIPE_PK || "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhzBFvPj1bCOJmYX5mpQDU3FXL2jB8zR1TphQkZ00sCZhaEsZ";
 const PAY_ENDPOINT = "https://redisne-4521a3f9410f.herokuapp.com/pay";
 const SMS_ENDPOINT = "https://datingggo-d609631f502c.herokuapp.com/send-sms";
 
@@ -1308,7 +1307,7 @@ function PayModal({service, profileUsername, onClose}){
           try{
             const r = await fetch(PAY_ENDPOINT,{
               method:"POST",
-              headers:{"Content-Type":"application/json","Authorization":STRIPE_SK},
+              headers:{"Content-Type":"application/json"},
               body:JSON.stringify({
                 email:token.email, amount:price*100,
                 token:token.id, customerName:name,
@@ -2420,7 +2419,7 @@ function AuctionBidsPanel({bountyId, bounty, token, onClose, onDecide}){
 }
 
 function ShareBar({url, showToast}){
-  const [copied,setCopied]=useState(false);
+// const [copied,setCopied]=useState(false);
   const copy=()=>{
     navigator.clipboard.writeText(url);
     setCopied(true);
@@ -4396,7 +4395,7 @@ function CreatorOnboarding({onComplete, showToast}){
 }
 
 function CreatorSharePopup({url, username, onClose}){
-  const [copied,setCopied]=useState(false);
+// const [copied,setCopied]=useState(false);
   const copy=()=>{navigator.clipboard.writeText(url);setCopied(true);setTimeout(()=>setCopied(false),2500);};
   const enc=encodeURIComponent(url);
   const msg=encodeURIComponent("Just launched my creator page — see what I offer and let's work together:");
@@ -5502,7 +5501,7 @@ export default function App(){
       {page==="profile"   &&<PublicPage username={pageParam} serviceId={serviceId} currentUser={currentUser} onNavigate={navigate} showToast={showToast} onProfileLoad={updateProfileUrl}/>}
       {page==="dashboard" &&currentUser&&<Dashboard currentUser={currentUser} onNavigate={navigate} showToast={showToast}/>}
       {page==="admin"     &&currentUser?.isAdmin&&<AdminPanel currentUser={currentUser} onNavigate={navigate} showToast={showToast}/>}
- 
+
       <SiteFooter onNavigate={navigate}/>
       {toast&&<Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
     </>
