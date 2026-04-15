@@ -1931,7 +1931,7 @@ function ClinicProfilePage({ clinicId, onJoin }) {
           )}
           {clinic.patientReward && (
             <div style={{padding:'10px 16px',background:'#FFFBEB',borderBottom:'1px solid rgba(245,158,11,.15)'}}>
-              <span style={{fontSize:11,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.06em'}}>🎟 You get: </span>
+              <span style={{fontSize:11,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.06em'}}>🎟 They get: </span>
               <span style={{fontSize:13,fontWeight:700,color:'#0F172A'}}>{clinic.patientReward}</span>
             </div>
           )}
