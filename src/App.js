@@ -787,7 +787,7 @@ function LoginScreen({ onLogin, clinicId, initialRole }) {
             </div>)}
             {clinicId&&<div style={{fontSize:12,color:'#64748B',marginBottom:14,padding:'8px 12px',background:'rgba(13,148,136,.06)',borderRadius:8,border:'1px solid rgba(13,148,136,.15)'}}>🏥 You'll be linked to this business automatically.</div>}
             {role==='doctor'&&!clinicId&&<div className="fg">
-              <input className="fi" placeholder=" Name" value={clinic} onChange={e=>setClinic(e.target.value)}/>
+              <input className="fi" placeholder="Business name" value={clinic} onChange={e=>setClinic(e.target.value)}/>
             </div>}
             <button className="btn btn-primary" onClick={completeProfile} disabled={load}>{load?<><Spin sm white/> Saving…</>:'Done →'}</button>
           </>)}
@@ -802,6 +802,7 @@ function ShareMessageCard({ shareText, waText: _waText, shareUrl, token, compact
   const [msg,        setMsg]        = useState(shareText);
   const [editing,    setEditing]    = useState(false);
   const [copied,     setCopied]     = useState(false);
+  const [showQr,     setShowQr]     = useState(false);
   const [showBulk,   setShowBulk]   = useState(false);
   const [contacts,   setContacts]   = useState([]); // current active list [{name,phone}]
   const [selected,   setSelected]   = useState(new Set());
@@ -993,9 +994,32 @@ function ShareMessageCard({ shareText, waText: _waText, shareUrl, token, compact
       </div>
 
       {/* Copy button */}
-      <button className="btn btn-secondary" style={{width:'100%',marginBottom:10,fontSize:13}} onClick={handleCopy}>
+      <button className="btn btn-secondary" style={{width:'100%',marginBottom:8,fontSize:13}} onClick={handleCopy}>
         {copied ? '✓ Copied!' : '📋 Copy message'}
       </button>
+
+      {/* QR code button */}
+      <button className="btn btn-secondary" style={{width:'100%',marginBottom:10,fontSize:13}} onClick={()=>setShowQr(q=>!q)}>
+        {showQr ? 'Hide QR Code' : '📲 Show QR Code'}
+      </button>
+
+      {/* QR code display */}
+      {showQr && url && (
+        <div style={{textAlign:'center',padding:'16px',background:'#fff',border:'1px solid #E8EDF5',borderRadius:10,marginBottom:10}}>
+          <div style={{fontSize:11,fontWeight:600,color:'#64748B',letterSpacing:'.05em',textTransform:'uppercase',marginBottom:12}}>Scan to open link</div>
+          <img
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}&color=0D9488&bgcolor=FFFFFF&margin=10`}
+            alt="QR Code"
+            style={{width:180,height:180,borderRadius:8,display:'block',margin:'0 auto'}}
+          />
+          <div style={{fontSize:11,color:'#94A3B8',marginTop:10,wordBreak:'break-all'}}>{url}</div>
+          <a href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(url)}&color=0D9488&bgcolor=FFFFFF&margin=10`}
+            download="referral-qr.png" target="_blank" rel="noopener noreferrer"
+            style={{display:'inline-flex',alignItems:'center',gap:6,marginTop:10,padding:'8px 16px',background:'#F1F5F9',borderRadius:8,fontSize:12,fontWeight:600,color:'#334155',textDecoration:'none'}}>
+            ⬇️ Download QR
+          </a>
+        </div>
+      )}
 
       {/* Bulk SMS toggle — hidden in compact mode */}
       {!compact && (
@@ -1489,7 +1513,7 @@ function DoctorDashboard({ user, token, onSignOut }) {
       <div className="top-bar">
         <div style={{display:'flex',alignItems:'center',gap:10}}>
           <Avatar name={user.clinicName||user.name} size={34}/>
-          <div><div style={{fontSize:15,fontWeight:700,lineHeight:1.2}}>{user.clinicName||user.name}</div><div style={{fontSize:11,color:'#94A3B8'}}></div></div>
+          <div><div style={{fontSize:15,fontWeight:700,lineHeight:1.2}}>{user.clinicName||user.name}</div><div style={{fontSize:11,color:'#94A3B8'}}>Doctor</div></div>
         </div>
         <button className="btn btn-secondary btn-xs" onClick={onSignOut}>Sign out</button>
       </div>
@@ -1931,7 +1955,7 @@ function ClinicProfilePage({ clinicId, onJoin }) {
           )}
           {clinic.patientReward && (
             <div style={{padding:'10px 16px',background:'#FFFBEB',borderBottom:'1px solid rgba(245,158,11,.15)'}}>
-              <span style={{fontSize:11,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.06em'}}>🎟 They get: </span>
+              <span style={{fontSize:11,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.06em'}}>🎟 You get: </span>
               <span style={{fontSize:13,fontWeight:700,color:'#0F172A'}}>{clinic.patientReward}</span>
             </div>
           )}
