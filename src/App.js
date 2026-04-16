@@ -787,7 +787,7 @@ function LoginScreen({ onLogin, clinicId, initialRole }) {
             </div>)}
             {clinicId&&<div style={{fontSize:12,color:'#64748B',marginBottom:14,padding:'8px 12px',background:'rgba(13,148,136,.06)',borderRadius:8,border:'1px solid rgba(13,148,136,.15)'}}>🏥 You'll be linked to this business automatically.</div>}
             {role==='doctor'&&!clinicId&&<div className="fg">
-              <input className="fi" placeholder="Clinic name" value={clinic} onChange={e=>setClinic(e.target.value)}/>
+              <input className="fi" placeholder=" Name" value={clinic} onChange={e=>setClinic(e.target.value)}/>
             </div>}
             <button className="btn btn-primary" onClick={completeProfile} disabled={load}>{load?<><Spin sm white/> Saving…</>:'Done →'}</button>
           </>)}
@@ -1489,7 +1489,7 @@ function DoctorDashboard({ user, token, onSignOut }) {
       <div className="top-bar">
         <div style={{display:'flex',alignItems:'center',gap:10}}>
           <Avatar name={user.clinicName||user.name} size={34}/>
-          <div><div style={{fontSize:15,fontWeight:700,lineHeight:1.2}}>{user.clinicName||user.name}</div><div style={{fontSize:11,color:'#94A3B8'}}>Doctor</div></div>
+          <div><div style={{fontSize:15,fontWeight:700,lineHeight:1.2}}>{user.clinicName||user.name}</div><div style={{fontSize:11,color:'#94A3B8'}}></div></div>
         </div>
         <button className="btn btn-secondary btn-xs" onClick={onSignOut}>Sign out</button>
       </div>
