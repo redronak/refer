@@ -1953,10 +1953,10 @@ function ClinicProfilePage({ clinicId, onJoin }) {
               </div>
             </div>
           )}
-          {clinic.patientReward && (
-            <div style={{padding:'10px 16px',background:'#FFFBEB',borderBottom:'1px solid rgba(245,158,11,.15)'}}>
-              <span style={{fontSize:11,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.06em'}}>🎟 You get: </span>
-              <span style={{fontSize:13,fontWeight:700,color:'#0F172A'}}>{clinic.patientReward}</span>
+          {clinic.rewards && (
+            <div style={{padding:'10px 16px',background:'#ECFDF5',borderBottom:'1px solid rgba(16,185,129,.15)'}}>
+              <span style={{fontSize:11,fontWeight:700,color:'#10B981',textTransform:'uppercase',letterSpacing:'.06em'}}>💰 You earn: </span>
+              <span style={{fontSize:13,fontWeight:700,color:'#0F172A'}}>{clinic.rewards}</span>
             </div>
           )}
           {clinic.treatments?.length>0 && (
