@@ -329,7 +329,7 @@ function FeaturedPage({ onGetStarted }) {
     <div style={{minHeight:'100vh',background:'#F7F9FC',fontFamily:"'Plus Jakarta Sans','DM Sans',sans-serif"}}>
       {/* Header */}
       <div style={{background:'#0D9488',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <span style={{fontWeight:800,fontSize:17,color:'#fff',letterSpacing:'-.02em',cursor:'pointer'}} onClick={()=>window.history.back()}>
+        <span style={{fontWeight:800,fontSize:17,color:'#fff',letterSpacing:'-.02em',cursor:'pointer'}} onClick={()=>{window.location.hash='';window.history.back();}}>
           Easy<span style={{color:'#CCFBF1'}}>Recommend</span>
         </span>
         <button onClick={onGetStarted} style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:8,padding:'7px 16px',color:'#fff',fontWeight:600,fontSize:13,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
@@ -2416,7 +2416,7 @@ export default function App() {
   const [loginRole,setLoginRole]=useState('patient');
   const [clinicIdParam] = useState(()=>new URLSearchParams(window.location.search).get('b'));
   const [refCodeParam]  = useState(()=>new URLSearchParams(window.location.search).get('r'));
-  const [featuredParam] = useState(()=>window.location.pathname==='/featured'||new URLSearchParams(window.location.search).get('page')==='featured');
+  const [featuredParam] = useState(()=>window.location.hash==='#/featured'||window.location.pathname==='/featured');
 
   useEffect(()=>{
     const a=getAuth();
@@ -2425,17 +2425,16 @@ export default function App() {
         .then(d=>{
           const next={...a,user:d.user};
           saveAuth(next);setAuthData(next);
-          // If on a public page URL, still go to app (they're logged in)
-          setScreen('app');
+          // Check if they navigated to featured — show it even when logged in
+          if(featuredParam) setScreen('featured');
+          else setScreen('app');
         })
         .catch(e=>{
-          // Only clear auth on actual 401 (expired token) — not network errors
           if(e.message?.includes('401')||e.message?.includes('Session expired')||e.message?.includes('authenticated')){
             clearAuth();setAuthData(null);
-            setScreen(refCodeParam?'ref':clinicIdParam?'clinic':'landing');
+            setScreen(featuredParam?'featured':refCodeParam?'ref':clinicIdParam?'clinic':'landing');
           } else {
-            // Network error — keep them logged in with cached data
-            setScreen('app');
+            setScreen(featuredParam?'featured':'app');
           }
         })
         .finally(()=>setChecking(false));
@@ -2449,7 +2448,7 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
-  const handleLogin=d=>{saveAuth(d);setAuthData(d);setScreen('app');};
+  const handleLogin=d=>{saveAuth(d);setAuthData(d);window.location.hash='';setScreen('app');};
   const handleSignOut=()=>{clearAuth();setAuthData(null);setScreen('landing');};
 
   if(checking) return (
@@ -2467,8 +2466,8 @@ export default function App() {
   return (
     <>
       <style>{CSS}</style>
-      {screen==='featured' && <FeaturedPage onGetStarted={(role)=>{setLoginRole(role||'patient');setScreen('login');}}/>}
-      {screen==='landing' && <LandingPage onGetStarted={()=>{setLoginRole('patient');setScreen('login');}} onFeatured={()=>setScreen('featured')}/>}
+      {screen==='featured' && <FeaturedPage onGetStarted={(role)=>{setLoginRole(role||'patient');setScreen('login');window.history.replaceState(null,'',window.location.pathname);}}/>}
+      {screen==='landing' && <LandingPage onGetStarted={()=>{setLoginRole('patient');setScreen('login');}} onFeatured={()=>{setScreen('featured');window.location.hash='#/featured';}}/>}
       {screen==='ref'     && <ReferrerProfilePage refCode={refCodeParam} onSignUp={()=>{setLoginRole('patient');setScreen('login');}}/>}
       {screen==='clinic'  && <ClinicProfilePage clinicId={clinicIdParam} onJoin={(role)=>{setLoginRole(role||'patient');setScreen('login');}}/>}
       {screen==='login'   && <LoginScreen onLogin={handleLogin} clinicId={loginRole==='patient'?clinicIdParam:undefined} initialRole={loginRole}/>}
