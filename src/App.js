@@ -263,9 +263,239 @@ async function api(path, opts={}, token=null) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// FEATURED BUSINESSES PAGE  (/featured)
+// ═══════════════════════════════════════════════════════════════════════════════
+function FeaturedPage({ onGetStarted }) {
+  const [businesses, setBusinesses] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [cities,     setCities]     = useState([]);
+  const [catFilter,  setCatFilter]  = useState('All');
+  const [cityFilter, setCityFilter] = useState('All');
+  const [search,     setSearch]     = useState('');
+  const [loading,    setLoading]    = useState(true);
+  const [showForm,   setShowForm]   = useState(false);
+  const [submitted,  setSubmitted]  = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ name:'', category:'', city:'', description:'', website:'', phone:'', email:'' });
+  const [formErr, setFormErr] = useState('');
+
+  const load = async (cat, city, q) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (cat && cat !== 'All') params.set('category', cat);
+      if (city && city !== 'All') params.set('city', city);
+      if (q) params.set('q', q);
+      const d = await api(`/featured?${params}`);
+      setBusinesses(d.businesses || []);
+      if (d.categories?.length) setCategories(['All', ...d.categories]);
+      if (d.cities?.length)     setCities(['All', ...d.cities]);
+    } catch(e) { console.error(e); }
+    setLoading(false);
+  };
+
+  useEffect(()=>{ load('All','All',''); },[]);
+
+  const handleFilter = (cat, city) => {
+    setCatFilter(cat); setCityFilter(city);
+    load(cat, city, search);
+  };
+
+  const handleSearch = (q) => {
+    setSearch(q);
+    load(catFilter, cityFilter, q);
+  };
+
+  const submitBusiness = async () => {
+    if (!form.name.trim() || !form.category.trim() || !form.city.trim()) {
+      setFormErr('Name, category, and city are required.'); return;
+    }
+    setSubmitting(true); setFormErr('');
+    try {
+      await api('/featured', { method:'POST', body: JSON.stringify(form) });
+      setSubmitted(true); setShowForm(false);
+    } catch(e) { setFormErr(e.message); }
+    setSubmitting(false);
+  };
+
+  const CATEGORY_ICONS = {
+    'Real Estate':'🏠', 'Dental':'🦷', 'Legal':'⚖️', 'Finance':'💼',
+    'Fitness':'💪', 'Healthcare':'🏥', 'Education':'🎓', 'Services':'🛠',
+    'Other':'🏢', 'All':'✨',
+  };
+  const icon = (cat) => CATEGORY_ICONS[cat] || '🏢';
+
+  return (
+    <div style={{minHeight:'100vh',background:'#F7F9FC',fontFamily:"'Plus Jakarta Sans','DM Sans',sans-serif"}}>
+      {/* Header */}
+      <div style={{background:'#0D9488',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <span style={{fontWeight:800,fontSize:17,color:'#fff',letterSpacing:'-.02em',cursor:'pointer'}} onClick={()=>window.history.back()}>
+          Easy<span style={{color:'#CCFBF1'}}>Recommend</span>
+        </span>
+        <button onClick={onGetStarted} style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:8,padding:'7px 16px',color:'#fff',fontWeight:600,fontSize:13,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+          Sign in →
+        </button>
+      </div>
+
+      <div style={{maxWidth:640,margin:'0 auto',padding:'24px 16px 60px'}}>
+        {/* Hero */}
+        <div style={{textAlign:'center',marginBottom:24}}>
+          <div style={{fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'#0D9488',marginBottom:8}}>Featured Businesses</div>
+          <h1 style={{fontSize:24,fontWeight:800,color:'#0F172A',marginBottom:8,lineHeight:1.2}}>Find businesses with referral programs</h1>
+          <p style={{fontSize:13,color:'#64748B',marginBottom:0}}>Refer friends, earn rewards. Browse businesses actively rewarding referrals.</p>
+        </div>
+
+        {/* Search */}
+        <div style={{position:'relative',marginBottom:14}}>
+          <svg style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input className="fi" placeholder="Search businesses…" value={search} onChange={e=>handleSearch(e.target.value)}
+            style={{paddingLeft:36,fontSize:14}}/>
+        </div>
+
+        {/* Category filter */}
+        <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:4,marginBottom:10,WebkitOverflowScrolling:'touch'}}>
+          {(categories.length ? categories : ['All','Real Estate','Dental','Legal','Finance','Fitness']).map(cat=>(
+            <button key={cat} onClick={()=>handleFilter(cat, cityFilter)}
+              style={{flexShrink:0,padding:'6px 14px',borderRadius:100,fontSize:12,fontWeight:600,cursor:'pointer',border:'1.5px solid',
+                borderColor:catFilter===cat?'#0D9488':'#E2E8F0',
+                background:catFilter===cat?'#0D9488':'#fff',
+                color:catFilter===cat?'#fff':'#334155',
+                fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+              {icon(cat)} {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* City filter */}
+        {cities.length > 2 && (
+          <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:4,marginBottom:14,WebkitOverflowScrolling:'touch'}}>
+            {cities.map(city=>(
+              <button key={city} onClick={()=>handleFilter(catFilter, city)}
+                style={{flexShrink:0,padding:'5px 12px',borderRadius:100,fontSize:11,fontWeight:600,cursor:'pointer',border:'1.5px solid',
+                  borderColor:cityFilter===city?'#8B5CF6':'#E2E8F0',
+                  background:cityFilter===city?'#8B5CF6':'#fff',
+                  color:cityFilter===city?'#fff':'#334155',
+                  fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+                📍 {city}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Submit banner */}
+        {submitted ? (
+          <div style={{padding:'14px 18px',background:'#ECFDF5',border:'1px solid rgba(16,185,129,.2)',borderRadius:10,marginBottom:14,fontSize:13,color:'#10B981',fontWeight:600,textAlign:'center'}}>
+            ✅ Business submitted! We'll review and publish it shortly.
+          </div>
+        ) : (
+          <button onClick={()=>setShowForm(f=>!f)}
+            style={{width:'100%',padding:'12px',background:showForm?'#F1F5F9':'linear-gradient(135deg,#0D9488,#059669)',border:'none',borderRadius:10,color:showForm?'#334155':'#fff',fontSize:13,fontWeight:700,cursor:'pointer',marginBottom:14,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+            {showForm ? 'Cancel' : '+ Add Your Business Free'}
+          </button>
+        )}
+
+        {/* Submit form */}
+        {showForm && (
+          <div className="card" style={{marginBottom:14,padding:18}}>
+            <div style={{fontSize:14,fontWeight:700,color:'#0F172A',marginBottom:14}}>Add your business</div>
+            {formErr && <div style={{fontSize:12,color:'#EF4444',marginBottom:10,padding:'8px 10px',background:'#FEF2F2',borderRadius:6}}>⚠ {formErr}</div>}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+              <div className="fg" style={{margin:0}}><input className="fi" placeholder="Business name *" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/></div>
+              <div className="fg" style={{margin:0}}><input className="fi" placeholder="City *" value={form.city} onChange={e=>setForm(f=>({...f,city:e.target.value}))}/></div>
+            </div>
+            <div className="fg" style={{marginBottom:10}}>
+              <select className="fi" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
+                <option value="">Select category *</option>
+                {['Real Estate','Dental','Legal','Finance','Fitness','Healthcare','Education','Services','Other'].map(c=>(
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <div className="fg" style={{marginBottom:10}}><input className="fi" placeholder="Short description" value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/></div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+              <div className="fg" style={{margin:0}}><input className="fi" placeholder="Website" value={form.website} onChange={e=>setForm(f=>({...f,website:e.target.value}))}/></div>
+              <div className="fg" style={{margin:0}}><input className="fi" placeholder="Phone" value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))}/></div>
+            </div>
+            <div className="fg" style={{marginBottom:14}}><input className="fi" placeholder="Email" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))}/></div>
+            <button className="btn btn-primary" onClick={submitBusiness} disabled={submitting}>
+              {submitting ? <><Spin sm white/> Submitting…</> : 'Submit Business →'}
+            </button>
+          </div>
+        )}
+
+        {/* Results count */}
+        {!loading && (
+          <div style={{fontSize:12,color:'#94A3B8',marginBottom:12,fontWeight:500}}>
+            {businesses.length} {businesses.length===1?'business':'businesses'} found
+            {catFilter!=='All'&&` in ${catFilter}`}{cityFilter!=='All'&&` · ${cityFilter}`}
+          </div>
+        )}
+
+        {/* Business cards */}
+        {loading ? (
+          <div style={{textAlign:'center',padding:40}}><Spin/></div>
+        ) : businesses.length===0 ? (
+          <div style={{textAlign:'center',padding:40}}>
+            <div style={{fontSize:32,marginBottom:12}}>🏢</div>
+            <div style={{fontSize:15,fontWeight:700,color:'#0F172A',marginBottom:6}}>No businesses found</div>
+            <div style={{fontSize:13,color:'#64748B'}}>Try a different filter or be the first to add one!</div>
+          </div>
+        ) : (
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            {businesses.map((b,i)=>(
+              <div key={b._id||i} className="card" style={{padding:0,overflow:'hidden',border:'1px solid #E8EDF5'}}>
+                <div style={{padding:'16px 18px'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:10}}>
+                    <div style={{width:44,height:44,borderRadius:12,background:'linear-gradient(135deg,rgba(13,148,136,.12),rgba(5,150,105,.08))',border:'1px solid rgba(13,148,136,.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>
+                      {icon(b.category)}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                        <div style={{fontSize:15,fontWeight:700,color:'#0F172A'}}>{b.name}</div>
+                        {b.featured && <span style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:100,background:'rgba(245,158,11,.12)',color:'#D97706',border:'1px solid rgba(245,158,11,.2)'}}>⭐ Featured</span>}
+                      </div>
+                      <div style={{display:'flex',gap:6,marginTop:4,flexWrap:'wrap'}}>
+                        <span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:100,background:'rgba(13,148,136,.08)',color:'#0D9488'}}>{b.category}</span>
+                        <span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:100,background:'rgba(139,92,246,.08)',color:'#7C3AED'}}>📍 {b.city}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {b.description && <p style={{fontSize:13,color:'#64748B',lineHeight:1.6,margin:'0 0 10px'}}>{b.description}</p>}
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                    {b.website && (
+                      <a href={b.website.startsWith('http')?b.website:`https://${b.website}`} target="_blank" rel="noopener noreferrer"
+                        style={{display:'inline-flex',alignItems:'center',gap:5,padding:'6px 12px',background:'#F1F5F9',borderRadius:7,fontSize:12,fontWeight:600,color:'#334155',textDecoration:'none'}}>
+                        🌐 Website
+                      </a>
+                    )}
+                    {b.phone && (
+                      <a href={`tel:${b.phone}`}
+                        style={{display:'inline-flex',alignItems:'center',gap:5,padding:'6px 12px',background:'#F1F5F9',borderRadius:7,fontSize:12,fontWeight:600,color:'#334155',textDecoration:'none'}}>
+                        📞 {b.phone}
+                      </a>
+                    )}
+                    <button onClick={onGetStarted}
+                      style={{display:'inline-flex',alignItems:'center',gap:5,padding:'6px 14px',background:'linear-gradient(135deg,#0D9488,#059669)',border:'none',borderRadius:7,fontSize:12,fontWeight:700,color:'#fff',cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+                      Refer & Earn →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* CTA */}
+        <CtaBanner onJoin={(role)=>onGetStarted(role)}/>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // LANDING PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
-function LandingPage({ onGetStarted }) {
+function LandingPage({ onGetStarted, onFeatured }) {
   const TICKER = ['Verified Referrals','Business Approved','Instant Payouts','Bank & Mobile Payouts','Multi-Clinic Ready','Fraud Protected','Real-Time Tracking','WhatsApp Sharing'];
 
   return (
@@ -280,6 +510,7 @@ function LandingPage({ onGetStarted }) {
           <span style={{fontWeight:800,fontSize:18,color:'#fff',letterSpacing:'-.02em'}}>Easy<span style={{color:'#2DD4BF'}}>Recommend</span></span>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <button onClick={onFeatured} className="lp-btn-ghost" style={{padding:'9px 16px',fontSize:13}}>🏢 Browse</button>
           <button onClick={onGetStarted} className="lp-btn-ghost" style={{padding:'9px 20px',fontSize:13}}>Sign in</button>
           <button onClick={onGetStarted} className="lp-btn-primary" style={{padding:'9px 20px',fontSize:13,boxShadow:'0 2px 12px rgba(13,148,136,.4)'}}>Get started →</button>
         </div>
@@ -2185,6 +2416,7 @@ export default function App() {
   const [loginRole,setLoginRole]=useState('patient');
   const [clinicIdParam] = useState(()=>new URLSearchParams(window.location.search).get('b'));
   const [refCodeParam]  = useState(()=>new URLSearchParams(window.location.search).get('r'));
+  const [featuredParam] = useState(()=>window.location.pathname==='/featured'||new URLSearchParams(window.location.search).get('page')==='featured');
 
   useEffect(()=>{
     const a=getAuth();
@@ -2209,8 +2441,9 @@ export default function App() {
         .finally(()=>setChecking(false));
     }else{
       setChecking(false);
-      if (refCodeParam)       setScreen('ref');
-      else if (clinicIdParam) setScreen('clinic');
+      if (featuredParam)          setScreen('featured');
+      else if (refCodeParam)      setScreen('ref');
+      else if (clinicIdParam)     setScreen('clinic');
       else setScreen('landing');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2234,7 +2467,8 @@ export default function App() {
   return (
     <>
       <style>{CSS}</style>
-      {screen==='landing' && <LandingPage onGetStarted={()=>{setLoginRole('patient');setScreen('login');}}/>}
+      {screen==='featured' && <FeaturedPage onGetStarted={(role)=>{setLoginRole(role||'patient');setScreen('login');}}/>}
+      {screen==='landing' && <LandingPage onGetStarted={()=>{setLoginRole('patient');setScreen('login');}} onFeatured={()=>setScreen('featured')}/>}
       {screen==='ref'     && <ReferrerProfilePage refCode={refCodeParam} onSignUp={()=>{setLoginRole('patient');setScreen('login');}}/>}
       {screen==='clinic'  && <ClinicProfilePage clinicId={clinicIdParam} onJoin={(role)=>{setLoginRole(role||'patient');setScreen('login');}}/>}
       {screen==='login'   && <LoginScreen onLogin={handleLogin} clinicId={loginRole==='patient'?clinicIdParam:undefined} initialRole={loginRole}/>}
