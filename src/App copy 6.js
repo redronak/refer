@@ -1035,10 +1035,6 @@ function ShareMessageCard({ shareText, waText: _waText, shareUrl, token, compact
   const [copied,     setCopied]     = useState(false);
   const [showQr,     setShowQr]     = useState(false);
   const [showBulk,   setShowBulk]   = useState(false);
-  const [showSingle, setShowSingle] = useState(false);
-  const [singlePhone, setSinglePhone] = useState('');
-  const [sendingSingle, setSendingSingle] = useState(false);
-  const [singleResult, setSingleResult] = useState(null);
   const [contacts,   setContacts]   = useState([]); // current active list [{name,phone}]
   const [selected,   setSelected]   = useState(new Set());
   const [sending,    setSending]    = useState(false);
@@ -1257,42 +1253,15 @@ function ShareMessageCard({ shareText, waText: _waText, shareUrl, token, compact
       )}
 
       {/* Bulk SMS toggle — hidden in compact mode */}
-      {!compact && (<>
-        {/* Single SMS */}
-        <button className="btn btn-secondary" style={{width:'100%',marginBottom:8,fontSize:13,borderColor:'rgba(13,148,136,.3)',color:'#0D9488',background:'rgba(13,148,136,.04)'}}
-          onClick={()=>{setShowSingle(s=>!s);setShowBulk(false);}}>
-          💬 {showSingle?'Hide':'Send to one number'}
-        </button>
-        {showSingle && (
-          <div style={{marginBottom:10,padding:14,background:'#F7F9FC',border:'1px solid #E8EDF5',borderRadius:10}}>
-            <div style={{fontSize:12,fontWeight:600,color:'#0F172A',marginBottom:8}}>Send SMS to one person</div>
-            <div style={{display:'flex',gap:8,marginBottom:10}}>
-              <input className="fi" type="tel" placeholder="+1 555 000 0000" value={singlePhone}
-                onChange={e=>setSinglePhone(e.target.value)} inputMode="numeric" style={{flex:1,fontSize:13}}/>
-              <button className="btn btn-primary btn-sm" style={{flexShrink:0}} disabled={sendingSingle||!singlePhone.trim()}
-                onClick={async()=>{
-                  setSendingSingle(true);setSingleResult(null);
-                  try{
-                    const res=await fetch('https://datingggo-d609631f502c.herokuapp.com/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{phoneNumber:singlePhone.trim(),message:msg}]})});
-                    setSingleResult(res.ok?'✅ Sent!':'⚠ Failed');
-                  }catch{setSingleResult('⚠ Failed');}
-                  setSendingSingle(false);
-                }}>
-                {sendingSingle?<Spin sm white/>:'Send'}
-              </button>
-            </div>
-            {singleResult&&<div style={{fontSize:12,fontWeight:600,color:singleResult.includes('✅')?'#10B981':'#EF4444'}}>{singleResult}</div>}
-          </div>
-        )}
-
-        {/* Bulk SMS toggle */}
-        <button
-          className="btn btn-secondary"
-          style={{width:'100%',fontSize:13,borderColor:'rgba(13,148,136,.3)',color:'#0D9488',background:'rgba(13,148,136,.04)'}}
-          onClick={()=>{setShowBulk(b=>!b);setShowSingle(false);}}>
-          📤 {showBulk ? 'Hide' : 'Bulk SMS — upload contacts'}
-        </button>
-      </>)}
+      {!compact && (
+      <button
+        className="btn btn-secondary"
+        style={{width:'100%',fontSize:13,borderColor:'rgba(13,148,136,.3)',color:'#0D9488',background:'rgba(13,148,136,.04)'}}
+        onClick={()=>setShowBulk(b=>!b)}
+      >
+        📤 {showBulk ? 'Hide' : 'Bulk SMS — upload contacts'}
+      </button>
+      )}
 
       {/* Bulk SMS panel */}
       {showBulk && (
@@ -1737,125 +1706,6 @@ function RewardsSetupCard({ user, token }) {
   );
 }
 
-// ─── Business Settings Tab ────────────────────────────────────────────────────
-function BusinessSettingsTab({ user, token, onSaved }) {
-  const [saving, setSaving]   = useState(false);
-  const [saved,  setSaved]    = useState(false);
-  const [err,    setErr]      = useState('');
-  const [d, setD] = useState({
-    name:               user.name            || '',
-    clinicName:         user.clinicName      || '',
-    businessPhone:      user.businessPhone   || '',
-    businessEmail:      user.businessEmail   || '',
-    businessWebsite:    user.businessWebsite || '',
-    businessCity:       user.businessCity    || '',
-    businessCategory:   user.businessCategory|| '',
-    businessDescription:user.businessDescription||'',
-    rewards:            user.rewards         || '',
-    patientReward:      user.patientReward   || '',
-    showWhatsapp: user.showWhatsapp !== false,
-    showPhone:    user.showPhone    === true,
-    showEmail:    user.showEmail    === true,
-  });
-
-  const set = (k, v) => setD(prev => ({...prev, [k]: v}));
-
-  const save = async () => {
-    setSaving(true); setSaved(false); setErr('');
-    try {
-      const res = await api('/profile', { method:'PATCH', body: JSON.stringify(d) }, token);
-      onSaved?.(res);
-      setSaved(true);
-      setTimeout(()=>setSaved(false), 3000);
-    } catch(e) { setErr(e.message); }
-    setSaving(false);
-  };
-
-  const Section = ({title, children}) => (
-    <div className="card" style={{marginBottom:12}}>
-      <div className="card-head"><span style={{fontSize:14,fontWeight:700}}>{title}</span></div>
-      <div className="card-body" style={{paddingTop:4}}>{children}</div>
-    </div>
-  );
-
-  const Field = ({label, ...props}) => (
-    <div className="fg" style={{marginBottom:10}}>
-      <label className="fl">{label}</label>
-      <input className="fi" {...props} onChange={e=>set(props.name, e.target.value)}/>
-    </div>
-  );
-
-  const Toggle = ({label, sub, field}) => (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid #F1F5F9'}}>
-      <div>
-        <div style={{fontSize:13,fontWeight:600,color:'#0F172A'}}>{label}</div>
-        {sub&&<div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>{sub}</div>}
-      </div>
-      <label className="switch">
-        <input type="checkbox" checked={d[field]} onChange={e=>set(field, e.target.checked)}/>
-        <span className="switch-slider"/>
-      </label>
-    </div>
-  );
-
-  return (
-    <div className="au">
-      <div style={{fontSize:18,fontWeight:700,marginBottom:14}}>Settings</div>
-
-      <Section title="🏢 Business Info">
-        <Field label="Your name" name="name" placeholder="Your name" value={d.name}/>
-        <Field label="Business name" name="clinicName" placeholder="Business name" value={d.clinicName}/>
-        <Field label="City" name="businessCity" placeholder="San Francisco" value={d.businessCity}/>
-        <div className="fg" style={{marginBottom:10}}>
-          <label className="fl">Category</label>
-          <select className="fi" value={d.businessCategory} onChange={e=>set('businessCategory',e.target.value)}>
-            <option value="">Select category</option>
-            {['Real Estate','Dental','Legal','Finance','Fitness','Healthcare','Education','Services','Other'].map(c=>(
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-        <div className="fg" style={{marginBottom:0}}>
-          <label className="fl">Description</label>
-          <textarea className="fi" rows={3} placeholder="Short description of your business" value={d.businessDescription}
-            onChange={e=>set('businessDescription',e.target.value)} style={{resize:'vertical'}}/>
-        </div>
-      </Section>
-
-      <Section title="📞 Contact Details">
-        <div style={{fontSize:11,color:'#94A3B8',marginBottom:12}}>These appear on your public referral page based on your visibility settings below.</div>
-        <Field label="WhatsApp / Business phone" name="businessPhone" placeholder="+1 415 000 0000" value={d.businessPhone} type="tel"/>
-        <Field label="Email" name="businessEmail" placeholder="hello@yourbusiness.com" value={d.businessEmail} type="email"/>
-        <Field label="Website" name="businessWebsite" placeholder="yourbusiness.com" value={d.businessWebsite}/>
-      </Section>
-
-      <Section title="👁 What visitors can see">
-        <div style={{fontSize:11,color:'#94A3B8',marginBottom:8}}>Choose what contact options appear on your public page</div>
-        <Toggle label="WhatsApp button" sub={d.businessPhone||'Set a phone number above'} field="showWhatsapp"/>
-        <Toggle label="Phone number" sub={d.businessPhone||'Set a phone number above'} field="showPhone"/>
-        <Toggle label="Email address" sub={d.businessEmail||'Set an email above'} field="showEmail"/>
-      </Section>
-
-      <Section title="💰 Rewards">
-        <div className="fg" style={{marginBottom:10}}>
-          <label className="fl">What referrers earn</label>
-          <input className="fi" placeholder="e.g. $50 gift card per referral" value={d.rewards} onChange={e=>set('rewards',e.target.value)}/>
-        </div>
-        <div className="fg" style={{marginBottom:0}}>
-          <label className="fl">What referred clients get</label>
-          <input className="fi" placeholder="e.g. 10% off first visit" value={d.patientReward} onChange={e=>set('patientReward',e.target.value)}/>
-        </div>
-      </Section>
-
-      {err&&<div style={{fontSize:12,color:'#EF4444',marginBottom:10,padding:'8px 10px',background:'#FEF2F2',borderRadius:6}}>⚠ {err}</div>}
-
-      <button className="btn btn-primary" onClick={save} disabled={saving}>
-        {saving ? <><Spin sm white/> Saving…</> : saved ? '✅ Saved!' : 'Save Changes'}
-      </button>
-    </div>
-  );
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // DOCTOR DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2027,26 +1877,18 @@ function DoctorDashboard({ user, token, onSignOut }) {
             ))}
           </div>
         )}
-
-        {tab==='settings'&&(
-          <BusinessSettingsTab user={user} token={token} onSaved={(updated)=>{
-            // Merge updated fields into user so dashboard reflects changes
-            Object.assign(user, updated);
-          }}/>
-        )}
       </div>
 
       {showLog&&<LogReferralModal token={token} treatments={treatments} onClose={()=>setShowLog(false)} onDone={()=>{setShowLog(false);load();}}/>}
       {showTx&&<TreatmentModal token={token} initial={editTx} onClose={()=>setShowTx(false)} onDone={()=>{setShowTx(false);load();}}/>}
 
       <nav className="bottom-nav">
-        {[{id:'home',lbl:'Home'},{id:'referrals',lbl:'Referrals'},{id:'treatments',lbl:'Treatments'},{id:'payouts',lbl:'Payouts'},{id:'settings',lbl:'Settings'}].map(t=>(
+        {[{id:'home',lbl:'Home'},{id:'referrals',lbl:'Referrals'},{id:'treatments',lbl:'Treatments'},{id:'payouts',lbl:'Payouts'}].map(t=>(
           <button key={t.id} className={`bnav-btn${tab===t.id?' active':''}`} onClick={()=>setTab(t.id)}>
             {t.id==='home'&&<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>}
             {t.id==='referrals'&&<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>}
             {t.id==='treatments'&&<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>}
             {t.id==='payouts'&&<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>}
-            {t.id==='settings'&&<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>}
             <span>{t.lbl}</span>
           </button>
         ))}
@@ -2327,28 +2169,18 @@ function ClinicProfilePage({ clinicId, onJoin }) {
               </div>
             </div>
           </div>
-          {(clinic.showWhatsapp||clinic.showPhone||clinic.showEmail) && clinic.phone && (
+          {clinic.phone && (
             <div style={{padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,borderBottom:'1px solid #F1F5F9'}}>
               <div style={{fontSize:13,color:'#64748B'}}>Contact the business</div>
-              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                {clinic.showWhatsapp && clinic.phone && (
-                  <a href={`https://wa.me/${clinic.phone.replace(/[^0-9]/g,'')}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
-                    style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#25D366',borderRadius:8,color:'#fff',fontWeight:600,fontSize:12,textDecoration:'none'}}>
-                    {WA_ICO} WhatsApp
-                  </a>
-                )}
-                {clinic.showPhone && clinic.phone && (
-                  <a href={`tel:${clinic.phone}`}
-                    style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#334155',borderRadius:8,color:'#fff',fontWeight:600,fontSize:12,textDecoration:'none'}}>
-                    📞 {clinic.phone}
-                  </a>
-                )}
-                {clinic.showEmail && clinic.email && (
-                  <a href={`mailto:${clinic.email}`}
-                    style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#0EA5E9',borderRadius:8,color:'#fff',fontWeight:600,fontSize:12,textDecoration:'none'}}>
-                    ✉️ Email
-                  </a>
-                )}
+              <div style={{display:'flex',gap:6}}>
+                <a href={`https://wa.me/${clinic.phone.replace(/[^0-9]/g,'')}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
+                  style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#25D366',borderRadius:8,color:'#fff',fontWeight:600,fontSize:12,textDecoration:'none'}}>
+                  {WA_ICO} WhatsApp
+                </a>
+                <a href={`sms:${clinic.phone.replace(/[^0-9+]/g,'')}?body=${waMsg}`}
+                  style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#334155',borderRadius:8,color:'#fff',fontWeight:600,fontSize:12,textDecoration:'none'}}>
+                  💬 Text
+                </a>
               </div>
             </div>
           )}
@@ -2518,28 +2350,18 @@ function ReferrerProfilePage({ refCode, onSignUp }) {
           </div>
 
           {/* Contact */}
-          {(clinic?.showWhatsapp||clinic?.showPhone||clinic?.showEmail) && (
+          {clinic?.phone && (
             <div style={{padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,borderBottom:'1px solid #F1F5F9'}}>
               <div style={{fontSize:13,color:'#64748B'}}>Contact the business</div>
-              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                {clinic.showWhatsapp && clinic.phone && (
-                  <a href={`https://wa.me/${clinic.phone.replace(/[^0-9]/g,'')}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
-                    style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#25D366',borderRadius:8,color:'#fff',fontWeight:600,fontSize:12,textDecoration:'none'}}>
-                    {WA_ICO} WhatsApp
-                  </a>
-                )}
-                {clinic.showPhone && clinic.phone && (
-                  <a href={`tel:${clinic.phone}`}
-                    style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#334155',borderRadius:8,color:'#fff',fontWeight:600,fontSize:12,textDecoration:'none'}}>
-                    📞 {clinic.phone}
-                  </a>
-                )}
-                {clinic.showEmail && clinic.email && (
-                  <a href={`mailto:${clinic.email}`}
-                    style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#0EA5E9',borderRadius:8,color:'#fff',fontWeight:600,fontSize:12,textDecoration:'none'}}>
-                    ✉️ Email
-                  </a>
-                )}
+              <div style={{display:'flex',gap:6}}>
+                <a href={`https://wa.me/${clinic.phone.replace(/[^0-9]/g,'')}?text=${waMsg}`} target="_blank" rel="noopener noreferrer"
+                  style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#25D366',borderRadius:8,color:'#fff',fontWeight:600,fontSize:12,textDecoration:'none'}}>
+                  {WA_ICO} WhatsApp
+                </a>
+                <a href={`sms:${clinic.phone.replace(/[^0-9+]/g,'')}?body=${waMsg}`}
+                  style={{display:'inline-flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#334155',borderRadius:8,color:'#fff',fontWeight:600,fontSize:12,textDecoration:'none'}}>
+                  💬 Text
+                </a>
               </div>
             </div>
           )}
