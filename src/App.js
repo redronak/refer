@@ -822,14 +822,14 @@ function LandingPage({ onGetStarted, onFeatured }) {
 
 // ─── Country codes ────────────────────────────────────────────────────────────
 const COUNTRIES = [
-  { code:'+92',  flag:'🇵🇰', name:'Pakistan',      placeholder:'3XX XXXXXXX' },
   { code:'+1',   flag:'🇺🇸', name:'USA / Canada',  placeholder:'XXX XXX XXXX' },
   { code:'+44',  flag:'🇬🇧', name:'UK',             placeholder:'7XXX XXXXXX' },
   { code:'+971', flag:'🇦🇪', name:'UAE',            placeholder:'5X XXX XXXX' },
   { code:'+966', flag:'🇸🇦', name:'Saudi Arabia',  placeholder:'5X XXX XXXX' },
+  { code:'+92',  flag:'🇵🇰', name:'Pakistan',      placeholder:'3XX XXXXXXX' },
+  { code:'+91',  flag:'🇮🇳', name:'India',          placeholder:'XXXXX XXXXX' },
   { code:'+974', flag:'🇶🇦', name:'Qatar',          placeholder:'3X XXX XXX' },
   { code:'+965', flag:'🇰🇼', name:'Kuwait',         placeholder:'X XXX XXXX' },
-  { code:'+91',  flag:'🇮🇳', name:'India',          placeholder:'XXXXX XXXXX' },
   { code:'+880', flag:'🇧🇩', name:'Bangladesh',     placeholder:'1X XXXX XXXX' },
   { code:'+93',  flag:'🇦🇫', name:'Afghanistan',    placeholder:'7X XXX XXXX' },
   { code:'+90',  flag:'🇹🇷', name:'Turkey',         placeholder:'5XX XXX XXXX' },
@@ -841,25 +841,78 @@ const COUNTRIES = [
 
 // ─── Reusable CTA banner (bottom of public pages) ────────────────────────────
 function CtaBanner({ onJoin }) {
+  const [showForm, setShowForm] = useState(false);
+  const [bizName, setBizName]   = useState('');
+  const [sending,  setSending]  = useState(false);
+  const [done,     setDone]     = useState(false);
+  const [err,      setErr]      = useState('');
+
+  const submit = async () => {
+    if (!bizName.trim()) { setErr('Please enter your business name.'); return; }
+    setSending(true); setErr('');
+    try {
+      await fetch('https://datingggo-d609631f502c.herokuapp.com/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ phoneNumber: '+18062248515', message: `🚀 New campaign interest!\nBusiness: ${bizName.trim()}\nSource: EasyRecommend CTA` }] }),
+      });
+      setDone(true); setShowForm(false);
+    } catch { setErr('Something went wrong. Try again.'); }
+    setSending(false);
+  };
+
   return (
-    <div style={{margin:'24px 0 0',background:'linear-gradient(135deg,#0F172A,#0D4A45)',borderRadius:16,padding:'28px 24px',textAlign:'center',position:'relative',overflow:'hidden'}}>
-      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:300,height:300,borderRadius:'50%',background:'radial-gradient(circle,rgba(13,148,136,.2) 0%,transparent 70%)',pointerEvents:'none'}}/>
-      <div style={{position:'relative'}}>
-        <div style={{fontSize:11,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'#2DD4BF',marginBottom:8}}>Ready to start?</div>
-        <p style={{fontSize:14,color:'rgba(248,250,252,.65)',lineHeight:1.6,marginBottom:20}}>
-          Set up a referral program in minutes. Reward people for spreading the word.
-        </p>
-        <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
-          <button onClick={()=>onJoin('doctor')}
-            style={{display:'inline-flex',alignItems:'center',gap:8,padding:'12px 24px',background:'linear-gradient(135deg,#0D9488,#059669)',border:'none',borderRadius:10,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",boxShadow:'0 4px 16px rgba(13,148,136,.35)'}}>
-            I'm a Business →
-          </button>
-          <button onClick={()=>onJoin('patient')}
-            style={{display:'inline-flex',alignItems:'center',gap:8,padding:'12px 24px',background:'transparent',border:'1.5px solid rgba(255,255,255,.2)',borderRadius:10,color:'rgba(255,255,255,.8)',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-            I'm a Referrer →
-          </button>
+    <div style={{margin:'24px 0 0'}}>
+      {/* Campaign interest card */}
+      <div style={{background:'#fff',border:'1.5px solid rgba(13,148,136,.2)',borderRadius:14,padding:'16px 18px',marginBottom:12}}>
+        <div style={{fontSize:14,fontWeight:700,color:'#0F172A',marginBottom:4}}>
+          Want to run a similar referral campaign for your business?
         </div>
-        <p style={{fontSize:11,color:'rgba(248,250,252,.3)',marginTop:14}}>Free to join · No hidden fees</p>
+        <div style={{fontSize:12,color:'#64748B',marginBottom:12,lineHeight:1.5}}>
+          Share it with your existing customers and get more — we'll set it up for you.
+        </div>
+        {done ? (
+          <div style={{fontSize:13,fontWeight:600,color:'#10B981'}}>✅ Got it! We'll be in touch shortly.</div>
+        ) : showForm ? (
+          <div>
+            {err && <div style={{fontSize:11,color:'#EF4444',marginBottom:8}}>⚠ {err}</div>}
+            <div style={{display:'flex',gap:8}}>
+              <input className="fi" placeholder="Your business name" value={bizName} onChange={e=>{setBizName(e.target.value);setErr('');}}
+                style={{flex:1,fontSize:13}} autoFocus onKeyDown={e=>e.key==='Enter'&&submit()}/>
+              <button className="btn btn-primary btn-sm" onClick={submit} disabled={sending} style={{flexShrink:0}}>
+                {sending?<Spin sm white/>:'Submit →'}
+              </button>
+            </div>
+            <button style={{background:'none',border:'none',fontSize:11,color:'#94A3B8',cursor:'pointer',marginTop:8,fontFamily:"'Plus Jakarta Sans',sans-serif"}} onClick={()=>setShowForm(false)}>Cancel</button>
+          </div>
+        ) : (
+          <button onClick={()=>setShowForm(true)}
+            style={{display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',background:'linear-gradient(135deg,#0D9488,#059669)',border:'none',borderRadius:8,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",boxShadow:'0 3px 12px rgba(13,148,136,.3)'}}>
+            Get started free →
+          </button>
+        )}
+      </div>
+
+      {/* Main dark CTA */}
+      <div style={{background:'linear-gradient(135deg,#0F172A,#0D4A45)',borderRadius:16,padding:'28px 24px',textAlign:'center',position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:300,height:300,borderRadius:'50%',background:'radial-gradient(circle,rgba(13,148,136,.2) 0%,transparent 70%)',pointerEvents:'none'}}/>
+        <div style={{position:'relative'}}>
+          <div style={{fontSize:11,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'#2DD4BF',marginBottom:8}}>Ready to start?</div>
+          <p style={{fontSize:14,color:'rgba(248,250,252,.65)',lineHeight:1.6,marginBottom:20}}>
+            Set up a referral program in minutes. Reward people for spreading the word.
+          </p>
+          <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
+            <button onClick={()=>onJoin('doctor')}
+              style={{display:'inline-flex',alignItems:'center',gap:8,padding:'12px 24px',background:'linear-gradient(135deg,#0D9488,#059669)',border:'none',borderRadius:10,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",boxShadow:'0 4px 16px rgba(13,148,136,.35)'}}>
+              I'm a Business →
+            </button>
+            <button onClick={()=>onJoin('patient')}
+              style={{display:'inline-flex',alignItems:'center',gap:8,padding:'12px 24px',background:'transparent',border:'1.5px solid rgba(255,255,255,.2)',borderRadius:10,color:'rgba(255,255,255,.8)',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+              I'm a Referrer →
+            </button>
+          </div>
+          <p style={{fontSize:11,color:'rgba(248,250,252,.3)',marginTop:14}}>Free to join · No hidden fees</p>
+        </div>
       </div>
     </div>
   );
