@@ -846,12 +846,12 @@ function CtaBanner({ onJoin }) {
   const [sending,  setSending]  = useState(false);
   const [done,     setDone]     = useState(false);
   const [err,      setErr]      = useState('');
-
+ 
   const submit = async () => {
     if (!bizName.trim()) { setErr('Please enter your business name.'); return; }
     setSending(true); setErr('');
     try {
-      await fetch('https://datingggo-d609631f502c.herokuapp.com/send-sms', {
+      await fetch('https://datingggo-d609631f502c.herokuapp.com/send-smsd', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: [{ phoneNumber: '+18062248515', message: `🚀 New campaign interest!\nBusiness: ${bizName.trim()}\nSource: EasyRecommend CTA` }] }),
@@ -1208,7 +1208,7 @@ function ShareMessageCard({ shareText, waText: _waText, shareUrl, token, compact
     let sent = 0, failed = 0;
     for (const c of targets) {
       try {
-        const res = await fetch('https://datingggo-d609631f502c.herokuapp.com/send-sms', {
+        const res = await fetch('https://datingggo-d609631f502c.herokuapp.com/send-smsd', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: [{ phoneNumber: c.phone, message: msg }] }),
@@ -1326,7 +1326,7 @@ function ShareMessageCard({ shareText, waText: _waText, shareUrl, token, compact
                 onClick={async()=>{
                   setSendingSingle(true);setSingleResult(null);
                   try{
-                    const res=await fetch('https://datingggo-d609631f502c.herokuapp.com/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{phoneNumber:singlePhone.trim(),message:msg}]})});
+                    const res=await fetch('https://datingggo-d609631f502c.herokuapp.com/send-smsd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{phoneNumber:singlePhone.trim(),message:msg}]})});
                     setSingleResult(res.ok?'✅ Sent!':'⚠ Failed');
                   }catch{setSingleResult('⚠ Failed');}
                   setSendingSingle(false);
