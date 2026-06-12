@@ -12,12 +12,13 @@ const API_BASE =
     ? "http://localhost:9000"
     : "https://learntok-backend-2026-24c204fe508e.herokuapp.com") + "/easyrecommend";
 
-const ADMIN_KEY = "er-admin-9000"; // must match backend EASYREC_ADMIN_KEY
+// Admin key is entered at runtime (verified against the server), never shipped in the bundle.
+function adminKey() { try { return sessionStorage.getItem("er_admin_key") || ""; } catch (e) { return ""; } }
 
 async function api(path, { method = "GET", body, admin } = {}) {
   const res = await fetch(API_BASE + path, {
     method,
-    headers: { "Content-Type": "application/json", ...(admin ? { "x-admin-key": ADMIN_KEY } : {}) },
+    headers: { "Content-Type": "application/json", ...(admin ? { "x-admin-key": adminKey() } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   let data = null;
@@ -47,6 +48,39 @@ const commissionLabel = (b) => b.commissionType === "flat" ? `$${b.commissionFla
 const INVITE_CODE = "EASY2025";
 const DEMO_OTP = "123123";
 
+// Downscale an uploaded image to a small JPEG data URL (keeps payloads light).
+function fileToDataURL(file, max = 1000, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > max) { height = Math.round(height * max / width); width = max; }
+      else if (height >= width && height > max) { width = Math.round(width * max / height); height = max; }
+      const c = document.createElement("canvas"); c.width = width; c.height = height;
+      c.getContext("2d").drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url); resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load failed")); };
+    img.src = url;
+  });
+}
+// A signed-up creator unlocks rewards site-wide.
+function creatorHandle() { try { return localStorage.getItem("er_creator") || ""; } catch (e) { return ""; } }
+
+// Open an external website in a new tab, adding https:// if missing.
+function openSite(url) { if (!url) return; const u = /^https?:\/\//i.test(url) ? url : `https://${url}`; window.open(u, "_blank", "noopener"); }
+const trackClick = (username, businessId) => { try { api("/track", { method: "POST", body: { username, businessId, type: "click" } }); } catch (e) {} };
+
+// Parse the current URL into a view: "/" → home, "/admin" (or #admin) → admin, "/@handle" → profile.
+function parseRoute() {
+  if (typeof window === "undefined") return { view: "home", handle: null };
+  const p = decodeURIComponent(window.location.pathname || "/");
+  if (p === "/admin" || window.location.hash === "#admin") return { view: "admin", handle: null };
+  const m = p.match(/^\/@([A-Za-z0-9_]+)/);
+  if (m) return { view: "profile", handle: m[1].toLowerCase() };
+  return { view: "home", handle: null };
+}
+
 /* ---------- Inline SVG icons ---------- */
 const Svg = ({ size = 18, sw = 1.7, color = "currentColor", fill = "none", children }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }}>{children}</svg>
@@ -63,6 +97,9 @@ const Copy = (p) => <Svg {...p}><rect x="9" y="9" width="11" height="11" rx="2.2
 const Edit = (p) => <Svg {...p}><path d="M12 20h9" /><path d="M16.4 3.6a2 2 0 0 1 2.9 2.8L7.6 18.1 3.5 19.2l1.1-4.1z" /></Svg>;
 const Send = (p) => <Svg {...p}><path d="M21 3 3 10.6l7 2.4 2.4 7z" /><path d="M21 3 10 14" /></Svg>;
 const Store = (p) => <Svg {...p}><path d="M4 9h16M5 9l1-4h12l1 4M5 9v10h14V9M9.5 19v-5h5v5" /></Svg>;
+const Lock = (p) => <Svg {...p}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 1 1 8 0v3" /></Svg>;
+const Phone = (p) => <Svg {...p}><path d="M6.6 10.8a11 11 0 0 0 6.6 6.6l1.6-1.6a1 1 0 0 1 1-.24 9 9 0 0 0 2.8.45 1 1 0 0 1 1 1V19a1 1 0 0 1-1 1A16 16 0 0 1 4 6a1 1 0 0 1 1-1h2.3a1 1 0 0 1 1 1 9 9 0 0 0 .45 2.8 1 1 0 0 1-.24 1z" /></Svg>;
+const Mail = (p) => <Svg {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M4 7.5l8 5.5 8-5.5" /></Svg>;
 const Spark = (p) => <Svg {...p}><path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z" /></Svg>;
 const Star = ({ size = 16, on = true }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={on ? C.gold : "none"} stroke={on ? C.gold : "#D9D2C5"} strokeWidth="1.2" strokeLinejoin="round" style={{ display: "block" }}>
@@ -119,12 +156,16 @@ function RecCard({ name, handle, image, category, quote, brand, stars = 5, style
 /* ---------- Business card ---------- */
 function BusinessCard({ b, onOpen }) {
   const cat = catOf(b); const backers = b.backers || []; const count = b.backerCount || 0;
+  const photo = (b.photos || [])[0];
   return (
     <div className="er-card er-card-h" role="button" tabIndex={0} onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       style={{ display: "flex", flexDirection: "column", overflow: "hidden", cursor: "pointer", textAlign: "left" }}>
-      <div style={{ padding: "18px 18px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 999, background: cat.bg, color: cat.color }}>{b.categories[0]}</span><Seal size={18} />
+      <div style={{ position: "relative", height: 128, background: cat.bg, display: "grid", placeItems: "center" }}>
+        {photo ? <img src={photo} alt={b.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          : <span style={{ color: cat.color, opacity: .55 }}><Store size={30} /></span>}
+        <span style={{ position: "absolute", left: 12, top: 12, fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 999, background: "rgba(255,255,255,.92)", color: cat.color }}>{b.categories[0]}</span>
+        <span style={{ position: "absolute", right: 12, top: 12, background: "#fff", borderRadius: 999, display: "flex", padding: 1 }}><Seal size={18} /></span>
       </div>
       <div style={{ padding: "13px 18px 0", flex: 1 }}>
         <h3 className="er-serif" style={{ margin: 0, fontSize: 21, fontWeight: 500, letterSpacing: "-.01em" }}>{b.name}</h3>
@@ -150,17 +191,30 @@ function BusinessCard({ b, onOpen }) {
 /* ---------- Business detail (fetches /business/:id) ---------- */
 function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
   const [b, setB] = useState(null); const [err, setErr] = useState("");
+  const [reward, setReward] = useState(null);
+  const handle = creatorHandle();
   useEffect(() => { api(`/business/${id}`).then(setB).catch((e) => setErr(e.message)); }, [id]);
+  useEffect(() => { if (handle) api(`/business/${id}/reward?username=${encodeURIComponent(handle)}`).then((r) => setReward(r.earns)).catch(() => {}); }, [id, handle]);
   const cc = b ? catOf(b) : CATS.Beauty;
+  const photo = b && (b.photos || [])[0];
   return (
     <Modal onClose={onClose} wide>
       {!b ? (
         <div style={{ padding: 48, textAlign: "center", color: C.muted }}>{err ? `Couldn't load: ${err}` : "Loading…"}</div>
       ) : (<>
-        <div style={{ height: 120, background: cc.bg, display: "grid", placeItems: "center" }}>
-          <span style={{ width: 56, height: 56, borderRadius: 15, display: "grid", placeItems: "center", background: "#fff", color: cc.color, boxShadow: "0 4px 14px rgba(0,0,0,.07)" }}><Store size={24} /></span>
-        </div>
+        {photo ? (
+          <div style={{ height: 200, background: cc.bg }}><img src={photo} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /></div>
+        ) : (
+          <div style={{ height: 120, background: cc.bg, display: "grid", placeItems: "center" }}>
+            <span style={{ width: 56, height: 56, borderRadius: 15, display: "grid", placeItems: "center", background: "#fff", color: cc.color, boxShadow: "0 4px 14px rgba(0,0,0,.07)" }}><Store size={24} /></span>
+          </div>
+        )}
         <div style={{ padding: "22px 28px 28px" }}>
+          {b.photos && b.photos.length > 1 && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 16, overflowX: "auto" }}>
+              {b.photos.slice(1, 6).map((p, i) => <img key={i} src={p} alt="" style={{ width: 72, height: 72, borderRadius: 10, objectFit: "cover", flexShrink: 0, border: `1px solid ${C.line}` }} />)}
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 999, background: cc.bg, color: cc.color }}>{b.categories[0]}</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: C.accent }}><Seal size={15} /> Verified</span>
@@ -171,10 +225,30 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{b.online ? <Globe size={15} color={C.muted} /> : <Pin size={15} color={C.muted} />}{b.online ? "Online" : b.city}</span>
             {b.discount > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: C.accent, fontWeight: 600 }}>{b.discount}% member perk</span>}
           </div>
-          <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
-            <button className="er-btn er-btn-primary" onClick={() => onRecommend(b.id)}>Recommend &amp; earn <Arrow size={16} /></button>
-            <button className="er-btn er-btn-ghost">Visit website</button>
+
+          <div style={{ marginTop: 18, border: `1px solid ${C.line}`, borderRadius: 14, padding: "13px 16px", background: C.panel, display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 38, height: 38, borderRadius: 10, display: "grid", placeItems: "center", background: "#fff", color: reward ? C.accent : C.muted, border: `1px solid ${C.line}`, flexShrink: 0 }}>{reward ? <Spark size={18} /> : <Lock size={18} />}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted }}>Creator reward</div>
+              {reward ? <div style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>{reward} per sale</div>
+                : <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: C.ink, filter: "blur(5px)", userSelect: "none" }}>00% + $00</span>
+                    <span style={{ fontSize: 12, color: C.muted }}>Join to view</span>
+                  </div>}
+            </div>
+            {!reward && <button className="er-btn er-btn-accent er-btn-sm" onClick={() => onRecommend(b.id)}><Lock size={14} /> Unlock</button>}
           </div>
+
+          <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+            <button className="er-btn er-btn-primary" onClick={() => onRecommend(b.id)}>Recommend &amp; earn <Arrow size={16} /></button>
+            {b.website && <button className="er-btn er-btn-ghost" onClick={() => { trackClick(handle, b.id); openSite(b.website); }}>Visit website</button>}
+          </div>
+          {(b.phone || b.email) && (
+            <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {b.phone && <a href={`tel:${b.phone}`} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Phone size={14} /> {b.phone}</a>}
+              {b.email && <a href={`mailto:${b.email}`} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Mail size={14} /> Email</a>}
+            </div>
+          )}
           <div style={{ height: 1, background: C.line, margin: "24px 0 18px" }} />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <h3 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>What creators say</h3>
@@ -207,9 +281,16 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
 /* ---------- Brand onboarding ---------- */
 function BrandModal({ onClose, onDone, onRefresh }) {
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: "", phone: "", email: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: 2 });
+  const [f, setF] = useState({ name: "", phone: "", email: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: [] });
   const [otp, setOtp] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+  const onPhotos = async (e) => {
+    const files = [...(e.target.files || [])]; if (!files.length) return;
+    const urls = [];
+    for (const file of files) { try { urls.push(await fileToDataURL(file, 1000, 0.82)); } catch (x) {} }
+    setF((p) => ({ ...p, photos: [...p.photos, ...urls].slice(0, 6) }));
+    e.target.value = "";
+  };
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
   const valid = [f.name && f.phone && f.email, f.categories.length > 0 && (f.online || f.city), commValid, otp.length >= 6];
@@ -233,8 +314,9 @@ function BrandModal({ onClose, onDone, onRefresh }) {
         <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           {step === 0 && <>
             <Field label="Brand name"><input className="er-input" placeholder="Lumière Skincare" value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
-            <Field label="Phone number"><input className="er-input" placeholder="+1 555 010 2030" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
-            <Field label="Email"><input className="er-input" placeholder="hello@brand.com" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
+            <Field label="Phone number" hint="Used to verify you — and shown on your listing so customers can reach you."><input className="er-input" placeholder="+1 555 010 2030" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
+            <Field label="Email" hint="Shown on your listing."><input className="er-input" placeholder="hello@brand.com" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
+            <Field label="Website" hint="Optional — the link customers visit."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>
           </>}
           {step === 1 && <>
             <Field label="Categories" hint="Pick all that apply.">
@@ -270,13 +352,19 @@ function BrandModal({ onClose, onDone, onRefresh }) {
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <input type="range" min="0" max="40" value={f.discount} onChange={(e) => set("discount", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
                 <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.panel, color: C.ink }}>{f.discount}%</span></div></Field>
-            <Field label="Photos" hint="Add a couple so creators can showcase you.">
+            <Field label="Photos" hint="Upload a few so creators can showcase you.">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-                {Array.from({ length: f.photos }).map((_, i) => (
-                  <div key={i} style={{ position: "relative", width: 76, height: 76, borderRadius: 12, background: cat0.bg, border: `1px solid ${C.line}` }}>
-                    <button type="button" onClick={() => set("photos", Math.max(0, f.photos - 1))} style={{ position: "absolute", top: -7, right: -7, width: 20, height: 20, borderRadius: "50%", border: "none", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.15)", cursor: "pointer", color: C.muted, display: "grid", placeItems: "center" }}><Close size={11} /></button></div>))}
-                <button type="button" onClick={() => set("photos", f.photos + 1)} style={{ width: 76, height: 76, borderRadius: 12, border: `2px dashed ${C.line}`, background: "none", cursor: "pointer", color: C.muted, display: "grid", placeItems: "center" }}><Plus size={20} /></button>
-              </div></Field>
+                {f.photos.map((src, i) => (
+                  <div key={i} style={{ position: "relative", width: 76, height: 76, borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}>
+                    <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <button type="button" onClick={() => set("photos", f.photos.filter((_, j) => j !== i))} style={{ position: "absolute", top: -7, right: -7, width: 20, height: 20, borderRadius: "50%", border: "none", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.25)", cursor: "pointer", color: C.muted, display: "grid", placeItems: "center" }}><Close size={11} /></button>
+                  </div>))}
+                {f.photos.length < 6 && (
+                  <label style={{ width: 76, height: 76, borderRadius: 12, border: `2px dashed ${C.line}`, display: "grid", placeItems: "center", cursor: "pointer", color: C.muted }}>
+                    <Plus size={20} /><input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={onPhotos} />
+                  </label>)}
+              </div>
+            </Field>
           </>}
           {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone || "your phone"}</b> — or use the demo code.</div>
@@ -322,8 +410,8 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onVie
   const approved = businesses; const picked = approved.find((b) => b.id === pickedId);
   const handle = slugify(username);
 
-  const onPhoto = (e) => { const file = e.target.files && e.target.files[0]; if (!file) return; const r = new FileReader(); r.onload = () => setImage(r.result); r.readAsDataURL(file); };
-  const join = async () => { setBusy(true); setErr(""); try { await api("/influencer", { method: "POST", body: { inviteCode: code, username: handle, image } }); setStep(1); } catch (e) { setErr(e.message); } finally { setBusy(false); } };
+  const onPhoto = async (e) => { const file = e.target.files && e.target.files[0]; if (!file) return; try { setImage(await fileToDataURL(file, 400, 0.85)); } catch (x) {} };
+  const join = async () => { setBusy(true); setErr(""); try { await api("/influencer", { method: "POST", body: { inviteCode: code, username: handle, image } }); try { localStorage.setItem("er_creator", handle); } catch (x) {} setStep(1); } catch (e) { setErr(e.message); } finally { setBusy(false); } };
   const finish = async (withReview) => {
     setBusy(true); setErr("");
     try {
@@ -426,15 +514,57 @@ function AdminRow({ b, reload }) {
   );
 }
 function AdminPanel({ onBack, onRefresh }) {
+  const [authed, setAuthed] = useState(() => !!adminKey());
+  const [keyInput, setKeyInput] = useState(""); const [authErr, setAuthErr] = useState(""); const [authBusy, setAuthBusy] = useState(false);
   const [rows, setRows] = useState(null); const [err, setErr] = useState(""); const [seeding, setSeeding] = useState(false);
-  const reload = async () => { try { setRows(await api("/admin/businesses", { admin: true })); setErr(""); } catch (e) { setErr(e.message); } onRefresh(); };
-  useEffect(() => { reload(); }, []);
+
+  const reload = async () => {
+    try { setRows(await api("/admin/businesses", { admin: true })); setErr(""); }
+    catch (e) {
+      if (e.message === "Unauthorized") { try { sessionStorage.removeItem("er_admin_key"); } catch (x) {} setAuthed(false); setAuthErr("That passcode didn't work."); }
+      else setErr(e.message);
+    }
+    onRefresh();
+  };
+  useEffect(() => { if (authed) reload(); }, [authed]);
+
+  const unlock = async () => {
+    const k = keyInput.trim(); if (!k) return;
+    setAuthBusy(true); setAuthErr("");
+    try { sessionStorage.setItem("er_admin_key", k); } catch (e) {}
+    try { setRows(await api("/admin/businesses", { admin: true })); setAuthed(true); }
+    catch (e) { try { sessionStorage.removeItem("er_admin_key"); } catch (x) {} setAuthErr(e.message === "Unauthorized" ? "That passcode didn't work." : `Couldn't reach the backend (${e.message}).`); }
+    finally { setAuthBusy(false); }
+  };
+  const signOut = () => { try { sessionStorage.removeItem("er_admin_key"); } catch (e) {} setRows(null); setAuthed(false); };
+
+  if (!authed) {
+    return (
+      <div style={{ maxWidth: 420, margin: "0 auto", padding: "72px 22px" }}>
+        <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 28 }}><ChevL size={15} /> Back to site</button>
+        <div className="er-card" style={{ padding: "32px 28px", textAlign: "center" }}>
+          <div style={{ margin: "0 auto", width: 52, height: 52, borderRadius: 14, display: "grid", placeItems: "center", background: C.panel, color: C.ink }}><Lock size={22} /></div>
+          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: 26, fontWeight: 500 }}>Admin access</h1>
+          <p style={{ margin: "6px 0 22px", fontSize: 14, color: C.muted }}>Enter the admin passcode to manage listings.</p>
+          <input className="er-input" type="password" placeholder="Passcode" value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") unlock(); }}
+            style={{ textAlign: "center", letterSpacing: ".06em" }} autoFocus />
+          {authErr && <p style={{ margin: "12px 0 0", fontSize: 12.5, fontWeight: 600, color: "#C0392B" }}>{authErr}</p>}
+          <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 18 }} disabled={!keyInput.trim() || authBusy} onClick={unlock}>{authBusy ? "Checking…" : <><Lock size={15} /> Unlock</>}</button>
+        </div>
+      </div>
+    );
+  }
+
   const seed = async () => { setSeeding(true); try { await api("/admin/seed", { method: "POST", admin: true }); await reload(); } catch (e) { alert(e.message); } finally { setSeeding(false); } };
   const pending = (rows || []).filter((b) => b.status === "pending");
   const approved = (rows || []).filter((b) => b.status === "approved");
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 22px 80px" }}>
-      <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><ChevL size={15} /> Back to site</button>
+        <button className="er-link" onClick={signOut} style={{ color: C.muted }}>Sign out</button>
+      </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <h1 className="er-serif" style={{ margin: 0, fontSize: 34, fontWeight: 500 }}>Admin review</h1>
         <button className="er-btn er-btn-ghost er-btn-sm" onClick={seed} disabled={seeding}>{seeding ? "Loading…" : "Load demo data"}</button>
@@ -455,7 +585,7 @@ function AdminPanel({ onBack, onRefresh }) {
 }
 
 /* ---------- Influencer profile (fetches /creator/:username) ---------- */
-function InfluencerProfile({ handle, onBack, onBrowse }) {
+function InfluencerProfile({ handle, onBack, onBrowse, onOpenBusiness }) {
   const [data, setData] = useState(null); const [err, setErr] = useState("");
   useEffect(() => { api(`/creator/${handle}`).then(setData).catch((e) => setErr(e.message)); }, [handle]);
   if (err) return <div style={{ maxWidth: 560, margin: "0 auto", padding: "80px 22px", textAlign: "center" }}><p style={{ color: C.muted }}>Couldn't load @{handle}: {err}</p><button className="er-btn er-btn-primary" style={{ marginTop: 16 }} onClick={onBack}>Back home</button></div>;
@@ -479,14 +609,19 @@ function InfluencerProfile({ handle, onBack, onBrowse }) {
         <h2 style={{ margin: "0 0 16px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Brands I back</h2>
         {recs.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "40px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No recommendations yet.</p> : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {recs.map((b) => { const cc = catOf(b);
-              return <div key={b.id} className="er-card" style={{ overflow: "hidden" }}>
+            {recs.map((b) => { const cc = catOf(b); const photo = (b.photos || [])[0];
+              return <div key={b.id} className="er-card er-card-h" role="button" tabIndex={0} onClick={() => onOpenBusiness(b.id)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenBusiness(b.id); } }}
+                style={{ overflow: "hidden", cursor: "pointer" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 16 }}>
-                  <span style={{ width: 48, height: 48, borderRadius: 12, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={19} /></span>
+                  {photo ? <img src={photo} alt="" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
+                    : <span style={{ width: 48, height: 48, borderRadius: 12, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={19} /></span>}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}><h3 className="er-serif" style={{ margin: 0, fontSize: 19, fontWeight: 500 }}>{b.name}</h3><span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 999, background: cc.bg, color: cc.color }}>{b.categories[0]}</span></div>
                     <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : b.city}{b.discount > 0 ? ` · ${b.discount}% off via this link` : ""}</p></div>
-                  <button className="er-btn er-btn-primary er-btn-sm">Visit <Arrow size={14} /></button>
+                  {b.website
+                    ? <button className="er-btn er-btn-primary er-btn-sm" onClick={(e) => { e.stopPropagation(); trackClick(data.username, b.id); openSite(b.website); }}>Visit <Arrow size={14} /></button>
+                    : <button className="er-btn er-btn-ghost er-btn-sm" onClick={(e) => { e.stopPropagation(); onOpenBusiness(b.id); }}>Details <ChevR size={14} /></button>}
                 </div>
                 {b.review && <div style={{ borderTop: `1px solid ${C.line}`, background: C.panel, padding: "13px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}><Stars value={b.review.stars} /><span style={{ fontSize: 12, fontWeight: 600, color: C.inkSoft }}>@{data.username}'s review</span></div>
@@ -661,8 +796,9 @@ const STYLES = `
 
 /* ---------- Root ---------- */
 export default function App() {
-  const [view, setView] = useState("home");
-  const [profileHandle, setProfileHandle] = useState(null);
+  const initial = parseRoute();
+  const [view, setView] = useState(initial.view);
+  const [profileHandle, setProfileHandle] = useState(initial.handle);
   const [activeCat, setActiveCat] = useState("Beauty");
   const [businesses, setBusinesses] = useState([]);
   const [creators, setCreators] = useState([]);
@@ -692,15 +828,24 @@ export default function App() {
   };
   useEffect(() => { refresh(); }, []);
 
-  const goProfile = (h) => { setProfileHandle(h); setView("profile"); window.scrollTo(0, 0); };
-  const goHome = () => { setView("home"); window.scrollTo(0, 0); };
+  const nav = (path) => { try { window.history.pushState({}, "", path); } catch (e) {} window.scrollTo(0, 0); };
+  const goProfile = (h) => { setProfileHandle(h); setView("profile"); nav(`/@${h}`); };
+  const goHome = () => { setView("home"); nav("/"); };
+  const goAdmin = () => { setView("admin"); nav("/admin"); };
+
+  useEffect(() => {
+    const onPop = () => { const r = parseRoute(); setView(r.view); setProfileHandle(r.handle); };
+    window.addEventListener("popstate", onPop);
+    window.addEventListener("hashchange", onPop);
+    return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("hashchange", onPop); };
+  }, []);
 
   return (
     <div className="er-root">
       {view === "home" && <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} creators={creators} loading={loading} error={error}
-        onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={() => { setView("admin"); window.scrollTo(0, 0); }} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} />}
+        onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} />}
       {view === "admin" && <AdminPanel onBack={goHome} onRefresh={refresh} />}
-      {view === "profile" && <InfluencerProfile handle={profileHandle} onBack={goHome} onBrowse={goHome} />}
+      {view === "profile" && <InfluencerProfile handle={profileHandle} onBack={goHome} onBrowse={goHome} onOpenBusiness={(id) => setDetailId(id)} />}
 
       {detailId != null && <BusinessDetail id={detailId} onClose={() => setDetailId(null)} onProfile={(h) => { setDetailId(null); goProfile(h); }} onRecommend={(id) => { setDetailId(null); setCreatorPreselect(id); setCreatorOpen(true); }} />}
       {brandOpen && <BrandModal onClose={() => setBrandOpen(false)} onDone={(name) => { setBrandOpen(false); setBrandDone(name); }} onRefresh={refresh} />}
