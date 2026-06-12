@@ -120,99 +120,99 @@ input:checked+.switch-slider::before{transform:translateX(18px)}
 @keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 
-.lp-nav {
-  position: fixed; top:0; left:0; right:0; z-index:100;
-  height: 64px; padding: 0 28px;
-  display: flex; align-items: center; justify-content: space-between;
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(20px) saturate(1.8);
-  border-bottom: 1px solid rgba(10,37,64,.07);
-  transition: all .3s;
-}
-.lp-logo { font-size:17px; font-weight:800; color:#0A2540; letter-spacing:-.03em; }
-.lp-logo em { font-style:normal; color:#635BFF; }
-.lp-nav-links { display:flex; align-items:center; gap:2px; }
-.lp-nav-link { padding:7px 13px; border-radius:8px; font-size:14px; font-weight:500; color:#425466; background:transparent; border:none; cursor:pointer; font-family:inherit; transition:all .15s; }
-.lp-nav-link:hover { background:#F6F9FC; color:#0A2540; }
-.lp-btn-ghost {
-  display:inline-flex; align-items:center; gap:7px;
-  padding:9px 20px; border-radius:9px;
-  background:#fff; color:#0A2540;
-  border: 1.5px solid rgba(10,37,64,.15);
-  font-size:14px; font-weight:600; cursor:pointer;
-  font-family:inherit; transition:all .2s; letter-spacing:-.01em;
-}
-.lp-btn-ghost:hover { border-color:#0A2540; background:#F6F9FC; }
-.lp-btn-primary {
-  display:inline-flex; align-items:center; gap:8px;
-  padding:11px 24px; border-radius:9px;
-  background:#635BFF; color:#fff; border:none;
-  font-size:14px; font-weight:600; cursor:pointer;
-  font-family:inherit;
-  box-shadow: 0 2px 12px rgba(99,91,255,.3);
-  transition:all .2s; letter-spacing:-.01em; text-decoration:none;
-}
-.lp-btn-primary:hover { background:#5851DB; transform:translateY(-1px); box-shadow:0 6px 24px rgba(99,91,255,.4); }
 .lp-hero-bg {
-  min-height:100vh; padding-top:64px;
-  background: #fff;
-  display:flex; align-items:center;
-  position:relative; overflow:hidden;
+  background: linear-gradient(135deg, #0F172A 0%, #0D4A45 40%, #065F46 70%, #0F172A 100%);
+  background-size: 300% 300%;
+  animation: gradShift 8s ease infinite;
+  position: relative; overflow: hidden;
 }
 .lp-hero-bg::before {
-  content:''; position:absolute; inset:0; pointer-events:none;
-  background:
-    radial-gradient(ellipse 90% 60% at 60% -10%, rgba(99,91,255,.09) 0%, transparent 65%),
-    radial-gradient(ellipse 60% 40% at 10% 80%, rgba(0,212,255,.06) 0%, transparent 60%);
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse at 30% 50%, rgba(13,148,136,.25) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, rgba(16,185,129,.15) 0%, transparent 50%);
+  pointer-events: none;
 }
-.lp-grid-overlay { display:none; }
+.lp-grid-overlay {
+  position:absolute; inset:0; pointer-events:none;
+  background-image: linear-gradient(rgba(13,148,136,.06) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(13,148,136,.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.lp-nav {
+  position: fixed; top:0; left:0; right:0; z-index:100;
+  backdrop-filter: blur(12px) saturate(1.5);
+  background: rgba(15,23,42,.8);
+  border-bottom: 1px solid rgba(13,148,136,.2);
+  padding: 14px 24px; display:flex; align-items:center; justify-content:space-between;
+  transition: all .3s;
+}
 .lp-badge {
-  display:inline-flex; align-items:center; gap:7px;
-  padding:6px 14px; border-radius:100px;
-  background:rgba(99,91,255,.08); border:1px solid rgba(99,91,255,.18);
-  font-size:12px; font-weight:600; color:#635BFF; letter-spacing:.04em;
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 6px 14px; border-radius:100px;
+  background: rgba(13,148,136,.15); border: 1px solid rgba(13,148,136,.3);
+  font-size:12px; font-weight:600; color:#5EEAD4; letter-spacing:.04em;
 }
-.lp-badge-dot { width:6px; height:6px; border-radius:50%; background:#635BFF; animation:pulse 2s ease-in-out infinite; }
+.lp-badge-dot { width:6px; height:6px; border-radius:50%; background:#10B981; animation:pulse 2s ease-in-out infinite; }
 .lp-headline {
-  font-size:clamp(38px,7vw,74px); font-weight:900; line-height:1.02;
-  letter-spacing:-.04em; color:#0A2540;
+  font-size: clamp(40px, 7vw, 72px); font-weight:800; line-height:1.05;
+  letter-spacing:-.03em; color:#F8FAFC;
 }
-.lp-headline em { font-style:normal; background:linear-gradient(135deg,#635BFF,#00D4FF); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-.lp-sub { font-size:clamp(15px,2vw,19px); color:#425466; line-height:1.75; font-weight:400; }
+.lp-headline em { font-style:normal; color:#2DD4BF; }
+.lp-sub { font-size:clamp(16px,2vw,20px); color:rgba(248,250,252,.65); line-height:1.7; font-weight:300; }
+.lp-btn-primary {
+  display:inline-flex; align-items:center; gap:10px; padding:16px 32px;
+  background: linear-gradient(135deg, #0D9488, #059669); border:none; border-radius:12px;
+  color:#fff; font-size:16px; font-weight:700; cursor:pointer;
+  box-shadow: 0 4px 24px rgba(13,148,136,.4); transition:all .2s; text-decoration:none;
+  letter-spacing:-.01em;
+}
+.lp-btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(13,148,136,.5); }
+.lp-btn-ghost {
+  display:inline-flex; align-items:center; gap:8px; padding:15px 28px;
+  background:transparent; border:1.5px solid rgba(255,255,255,.2); border-radius:12px;
+  color:rgba(255,255,255,.8); font-size:15px; font-weight:600; cursor:pointer; transition:all .2s;
+}
+.lp-btn-ghost:hover { border-color:rgba(255,255,255,.5); color:#fff; background:rgba(255,255,255,.05); }
 .lp-float-card {
-  background:#fff;
-  border:1px solid rgba(10,37,64,.08);
-  box-shadow:0 4px 24px rgba(10,37,64,.08),0 1px 4px rgba(10,37,64,.04);
-  border-radius:16px; padding:20px; color:#0A2540;
+  background:rgba(255,255,255,.06); backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:20px;
+  color:#F8FAFC;
 }
-.lp-stat { text-align:center; padding:28px 20px; }
-.lp-stat-num { font-size:clamp(32px,5vw,48px); font-weight:900; color:#635BFF; line-height:1; letter-spacing:-.03em; }
-.lp-stat-lbl { font-size:13px; color:#697386; margin-top:6px; font-weight:500; }
-.lp-feature-icon { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; margin-bottom:14px; flex-shrink:0; }
-.lp-step-num { width:36px; height:36px; border-radius:50%; background:rgba(99,91,255,.1); border:1.5px solid rgba(99,91,255,.2); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:#635BFF; flex-shrink:0; }
-.lp-ticker-wrap { overflow:hidden; white-space:nowrap; background:#F6F9FC; border-top:1px solid rgba(10,37,64,.06); border-bottom:1px solid rgba(10,37,64,.06); padding:13px 0; }
-.lp-ticker-track { display:inline-flex; animation:ticker 28s linear infinite; }
-.lp-ticker-item { display:inline-flex; align-items:center; gap:10px; padding:0 28px; font-size:11px; font-weight:700; color:#8898AA; letter-spacing:.1em; text-transform:uppercase; }
-.lp-ticker-dot { width:4px; height:4px; border-radius:50%; background:#CBD5E1; }
-.lp-section { padding:96px 24px; max-width:1080px; margin:0 auto; }
-.lp-section-tag { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; background:rgba(99,91,255,.08); border:1px solid rgba(99,91,255,.15); border-radius:100px; font-size:11px; font-weight:700; color:#635BFF; letter-spacing:.06em; text-transform:uppercase; margin-bottom:16px; }
-.lp-section-h { font-size:clamp(26px,4vw,42px); font-weight:800; color:#0A2540; line-height:1.12; letter-spacing:-.03em; margin-bottom:14px; }
-.lp-section-sub { font-size:16px; color:#697386; line-height:1.75; max-width:540px; }
+.lp-stat {
+  text-align:center; padding:28px 20px;
+}
+.lp-stat-num { font-size:clamp(36px,5vw,52px); font-weight:800; color:#0D9488; line-height:1; }
+.lp-stat-lbl { font-size:14px; color:#64748B; margin-top:6px; font-weight:500; }
+.lp-feature-icon {
+  width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+  font-size:22px; margin-bottom:16px; flex-shrink:0;
+}
+.lp-step-num {
+  width:40px; height:40px; border-radius:50%; background:rgba(13,148,136,.12); border:2px solid rgba(13,148,136,.3);
+  display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:#0D9488; flex-shrink:0;
+}
+.lp-ticker-wrap { overflow:hidden; white-space:nowrap; background:#F8FAFC; border-top:1px solid #E8EDF5; border-bottom:1px solid #E8EDF5; padding:12px 0; }
+.lp-ticker-track { display:inline-flex; animation:ticker 30s linear infinite; }
+.lp-ticker-item { display:inline-flex; align-items:center; gap:10px; padding:0 24px; font-size:12px; font-weight:700; color:#94A3B8; letter-spacing:.08em; text-transform:uppercase; }
+.lp-ticker-dot { width:4px; height:4px; border-radius:50%; background:#0D9488; }
+.lp-section { padding:88px 24px; max-width:1100px; margin:0 auto; }
+.lp-section-tag { display:inline-flex; align-items:center; gap:8px; padding:6px 14px; background:rgba(13,148,136,.08); border:1px solid rgba(13,148,136,.2); border-radius:100px; font-size:12px; font-weight:600; color:#0D9488; margin-bottom:16px; }
+.lp-section-h { font-size:clamp(28px,4vw,40px); font-weight:800; color:#0F172A; line-height:1.15; letter-spacing:-.025em; margin-bottom:14px; }
+.lp-section-sub { font-size:16px; color:#64748B; line-height:1.7; max-width:560px; }
 .lp-card-hover { transition:transform .2s, box-shadow .2s; }
-.lp-card-hover:hover { transform:translateY(-3px); box-shadow:0 12px 36px rgba(10,37,64,.1)!important; }
-.lp-testimonial { background:#fff; border:1px solid rgba(10,37,64,.07); border-radius:16px; padding:28px; box-shadow:0 2px 8px rgba(10,37,64,.04); }
-.lp-cta-section { background:linear-gradient(160deg,#0A2540 0%,#1a1060 100%); padding:100px 24px; text-align:center; position:relative; overflow:hidden; }
-.lp-footer { background:#0A2540; color:rgba(255,255,255,.45); padding:36px 24px; font-size:13px; }
-@media(max-width:768px){
-  .lp-nav-links{display:none}
-  .lp-hero-content{grid-template-columns:1fr!important;gap:40px!important;padding:60px 20px 80px!important}
+.lp-card-hover:hover { transform:translateY(-4px); box-shadow:0 16px 40px rgba(0,0,0,.1)!important; }
+.lp-testimonial { background:#fff; border:1px solid #E8EDF5; border-radius:16px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+.lp-cta-section { background:linear-gradient(135deg,#0F172A 0%,#0D4A45 100%); padding:80px 24px; text-align:center; position:relative; overflow:hidden; }
+.lp-footer { background:#0F172A; color:rgba(255,255,255,.5); padding:32px 24px; font-size:13px; }
+@media(max-width:640px){
+  .lp-section{padding:56px 20px}
+  .lp-hero-content{padding:0 20px!important;grid-template-columns:1fr!important;gap:32px!important}
   .lp-features-grid{grid-template-columns:1fr!important}
   .lp-steps-grid{grid-template-columns:1fr!important}
   .lp-stats-grid{grid-template-columns:1fr 1fr!important}
-  .lp-cta-btns{flex-direction:column!important;align-items:center!important}
-  .lp-cta-btns button,.lp-cta-btns a{width:100%!important;max-width:320px!important}
-  .lp-section{padding:64px 20px}
-  .lp-testimonials-grid{grid-template-columns:1fr!important}
+  .lp-cta-btns{flex-direction:column!important}
+  .lp-cta-btns button,.lp-cta-btns a{width:100%!important}
+  .lp-section > div[style*="grid-template-columns:'1fr 1fr'"],.lp-section > div[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
 }
 `;
 
@@ -260,729 +260,6 @@ async function api(path, opts={}, token=null) {
   const d=await r.json();
   if(!r.ok) throw new Error(d.error||'Request failed');
   return d;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// INFLUENCER TRY PAGE  (#/influencertry)
-// ═══════════════════════════════════════════════════════════════════════════════
-const INF_CATEGORIES = ['Beauty', 'Legal', 'Education'];
-const INF_CITIES = ['San Francisco','Los Angeles','New York','Chicago','Miami','Austin','Seattle','Boston','Denver','Atlanta'];
-const INF_CAT_META = {
-  Beauty:    { icon:'💄', color:'#DB2777', bg:'rgba(219,39,119,.08)', desc:'Salons, spas, aesthetics & wellness brands' },
-  Legal:     { icon:'⚖️', color:'#7C3AED', bg:'rgba(124,58,237,.08)', desc:'Law firms rewarding client referrals' },
-  Education: { icon:'🎓', color:'#0EA5E9', bg:'rgba(14,165,233,.08)', desc:'Courses, bootcamps & tutoring services' },
-};
-
-function InfluencerPage({ onBack }) {
-  const [brands,    setBrands]    = useState([]);
-  const [catFilter, setCatFilter] = useState('All');
-  const [cityFilter,setCityFilter]= useState('All');
-  const [loading,   setLoading]   = useState(true);
-  const [showForm,  setShowForm]  = useState(false);
-  const [formType,  setFormType]  = useState('brand'); // 'brand' | 'influencer'
-  const [step,      setStep]      = useState(1);
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting,setSubmitting]= useState(false);
-  const [formErr,   setFormErr]   = useState('');
-  const [citySearch,setCitySearch]= useState('');
-  const [catSearch, setCatSearch] = useState('');
-
-  // Invite code gate
-  const [unlocked,  setUnlocked]  = useState(()=>localStorage.getItem('inf_unlocked')==='1');
-  const [codeInput, setCodeInput] = useState('');
-  const [codeErr,   setCodeErr]   = useState('');
-  const VALID_CODES = ['RONAK2025','EASY100','INFLUENCER','PARTNER','VIP2025'];
-  const tryCode = () => {
-    if(VALID_CODES.includes(codeInput.trim().toUpperCase())){
-      localStorage.setItem('inf_unlocked','1'); setUnlocked(true); setCodeErr('');
-    } else { setCodeErr('Invalid code. DM @ronaksure on Instagram to get access.'); }
-  };
-
-  // ── BRAND FORM (5 steps: info → category+location → details+photos → commission → OTP)
-  const [f, setF] = useState({ name:'', email:'', phone:'', city:'', category:'', description:'', cashPerReferral:'', customerDiscount:'', photos:[], isOnline:false });
-  const set = (k,v) => setF(p=>({...p,[k]:v}));
-  const [brandOtp, setBrandOtp]   = useState(['','','','','','']);
-  const [brandOtpSent, setBrandOtpSent] = useState(false);
-  const [photoUrl, setPhotoUrl]   = useState('');
-
-  const sendBrandOtp = async () => {
-    if(!f.phone.trim()){setFormErr('Enter phone number.');return;}
-    setSubmitting(true);setFormErr('');
-    try{ await api('/inf-brand/send-otp',{method:'POST',body:JSON.stringify({phone:f.phone})}); setBrandOtpSent(true); setStep(5); }
-    catch(e){setFormErr(e.message);}
-    setSubmitting(false);
-  };
-  const handleBrandOtpKey = (i,val) => {
-    if(!/^\d*$/.test(val)) return;
-    const n=[...brandOtp]; n[i]=val.slice(-1); setBrandOtp(n);
-    if(val&&i<5) document.getElementById(`botp-${i+1}`)?.focus();
-  };
-  const submitBrand = async () => {
-    const code=brandOtp.join('');
-    if(code.length<6){setFormErr('Enter the 6-digit code.');return;}
-    setSubmitting(true);setFormErr('');
-    try{
-      await api('/inf-brand/submit',{method:'POST',body:JSON.stringify({...f,otp:code})});
-      setSubmitted(true);setShowForm(false);
-    }catch(e){setFormErr(e.message);}
-    setSubmitting(false);
-  };
-
-  // ── INFLUENCER AUTH + REVIEW + URL GENERATION
-  const [invCode,   setInvCode]   = useState('');
-  const [infPhone,  setInfPhone]  = useState('');
-  const [infOtp,    setInfOtp]    = useState(['','','','','','']);
-  const [infToken,  setInfToken]  = useState(()=>localStorage.getItem('inf_token')||'');
-  const [infProfile,setInfProfile]= useState(null);
-  const [selectedBrandForReview, setSelectedBrandForReview] = useState(null);
-  const [reviewStars, setReviewStars] = useState(0);
-  const [reviewText,  setReviewText]  = useState('');
-  const [generatedUrl, setGeneratedUrl] = useState('');
-  const [urlCopied, setUrlCopied] = useState(false);
-
-  const PLATFORMS = ['Instagram','TikTok','YouTube','Twitter/X','LinkedIn','Facebook','Blog'];
-  const FOLLOWER_RANGES = ['Under 1K','1K–10K','10K–50K','50K–100K','100K+'];
-  const [inf, setInf] = useState({ name:'', handle:'', platforms:[], followers:'', categories:[], city:'', bio:'' });
-  const setI = (k,v) => setInf(p=>({...p,[k]:v}));
-  const toggleArr = (k,v) => setInf(p=>({...p,[k]: p[k].includes(v)?p[k].filter(x=>x!==v):[...p[k],v]}));
-
-  const sendInfOtp = async () => {
-    if(!invCode.trim()){setFormErr('Enter invite code.');return;}
-    if(!infPhone.trim()){setFormErr('Enter phone number.');return;}
-    setSubmitting(true);setFormErr('');
-    try{ await api('/influencer/send-otp',{method:'POST',body:JSON.stringify({phone:infPhone,inviteCode:invCode})}); setStep(3); }
-    catch(e){setFormErr(e.message);}
-    setSubmitting(false);
-  };
-  const handleInfOtpKey = (i,val) => {
-    if(!/^\d*$/.test(val)) return;
-    const n=[...infOtp]; n[i]=val.slice(-1); setInfOtp(n);
-    if(val&&i<5) document.getElementById(`iotp-${i+1}`)?.focus();
-  };
-  const verifyInfOtp = async () => {
-    const code=infOtp.join('');
-    if(code.length<6){setFormErr('Enter the 6-digit code.');return;}
-    setSubmitting(true);setFormErr('');
-    try{
-      const d = await api('/influencer/verify',{method:'POST',body:JSON.stringify({phone:infPhone,otp:code,inviteCode:invCode})});
-      localStorage.setItem('inf_token',d.token);
-      setInfToken(d.token); setInfProfile(d.profile);
-      // If new user or no name, go to profile setup
-      if(d.isNew || !d.profile.name) { setStep(4); }
-      else { setSelectedBrandForReview(null); setStep(6); } // go to review/url step
-    }catch(e){setFormErr(e.message);}
-    setSubmitting(false);
-  };
-  const saveInfProfile = async () => {
-    if(!inf.name.trim()){setFormErr('Enter your name.');return;}
-    setSubmitting(true);setFormErr('');
-    try{
-      const d = await api('/influencer/profile',{method:'PATCH',body:JSON.stringify(inf)},infToken);
-      setInfProfile(d.profile); setStep(6);
-    }catch(e){setFormErr(e.message);}
-    setSubmitting(false);
-  };
-  const submitReview = async (brandId, skip=false) => {
-    try {
-      await api('/influencer/review',{method:'POST',body:JSON.stringify({brandId,stars:reviewStars||null,text:reviewText,skipped:skip})},infToken);
-    } catch(e){console.error(e);}
-    setSelectedBrandForReview(null); setReviewStars(0); setReviewText('');
-    // Generate profile URL
-    generateProfileUrl(brandId);
-  };
-  const generateProfileUrl = async (brandId) => {
-    try{
-      const d = await api('/influencer/generate-url',{method:'POST',body:JSON.stringify({brandId})},infToken);
-      setGeneratedUrl(d.url);
-      setStep(7);
-    }catch(e){setFormErr(e.message);}
-  };
-  const copyUrl = () => {
-    navigator.clipboard.writeText(generatedUrl);
-    setUrlCopied(true); setTimeout(()=>setUrlCopied(false),2500);
-  };
-
-  useEffect(()=>{ loadBrands('All','All'); },[]);
-  const loadBrands = async (cat, city) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (cat && cat !== 'All') params.set('category', cat);
-      if (city && city !== 'All') params.set('city', city);
-      const d = await api(`/influencer-brands${params.toString()?`?${params}`:''}`);
-      setBrands(d.brands||[]);
-    } catch(e){ console.error(e); }
-    setLoading(false);
-  };
-
-  const filteredCities = INF_CITIES.filter(c=>c.toLowerCase().includes(citySearch.toLowerCase()));
-  const filteredCats   = INF_CATEGORIES.filter(c=>c.toLowerCase().includes(catSearch.toLowerCase()));
-  const darkInput = {width:'100%',padding:'12px 14px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,color:'#fff',fontSize:14,fontFamily:"'Plus Jakarta Sans',sans-serif",outline:'none',boxSizing:'border-box'};
-  const darkLabel = {fontSize:12,fontWeight:600,color:'rgba(255,255,255,.45)',display:'block',marginBottom:6};
-  const Chip = ({label,active,onClick})=>(
-    <button onClick={onClick} style={{padding:'7px 14px',borderRadius:100,border:`1.5px solid ${active?'rgba(219,39,119,.6)':'rgba(255,255,255,.1)'}`,background:active?'rgba(219,39,119,.15)':'transparent',color:active?'#F472B6':'rgba(255,255,255,.5)',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",transition:'all .15s'}}>
-      {label}
-    </button>
-  );
-
-  return (
-    <div style={{minHeight:'100vh',fontFamily:"'Plus Jakarta Sans','DM Sans',sans-serif",background:'#0A0A0F',color:'#F8FAFC'}}>
-      {/* Header */}
-      <div style={{borderBottom:'1px solid rgba(255,255,255,.07)',padding:'14px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',background:'rgba(255,255,255,.02)'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12}}>
-          <button onClick={onBack} style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:8,padding:'6px 12px',color:'rgba(255,255,255,.6)',fontSize:13,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>← Back</button>
-          <span style={{fontWeight:800,fontSize:17,letterSpacing:'-.02em'}}>Easy<span style={{color:'#2DD4BF'}}>Recommend</span></span>
-        </div>
-        <div style={{display:'flex',gap:8}}>
-          <button onClick={()=>{setShowForm(true);setFormType('influencer');setStep(1);setFormErr('');}} style={{padding:'9px 16px',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:10,color:'rgba(255,255,255,.8)',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-            I'm an Influencer
-          </button>
-          <button onClick={()=>{setShowForm(true);setFormType('brand');setStep(1);setFormErr('');}} style={{padding:'9px 20px',background:'linear-gradient(135deg,#DB2777,#9333EA)',border:'none',borderRadius:10,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",boxShadow:'0 4px 16px rgba(219,39,119,.35)'}}>
-            List your brand →
-          </button>
-        </div>
-      </div>
-
-      {/* ── HERO ── */}
-      <div style={{maxWidth:760,margin:'0 auto',padding:'64px 24px 0',textAlign:'center'}}>
-        <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'6px 16px',borderRadius:100,background:'rgba(219,39,119,.12)',border:'1px solid rgba(219,39,119,.25)',marginBottom:24}}>
-          <span style={{width:6,height:6,borderRadius:'50%',background:'#F472B6',animation:'pulse 2s ease-in-out infinite',display:'inline-block'}}/>
-          <span style={{fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'#F472B6'}}>Influencer Partnership Program</span>
-        </div>
-        <h1 style={{fontSize:'clamp(32px,6vw,60px)',fontWeight:900,lineHeight:1.02,letterSpacing:'-.04em',marginBottom:18,background:'linear-gradient(135deg,#fff 40%,rgba(255,255,255,.45))',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>
-          One link in your bio.<br/>Brands pay you for every client.
-        </h1>
-        <p style={{fontSize:16,color:'rgba(255,255,255,.45)',lineHeight:1.75,marginBottom:36,maxWidth:520,margin:'0 auto 36px'}}>
-          Sign up, get your unique tracking URL, drop it in your bio. When your followers contact a brand through your link — you get paid. No chasing invoices. No brand deals.
-        </p>
-        <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap',marginBottom:52}}>
-          <button onClick={()=>{setShowForm(true);setFormType('influencer');setStep(1);setFormErr('');}}
-            style={{padding:'14px 28px',background:'linear-gradient(135deg,#DB2777,#9333EA)',border:'none',borderRadius:10,color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",boxShadow:'0 4px 20px rgba(219,39,119,.4)'}}>
-            Apply as an influencer →
-          </button>
-          <button onClick={()=>{setShowForm(true);setFormType('brand');setStep(1);setFormErr('');}}
-            style={{padding:'13px 24px',background:'transparent',border:'1.5px solid rgba(255,255,255,.15)',borderRadius:10,color:'rgba(255,255,255,.7)',fontSize:15,fontWeight:600,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-            List your brand
-          </button>
-        </div>
-
-        {/* Stats strip */}
-        <div style={{display:'flex',gap:0,borderRadius:14,overflow:'hidden',border:'1px solid rgba(255,255,255,.07)',background:'rgba(255,255,255,.03)',marginBottom:72,maxWidth:560,margin:'0 auto 72px'}}>
-          {[['20+','Active brands'],['$20–$300','Per referral'],['3','Categories'],['1 link','In your bio']].map(([n,l],i)=>(
-            <div key={i} style={{flex:1,padding:'16px 8px',textAlign:'center',borderRight:i<3?'1px solid rgba(255,255,255,.07)':undefined}}>
-              <div style={{fontSize:16,fontWeight:800,color:'#fff',letterSpacing:'-.02em'}}>{n}</div>
-              <div style={{fontSize:10,color:'rgba(255,255,255,.3)',marginTop:3,fontWeight:500}}>{l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── HOW IT WORKS ── */}
-      <div style={{maxWidth:900,margin:'0 auto',padding:'0 24px 72px'}}>
-        <div style={{textAlign:'center',marginBottom:40}}>
-          <div style={{fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'rgba(255,255,255,.3)',marginBottom:10}}>How it works</div>
-          <h2 style={{fontSize:'clamp(22px,4vw,36px)',fontWeight:800,color:'#fff',letterSpacing:'-.03em'}}>Simple. Transparent. Trackable.</h2>
-        </div>
-
-        {/* Flow steps */}
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:64}}>
-          {[
-            {n:'01',icon:'🔑',title:'Get invited',body:'Receive your invite code from us. Enter it to unlock all brand listings and commissions.'},
-            {n:'02',icon:'🔗',title:'Get your link',body:'Sign up in 30 seconds. You receive a unique tracking URL — one link covers all brands.'},
-            {n:'03',icon:'📲',title:'Drop it in bio',body:'Add your link to your Instagram, TikTok, or any profile bio. Share it anywhere.'},
-            {n:'04',icon:'💰',title:'Get paid',body:'When followers contact a brand through your link, you earn. We track, verify, and pay.'},
-          ].map((s,i)=>(
-            <div key={s.n} style={{padding:'20px 16px',borderRadius:14,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',position:'relative'}}>
-              <div style={{position:'absolute',top:14,right:14,fontSize:28,fontWeight:900,color:'rgba(255,255,255,.05)',lineHeight:1,fontFamily:'monospace'}}>{s.n}</div>
-              <div style={{fontSize:26,marginBottom:12}}>{s.icon}</div>
-              <div style={{fontSize:14,fontWeight:700,color:'#fff',marginBottom:6,letterSpacing:'-.01em'}}>{s.title}</div>
-              <div style={{fontSize:12,color:'rgba(255,255,255,.38)',lineHeight:1.65}}>{s.body}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* What your followers see — visual mockup */}
-        <div style={{borderRadius:20,overflow:'hidden',border:'1px solid rgba(255,255,255,.08)',background:'rgba(255,255,255,.02)',marginBottom:64}}>
-          <div style={{padding:'20px 24px',borderBottom:'1px solid rgba(255,255,255,.06)',display:'flex',alignItems:'center',gap:10}}>
-            <div style={{width:8,height:8,borderRadius:'50%',background:'rgba(255,255,255,.15)'}}/>
-            <div style={{flex:1,background:'rgba(255,255,255,.05)',borderRadius:6,padding:'5px 12px',fontFamily:'monospace',fontSize:12,color:'rgba(255,255,255,.35)'}}>
-              easyrecommend.co/i/<span style={{color:'#F472B6'}}>@yourhandle</span>
-            </div>
-          </div>
-          <div style={{padding:'24px'}}>
-            <div style={{fontSize:12,fontWeight:600,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:16}}>What your followers see</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
-              {[
-                {name:'The Glow Lab SF',cat:'💄 Beauty',city:'San Francisco',reward:'$35 off first facial',color:'#DB2777',bg:'rgba(219,39,119,.08)'},
-                {name:'Bright Path Immigration',cat:'⚖️ Legal',city:'San Francisco',reward:'Free consultation',color:'#7C3AED',bg:'rgba(124,58,237,.08)'},
-                {name:'Bay Area Code School',cat:'🎓 Education',city:'San Francisco',reward:'$100 off enrollment',color:'#0EA5E9',bg:'rgba(14,165,233,.08)'},
-              ].map((b,i)=>(
-                <div key={i} style={{borderRadius:12,overflow:'hidden',border:`1px solid rgba(255,255,255,.06)`,background:'rgba(255,255,255,.03)'}}>
-                  <div style={{height:3,background:`linear-gradient(90deg,${b.color},${b.color}44)`}}/>
-                  <div style={{padding:'14px 12px'}}>
-                    <div style={{fontSize:11,fontWeight:700,color:b.color,marginBottom:6}}>{b.cat}</div>
-                    <div style={{fontSize:13,fontWeight:800,color:'#fff',marginBottom:2,lineHeight:1.2}}>{b.name}</div>
-                    <div style={{fontSize:10,color:'rgba(255,255,255,.3)',marginBottom:10}}>📍 {b.city}</div>
-                    <div style={{padding:'6px 8px',background:b.bg,borderRadius:7,marginBottom:10}}>
-                      <div style={{fontSize:9,fontWeight:700,color:b.color,textTransform:'uppercase',letterSpacing:'.04em'}}>🎟 You get</div>
-                      <div style={{fontSize:11,fontWeight:700,color:'#fff',marginTop:2}}>{b.reward}</div>
-                    </div>
-                    <div style={{display:'flex',gap:5}}>
-                      <div style={{flex:1,background:'rgba(37,211,102,.15)',border:'1px solid rgba(37,211,102,.2)',borderRadius:6,padding:'5px',textAlign:'center',fontSize:10,fontWeight:700,color:'#4ADE80'}}>WhatsApp</div>
-                      <div style={{flex:1,background:'rgba(255,255,255,.06)',borderRadius:6,padding:'5px',textAlign:'center',fontSize:10,fontWeight:600,color:'rgba(255,255,255,.4)'}}>Email</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Trust & tracking */}
-        <div style={{borderRadius:16,padding:'28px 24px',background:'rgba(255,255,255,.02)',border:'1px solid rgba(255,255,255,.06)',marginBottom:48}}>
-          <div style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:16}}>How we track & verify every referral</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-            {[
-              {icon:'🔗',title:'Unique URL per influencer',body:'Every influencer gets a different link. We know exactly who sent each visitor.'},
-              {icon:'🖥️',title:'Back-office verification',body:'Our team manually reviews every lead before any commission is approved.'},
-              {icon:'🛡️',title:'Routine fraud checks',body:'Automated + manual checks on every claim to protect brands and influencers.'},
-              {icon:'📞',title:'10+ customer calls',body:'We call the brand to verify the client actually came through your link before paying.'},
-            ].map(t=>(
-              <div key={t.title} style={{display:'flex',gap:12,alignItems:'flex-start'}}>
-                <div style={{width:36,height:36,borderRadius:9,background:'rgba(219,39,119,.1)',border:'1px solid rgba(219,39,119,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>{t.icon}</div>
-                <div>
-                  <div style={{fontSize:13,fontWeight:700,color:'#fff',marginBottom:3}}>{t.title}</div>
-                  <div style={{fontSize:12,color:'rgba(255,255,255,.38)',lineHeight:1.6}}>{t.body}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Invite code gate */}
-        {!unlocked && (
-          <div style={{padding:'28px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.1)',borderRadius:16,textAlign:'center',marginBottom:40}}>
-            <div style={{fontSize:24,marginBottom:8}}>🔒</div>
-            <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:6}}>Brand listings are invite-only</div>
-            <p style={{fontSize:13,color:'rgba(255,255,255,.4)',lineHeight:1.6,marginBottom:20}}>
-              Have an invite code? Enter it below.<br/>
-              No code? <a href="https://instagram.com/ronaksure" target="_blank" rel="noopener noreferrer" style={{color:'#F472B6',fontWeight:700,textDecoration:'none'}}>DM @ronaksure on Instagram</a> and say hello 👋
-            </p>
-            <div style={{display:'flex',gap:8,maxWidth:340,margin:'0 auto'}}>
-              <input value={codeInput} onChange={e=>{setCodeInput(e.target.value);setCodeErr('');}}
-                onKeyDown={e=>e.key==='Enter'&&tryCode()} placeholder="Enter invite code"
-                style={{flex:1,padding:'12px 14px',background:'rgba(255,255,255,.06)',border:`1px solid ${codeErr?'rgba(248,113,113,.4)':'rgba(255,255,255,.12)'}`,borderRadius:9,color:'#fff',fontSize:13,fontFamily:"'Plus Jakarta Sans',sans-serif",outline:'none'}}/>
-              <button onClick={tryCode} style={{padding:'12px 20px',background:'linear-gradient(135deg,#DB2777,#9333EA)',border:'none',borderRadius:9,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",whiteSpace:'nowrap'}}>Unlock</button>
-            </div>
-            {codeErr && <div style={{fontSize:12,color:'#F87171',marginTop:10}}>{codeErr} <a href="https://instagram.com/ronaksure" target="_blank" rel="noopener noreferrer" style={{color:'#F472B6',fontWeight:700,textDecoration:'none'}}>@ronaksure</a></div>}
-          </div>
-        )}
-        {unlocked && (
-          <div style={{textAlign:'center',marginBottom:32}}>
-            <div style={{display:'inline-flex',alignItems:'center',gap:6,padding:'6px 16px',background:'rgba(52,211,153,.1)',border:'1px solid rgba(52,211,153,.2)',borderRadius:100,fontSize:12,fontWeight:600,color:'#34D399',marginBottom:4}}>
-              ✅ Full access unlocked — browse all brands below
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Brands */}
-      <div style={{maxWidth:900,margin:'0 auto',padding:'0 24px 60px'}}>
-        {/* Category filters */}
-        <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:12}}>
-          {['All',...INF_CATEGORIES].map(cat=>{
-            const m=INF_CAT_META[cat]; const active=catFilter===cat;
-            return (
-              <button key={cat} onClick={()=>{setCatFilter(cat);loadBrands(cat,cityFilter);}}
-                style={{display:'flex',alignItems:'center',gap:7,padding:'10px 18px',borderRadius:100,border:`1.5px solid ${active?(m?.color||'#0D9488'):'rgba(255,255,255,.1)'}`,background:active?(m?.bg||'rgba(13,148,136,.12)'):'transparent',color:active?(m?.color||'#2DD4BF'):'rgba(255,255,255,.5)',fontSize:13,fontWeight:700,cursor:'pointer',transition:'all .15s',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                {m?.icon||'✨'} {cat}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* City filters */}
-        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:28}}>
-          {['All',...INF_CITIES].map(city=>{
-            const active=cityFilter===city;
-            return (
-              <button key={city} onClick={()=>{setCityFilter(city);loadBrands(catFilter,city);}}
-                style={{padding:'6px 14px',borderRadius:100,border:`1.5px solid ${active?'rgba(99,91,255,.6)':'rgba(255,255,255,.08)'}`,background:active?'rgba(99,91,255,.15)':'transparent',color:active?'#818CF8':'rgba(255,255,255,.4)',fontSize:12,fontWeight:600,cursor:'pointer',transition:'all .15s',fontFamily:"'Plus Jakarta Sans',sans-serif",whiteSpace:'nowrap'}}>
-                {city==='All'?'📍 All cities':`📍 ${city}`}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Category intro */}
-        {catFilter==='All' && (
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:36}}>
-            {INF_CATEGORIES.map(cat=>{
-              const m=INF_CAT_META[cat];
-              return (
-                <button key={cat} onClick={()=>{setCatFilter(cat);loadBrands(cat);}}
-                  style={{textAlign:'left',padding:'20px',borderRadius:14,border:`1px solid ${m.color}22`,background:m.bg,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                  <div style={{fontSize:28,marginBottom:10}}>{m.icon}</div>
-                  <div style={{fontSize:15,fontWeight:800,color:'#fff',marginBottom:4}}>{cat}</div>
-                  <div style={{fontSize:12,color:'rgba(255,255,255,.45)',lineHeight:1.5}}>{m.desc}</div>
-                  <div style={{marginTop:12,fontSize:11,fontWeight:700,color:m.color}}>Browse brands →</div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {submitted && <div style={{padding:'14px 18px',background:'rgba(16,185,129,.1)',border:'1px solid rgba(16,185,129,.2)',borderRadius:10,marginBottom:20,fontSize:13,color:'#34D399',fontWeight:600,textAlign:'center'}}>✅ Submitted! We'll review and publish within 24 hours.</div>}
-
-        <div style={{fontSize:12,fontWeight:600,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:16}}>
-          {loading?'Loading…':`${brands.length} brand${brands.length!==1?'s':''} ${catFilter!=='All'?`in ${catFilter}`:''}`}
-        </div>
-
-        {loading ? <div style={{textAlign:'center',padding:60}}><Spin/></div> : (
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:16,marginBottom:48}}>
-            {brands.map((b,i)=>{
-              const m=INF_CAT_META[b.category]||{color:'#0D9488',bg:'rgba(13,148,136,.08)',icon:'🏢'};
-              return (
-                <div key={b._id||i} style={{borderRadius:16,border:'1px solid rgba(255,255,255,.06)',background:'rgba(255,255,255,.03)',overflow:'hidden'}}>
-                  <div style={{height:4,background:`linear-gradient(90deg,${m.color},${m.color}44)`}}/>
-                  {b.imageUrl && <img src={b.imageUrl} alt={b.name} style={{width:'100%',height:120,objectFit:'cover',display:'block'}}/>}
-                  <div style={{padding:'18px'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:8}}>
-                      <span style={{fontSize:11,fontWeight:700,padding:'3px 9px',borderRadius:100,background:m.bg,color:m.color,border:`1px solid ${m.color}33`}}>{m.icon} {b.category}</span>
-                      {b.featured&&<span style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:100,background:'rgba(245,158,11,.1)',color:'#F59E0B'}}>⭐</span>}
-                    </div>
-                    <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:3}}>{b.name}</div>
-                    {b.city&&<div style={{fontSize:11,color:'rgba(255,255,255,.35)',marginBottom:10}}>📍 {b.city}</div>}
-                    {b.description&&<p style={{fontSize:12,color:'rgba(255,255,255,.4)',lineHeight:1.6,marginBottom:12}}>{b.description}</p>}
-                    <div style={{padding:'10px 12px',borderRadius:9,background:m.bg,border:`1px solid ${m.color}22`,marginBottom:10,position:'relative',overflow:'hidden'}}>
-                      <div style={{fontSize:10,fontWeight:700,color:m.color,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:2}}>💰 You earn</div>
-                      {unlocked ? (
-                        <div style={{fontSize:15,fontWeight:800,color:'#fff'}}>{b.cashPerReferral||'Contact for details'}</div>
-                      ) : (
-                        <div style={{display:'flex',alignItems:'center',gap:8}}>
-                          <div style={{fontSize:14,fontWeight:800,color:'#fff',filter:'blur(5px)',userSelect:'none',pointerEvents:'none'}}>$XX per referral</div>
-                          <span style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:100,background:'rgba(255,255,255,.1)',color:'rgba(255,255,255,.6)',border:'1px solid rgba(255,255,255,.15)',whiteSpace:'nowrap'}}>🔒 Invite only</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* How we track */}
-                    <div style={{padding:'10px 12px',borderRadius:9,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',marginBottom:14}}>
-                      <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>🔍 How we track & verify</div>
-                      <div style={{display:'flex',flexDirection:'column',gap:5}}>
-                        {[
-                          ['🔗','Unique URL tracking per influencer'],
-                          ['🖥️','Back-office manual verification'],
-                          ['🛡️','Routine fraud checks on all claims'],
-                          ['📞','10+ customer calls before approval'],
-                        ].map(([ic,txt])=>(
-                          <div key={txt} style={{display:'flex',alignItems:'center',gap:7,fontSize:11,color:'rgba(255,255,255,.4)',fontWeight:500}}>
-                            <span style={{fontSize:12,flexShrink:0}}>{ic}</span>
-                            <span>{txt}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <button onClick={()=>{setShowForm(true);setFormType('influencer');setStep(1);}} style={{width:'100%',padding:'10px',background:`linear-gradient(135deg,${m.color},${m.color}aa)`,border:'none',borderRadius:9,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                      Partner with this brand →
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Bottom CTA */}
-        <div style={{padding:'32px',borderRadius:18,border:'1px solid rgba(219,39,119,.2)',background:'rgba(219,39,119,.05)',textAlign:'center'}}>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-            <div style={{padding:'20px',borderRadius:12,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)'}}>
-              <div style={{fontSize:24,marginBottom:8}}>🏢</div>
-              <div style={{fontSize:15,fontWeight:800,color:'#fff',marginBottom:6}}>Are you a brand?</div>
-              <div style={{fontSize:12,color:'rgba(255,255,255,.4)',marginBottom:16,lineHeight:1.5}}>List your business and start paying influencers for real results.</div>
-              <button onClick={()=>{setShowForm(true);setFormType('brand');setStep(1);}} style={{width:'100%',padding:'11px',background:'linear-gradient(135deg,#DB2777,#9333EA)',border:'none',borderRadius:9,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                List your brand →
-              </button>
-            </div>
-            <div style={{padding:'20px',borderRadius:12,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)'}}>
-              <div style={{fontSize:24,marginBottom:8}}>📸</div>
-              <div style={{fontSize:15,fontWeight:800,color:'#fff',marginBottom:6}}>Are you an influencer?</div>
-              <div style={{fontSize:12,color:'rgba(255,255,255,.4)',marginBottom:16,lineHeight:1.5}}>Join our network and get matched with brands paying cash per referral.</div>
-              <button onClick={()=>{setShowForm(true);setFormType('influencer');setStep(1);}} style={{width:'100%',padding:'11px',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:9,color:'rgba(255,255,255,.8)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                Join as influencer →
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Modal */}
-      {showForm && (
-        <div style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(0,0,0,.85)',display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>{if(e.target===e.currentTarget){setShowForm(false);setStep(1);}}}>
-          <div style={{width:'100%',maxWidth:520,background:'#13131A',borderRadius:'20px 20px 0 0',padding:'24px 22px 40px',maxHeight:'90vh',overflowY:'auto',border:'1px solid rgba(255,255,255,.08)'}}>
-            <div style={{width:40,height:4,background:'rgba(255,255,255,.15)',borderRadius:2,margin:'0 auto 20px'}}/>
-
-            {/* Form type toggle */}
-            <div style={{display:'flex',gap:6,background:'rgba(255,255,255,.05)',padding:4,borderRadius:10,marginBottom:20}}>
-              {[['brand','🏢 Brand'],['influencer','📸 Influencer']].map(([t,l])=>(
-                <button key={t} onClick={()=>{setFormType(t);setStep(1);setFormErr('');}}
-                  style={{flex:1,padding:'9px',borderRadius:8,border:'none',background:formType===t?'rgba(219,39,119,.25)':'transparent',color:formType===t?'#F472B6':'rgba(255,255,255,.4)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",transition:'all .15s'}}>
-                  {l}
-                </button>
-              ))}
-            </div>
-
-            {formErr&&<div style={{fontSize:12,color:'#F87171',marginBottom:12,padding:'8px 12px',background:'rgba(239,68,68,.1)',borderRadius:8}}>⚠ {formErr}</div>}
-
-            {/* ══ BRAND FLOW ══ */}
-            {formType==='brand'&&(<>
-              {/* Step progress */}
-              {step<=5&&<div style={{display:'flex',gap:4,marginBottom:20}}>{[1,2,3,4,5].map(s=><div key={s} style={{flex:1,height:3,borderRadius:2,background:step>=s?'#DB2777':'rgba(255,255,255,.08)'}}/>)}</div>}
-
-              {step===1&&(<>
-                <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:4}}>Tell us about your brand</div>
-                <div style={{fontSize:12,color:'rgba(255,255,255,.35)',marginBottom:20}}>Step 1 of 5 — Basic info</div>
-                <label style={darkLabel}>Business name *</label>
-                <input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="e.g. The Glow Lab SF" style={{...darkInput,marginBottom:14}}/>
-                <label style={darkLabel}>Email *</label>
-                <input value={f.email} onChange={e=>set('email',e.target.value)} placeholder="hello@yourbrand.com" type="email" style={{...darkInput,marginBottom:14}}/>
-                <label style={darkLabel}>Phone * (for OTP verification)</label>
-                <input value={f.phone} onChange={e=>set('phone',e.target.value)} placeholder="+1 415 000 0000" type="tel" style={{...darkInput,marginBottom:22}}/>
-                <button onClick={()=>{if(!f.name.trim()||!f.email.trim()||!f.phone.trim()){setFormErr('All fields required.');return;}setFormErr('');setStep(2);}} style={{width:'100%',padding:'13px',background:'linear-gradient(135deg,#DB2777,#9333EA)',border:'none',borderRadius:11,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Continue →</button>
-              </>)}
-
-              {step===2&&(<>
-                <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:4}}>Category & location</div>
-                <div style={{fontSize:12,color:'rgba(255,255,255,.35)',marginBottom:20}}>Step 2 of 5</div>
-                <label style={darkLabel}>Category *</label>
-                <input value={catSearch} onChange={e=>setCatSearch(e.target.value)} placeholder="Search…" style={{...darkInput,marginBottom:8,fontSize:13}}/>
-                <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:16,maxHeight:130,overflowY:'auto'}}>
-                  {filteredCats.map(cat=>{const m=INF_CAT_META[cat];return(
-                    <button key={cat} onClick={()=>{set('category',cat);setCatSearch('');}} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',background:f.category===cat?m.bg:'rgba(255,255,255,.03)',border:`1px solid ${f.category===cat?m.color:'rgba(255,255,255,.06)'}`,borderRadius:9,color:f.category===cat?m.color:'rgba(255,255,255,.55)',fontSize:13,fontWeight:600,cursor:'pointer',textAlign:'left',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                      {m.icon} {cat}{f.category===cat&&<span style={{marginLeft:'auto'}}>✓</span>}
-                    </button>
-                  );})}
-                </div>
-                <label style={darkLabel}>Is this an online business?</label>
-                <div style={{display:'flex',gap:8,marginBottom:14}}>
-                  {['Yes — online only','No — local/physical'].map(opt=>(
-                    <button key={opt} onClick={()=>set('isOnline',opt.startsWith('Yes'))}
-                      style={{flex:1,padding:'10px 8px',borderRadius:9,border:`1px solid ${(f.isOnline===(opt.startsWith('Yes')))?'rgba(219,39,119,.5)':'rgba(255,255,255,.08)'}`,background:(f.isOnline===(opt.startsWith('Yes')))?'rgba(219,39,119,.12)':'rgba(255,255,255,.03)',color:(f.isOnline===(opt.startsWith('Yes')))?'#F472B6':'rgba(255,255,255,.5)',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",textAlign:'center'}}>
-                      {opt.startsWith('Yes')?'🌐 Online':'📍 Local'}
-                    </button>
-                  ))}
-                </div>
-                {!f.isOnline&&(<>
-                  <label style={darkLabel}>City</label>
-                  <input value={citySearch||f.city} onChange={e=>{setCitySearch(e.target.value);set('city',e.target.value);}} placeholder="Type city…" style={{...darkInput,marginBottom:6,fontSize:13}}/>
-                  {citySearch&&filteredCities.length>0&&(
-                    <div style={{display:'flex',flexDirection:'column',gap:4,marginBottom:10,maxHeight:110,overflowY:'auto'}}>
-                      {filteredCities.map(city=>(
-                        <button key={city} onClick={()=>{set('city',city);setCitySearch('');}} style={{padding:'8px 12px',background:f.city===city?'rgba(219,39,119,.1)':'rgba(255,255,255,.03)',border:`1px solid ${f.city===city?'#DB2777':'rgba(255,255,255,.06)'}`,borderRadius:8,color:f.city===city?'#F472B6':'rgba(255,255,255,.55)',fontSize:13,cursor:'pointer',textAlign:'left',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>📍 {city}</button>
-                      ))}
-                    </div>
-                  )}
-                </>)}
-                <div style={{display:'flex',gap:10,marginTop:14}}>
-                  <button onClick={()=>setStep(1)} style={{flex:1,padding:'12px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,color:'rgba(255,255,255,.6)',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>← Back</button>
-                  <button onClick={()=>{if(!f.category){setFormErr('Select a category.');return;}setFormErr('');setStep(3);}} style={{flex:2,padding:'12px',background:'linear-gradient(135deg,#DB2777,#9333EA)',border:'none',borderRadius:10,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Continue →</button>
-                </div>
-              </>)}
-
-              {step===3&&(<>
-                <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:4}}>Describe your brand</div>
-                <div style={{fontSize:12,color:'rgba(255,255,255,.35)',marginBottom:20}}>Step 3 of 5 — Details & photos</div>
-                <label style={darkLabel}>Description</label>
-                <textarea value={f.description} onChange={e=>set('description',e.target.value)} rows={3} placeholder="Tell influencers about your brand and ideal customers…" style={{...darkInput,resize:'vertical',marginBottom:14}}/>
-                <label style={darkLabel}>Photos (paste image URLs, one per line)</label>
-                <div style={{marginBottom:14}}>
-                  <div style={{display:'flex',gap:8,marginBottom:8}}>
-                    <input value={photoUrl} onChange={e=>setPhotoUrl(e.target.value)} placeholder="https://…" style={{...darkInput,fontSize:12}}/>
-                    <button onClick={()=>{if(photoUrl.trim()&&f.photos.length<5){set('photos',[...f.photos,photoUrl.trim()]);setPhotoUrl('');}}} style={{padding:'12px 14px',background:'rgba(219,39,119,.2)',border:'1px solid rgba(219,39,119,.3)',borderRadius:9,color:'#F472B6',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",whiteSpace:'nowrap'}}>Add</button>
-                  </div>
-                  {f.photos.length>0&&(
-                    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                      {f.photos.map((p,i)=>(
-                        <div key={i} style={{position:'relative'}}>
-                          <img src={p} alt="" style={{width:64,height:64,objectFit:'cover',borderRadius:8,border:'1px solid rgba(255,255,255,.1)'}} onError={e=>e.target.style.display='none'}/>
-                          <button onClick={()=>set('photos',f.photos.filter((_,j)=>j!==i))} style={{position:'absolute',top:-4,right:-4,width:18,height:18,borderRadius:'50%',background:'#EF4444',border:'none',color:'#fff',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div style={{display:'flex',gap:10}}>
-                  <button onClick={()=>setStep(2)} style={{flex:1,padding:'12px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,color:'rgba(255,255,255,.6)',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>← Back</button>
-                  <button onClick={()=>setStep(4)} style={{flex:2,padding:'12px',background:'linear-gradient(135deg,#DB2777,#9333EA)',border:'none',borderRadius:10,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Continue →</button>
-                </div>
-              </>)}
-
-              {step===4&&(<>
-                <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:4}}>Commission & rewards</div>
-                <div style={{fontSize:12,color:'rgba(255,255,255,.35)',marginBottom:20}}>Step 4 of 5</div>
-                <label style={darkLabel}>Commission to influencer</label>
-                <input value={f.cashPerReferral} onChange={e=>set('cashPerReferral',e.target.value)} placeholder="e.g. $50 per booking, 10% of sale" style={{...darkInput,marginBottom:14}}/>
-                <label style={darkLabel}>Discount for customers they refer</label>
-                <input value={f.customerDiscount} onChange={e=>set('customerDiscount',e.target.value)} placeholder="e.g. 20% off first visit, free consultation" style={{...darkInput,marginBottom:22}}/>
-                <div style={{display:'flex',gap:10}}>
-                  <button onClick={()=>setStep(3)} style={{flex:1,padding:'12px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,color:'rgba(255,255,255,.6)',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>← Back</button>
-                  <button onClick={sendBrandOtp} disabled={submitting} style={{flex:2,padding:'12px',background:'linear-gradient(135deg,#DB2777,#9333EA)',border:'none',borderRadius:10,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                    {submitting?<><Spin sm white/> Sending…</>:'Send verification code →'}
-                  </button>
-                </div>
-              </>)}
-
-              {step===5&&(<>
-                <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:4}}>Verify your phone</div>
-                <div style={{fontSize:12,color:'rgba(255,255,255,.35)',marginBottom:20}}>Step 5 of 5 — Enter the code sent to {f.phone}</div>
-                <div style={{display:'flex',gap:8,justifyContent:'center',marginBottom:20}}>
-                  {brandOtp.map((v,i)=>(
-                    <input key={i} id={`botp-${i}`} maxLength={1} value={v} inputMode="numeric"
-                      onChange={e=>{if(!/^\d*$/.test(e.target.value))return;const n=[...brandOtp];n[i]=e.target.value.slice(-1);setBrandOtp(n);if(e.target.value&&i<5)document.getElementById(`botp-${i+1}`)?.focus();}}
-                      onKeyDown={e=>{if(e.key==='Backspace'&&!v&&i>0)document.getElementById(`botp-${i-1}`)?.focus();}}
-                      style={{width:44,height:52,textAlign:'center',fontSize:22,fontWeight:700,background:'rgba(255,255,255,.06)',border:'1.5px solid rgba(255,255,255,.15)',borderRadius:10,color:'#fff',fontFamily:'monospace',outline:'none'}}/>
-                  ))}
-                </div>
-                <button onClick={submitBrand} disabled={submitting} style={{width:'100%',padding:'13px',background:'linear-gradient(135deg,#DB2777,#9333EA)',border:'none',borderRadius:11,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                  {submitting?<><Spin sm white/> Submitting…</>:'Submit brand →'}
-                </button>
-                <div style={{fontSize:11,color:'rgba(255,255,255,.3)',textAlign:'center',marginTop:10}}>Admin will review and approve within 24h. You'll get an SMS when live.</div>
-              </>)}
-            </>)}
-
-            {/* ══ INFLUENCER FLOW ══ */}
-            {formType==='influencer'&&(<>
-              {step<=4&&<div style={{display:'flex',gap:4,marginBottom:20}}>{[1,2,3,4].map(s=><div key={s} style={{flex:1,height:3,borderRadius:2,background:step>=s?'#818CF8':'rgba(255,255,255,.08)'}}/>)}</div>}
-
-              {/* Step 1 — invite code + phone */}
-              {step===1&&(<>
-                <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:4}}>Join as an influencer</div>
-                <div style={{fontSize:12,color:'rgba(255,255,255,.35)',marginBottom:20}}>Step 1 — Enter your invite code and phone</div>
-                <label style={darkLabel}>Invite code *</label>
-                <input value={invCode} onChange={e=>{setInvCode(e.target.value.toUpperCase());setFormErr('');}} placeholder="e.g. EASY100" style={{...darkInput,marginBottom:14,letterSpacing:'.1em',fontFamily:'monospace',fontSize:16}}/>
-                <div style={{fontSize:11,color:'rgba(255,255,255,.3)',marginBottom:14}}>No code? <a href="https://instagram.com/ronaksure" target="_blank" rel="noopener noreferrer" style={{color:'#F472B6',fontWeight:700,textDecoration:'none'}}>DM @ronaksure on Instagram</a></div>
-                <label style={darkLabel}>Phone number *</label>
-                <input value={infPhone} onChange={e=>setInfPhone(e.target.value)} placeholder="+1 415 000 0000" type="tel" style={{...darkInput,marginBottom:22}}/>
-                <button onClick={sendInfOtp} disabled={submitting} style={{width:'100%',padding:'13px',background:'linear-gradient(135deg,#8B5CF6,#6366F1)',border:'none',borderRadius:11,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                  {submitting?<><Spin sm white/> Sending…</>:'Get verification code →'}
-                </button>
-              </>)}
-
-              {/* Step 3 — OTP */}
-              {step===3&&(<>
-                <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:4}}>Enter the code</div>
-                <div style={{fontSize:12,color:'rgba(255,255,255,.35)',marginBottom:20}}>Sent to {infPhone}</div>
-                <div style={{display:'flex',gap:8,justifyContent:'center',marginBottom:20}}>
-                  {infOtp.map((v,i)=>(
-                    <input key={i} id={`iotp-${i}`} maxLength={1} value={v} inputMode="numeric"
-                      onChange={e=>handleInfOtpKey(i,e.target.value)}
-                      onKeyDown={e=>{if(e.key==='Backspace'&&!v&&i>0)document.getElementById(`iotp-${i-1}`)?.focus();}}
-                      style={{width:44,height:52,textAlign:'center',fontSize:22,fontWeight:700,background:'rgba(255,255,255,.06)',border:'1.5px solid rgba(255,255,255,.15)',borderRadius:10,color:'#fff',fontFamily:'monospace',outline:'none'}}/>
-                  ))}
-                </div>
-                <button onClick={verifyInfOtp} disabled={submitting} style={{width:'100%',padding:'13px',background:'linear-gradient(135deg,#8B5CF6,#6366F1)',border:'none',borderRadius:11,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                  {submitting?<><Spin sm white/> Verifying…</>:'Continue →'}
-                </button>
-                <button onClick={()=>setStep(1)} style={{width:'100%',marginTop:8,padding:'11px',background:'transparent',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,color:'rgba(255,255,255,.5)',fontSize:13,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>← Change number</button>
-              </>)}
-
-              {/* Step 4 — profile details (new users) */}
-              {step===4&&(<>
-                <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:4}}>Your profile</div>
-                <div style={{fontSize:12,color:'rgba(255,255,255,.35)',marginBottom:20}}>Tell brands about you</div>
-                <label style={darkLabel}>Your name *</label>
-                <input value={inf.name} onChange={e=>setI('name',e.target.value)} placeholder="Your name" style={{...darkInput,marginBottom:14}}/>
-                <label style={darkLabel}>Handle (your @username)</label>
-                <input value={inf.handle} onChange={e=>setI('handle',e.target.value)} placeholder="@yourhandle" style={{...darkInput,marginBottom:14}}/>
-                <label style={darkLabel}>Platforms</label>
-                <div style={{display:'flex',flexWrap:'wrap',gap:7,marginBottom:14}}>
-                  {PLATFORMS.map(p=><Chip key={p} label={p} active={inf.platforms.includes(p)} onClick={()=>toggleArr('platforms',p)}/>)}
-                </div>
-                <label style={darkLabel}>Approximate follower count</label>
-                <div style={{display:'flex',flexWrap:'wrap',gap:7,marginBottom:14}}>
-                  {FOLLOWER_RANGES.map(r=><Chip key={r} label={r} active={inf.followers===r} onClick={()=>setI('followers',r)}/>)}
-                </div>
-                <label style={darkLabel}>City</label>
-                <input value={inf.city} onChange={e=>setI('city',e.target.value)} placeholder="San Francisco" style={{...darkInput,marginBottom:22}}/>
-                <button onClick={saveInfProfile} disabled={submitting} style={{width:'100%',padding:'13px',background:'linear-gradient(135deg,#8B5CF6,#6366F1)',border:'none',borderRadius:11,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                  {submitting?<><Spin sm white/> Saving…</>:'Save & continue →'}
-                </button>
-              </>)}
-
-              {/* Step 6 — pick brand to review + generate URL */}
-              {step===6&&(<>
-                <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:4}}>👋 Welcome{infProfile?.name?`, ${infProfile.name}`:''}!</div>
-                <div style={{fontSize:12,color:'rgba(255,255,255,.35)',marginBottom:20}}>Pick a brand to feature in your bio link and share your experience</div>
-                <div style={{maxHeight:320,overflowY:'auto',display:'flex',flexDirection:'column',gap:10}}>
-                  {brands.filter(b=>b.approved!==false).map(b=>{
-                    const m=INF_CAT_META[b.category]||{color:'#0D9488',bg:'rgba(13,148,136,.08)',icon:'🏢'};
-                    return(
-                      <button key={b._id} onClick={()=>setSelectedBrandForReview(b)}
-                        style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',background:selectedBrandForReview?._id===b._id?m.bg:'rgba(255,255,255,.03)',border:`1px solid ${selectedBrandForReview?._id===b._id?m.color:'rgba(255,255,255,.08)'}`,borderRadius:10,cursor:'pointer',textAlign:'left',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                        <div style={{width:36,height:36,borderRadius:9,background:m.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>{m.icon}</div>
-                        <div style={{flex:1}}>
-                          <div style={{fontSize:13,fontWeight:700,color:'#fff'}}>{b.name}</div>
-                          <div style={{fontSize:11,color:'rgba(255,255,255,.35)'}}>{b.category}{b.city?` · 📍${b.city}`:''}</div>
-                        </div>
-                        {selectedBrandForReview?._id===b._id&&<span style={{color:m.color,fontSize:14}}>✓</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-                {selectedBrandForReview&&(
-                  <div style={{marginTop:16}}>
-                    {/* Star rating */}
-                    <div style={{fontSize:13,fontWeight:600,color:'rgba(255,255,255,.5)',marginBottom:8}}>Rate {selectedBrandForReview.name} (optional)</div>
-                    <div style={{display:'flex',gap:4,marginBottom:10}}>
-                      {[1,2,3,4,5].map(s=>(
-                        <button key={s} onClick={()=>setReviewStars(s)} style={{fontSize:28,background:'none',border:'none',cursor:'pointer',opacity:reviewStars>=s?1:.25,transition:'opacity .15s'}}>⭐</button>
-                      ))}
-                    </div>
-                    {reviewStars>0&&(
-                      <textarea value={reviewText} onChange={e=>setReviewText(e.target.value)} rows={2} placeholder="Share your experience with this brand… (optional)"
-                        style={{...darkInput,resize:'none',marginBottom:14,fontSize:13}}/>
-                    )}
-                    <div style={{display:'flex',gap:8}}>
-                      <button onClick={()=>submitReview(selectedBrandForReview._id, true)} style={{flex:1,padding:'12px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,color:'rgba(255,255,255,.5)',fontSize:13,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Skip →</button>
-                      <button onClick={()=>submitReview(selectedBrandForReview._id, false)} disabled={submitting} style={{flex:2,padding:'12px',background:'linear-gradient(135deg,#8B5CF6,#6366F1)',border:'none',borderRadius:10,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                        {reviewStars>0?'Submit & get my link →':'Generate my link →'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>)}
-
-              {/* Step 7 — show generated URL */}
-              {step===7&&generatedUrl&&(<>
-                <div style={{textAlign:'center',marginBottom:20}}>
-                  <div style={{fontSize:32,marginBottom:10}}>🎉</div>
-                  <div style={{fontSize:17,fontWeight:800,color:'#fff',marginBottom:6}}>Your bio link is ready!</div>
-                  <div style={{fontSize:13,color:'rgba(255,255,255,.4)',lineHeight:1.6}}>Add this to your Instagram, TikTok, or any profile bio. When followers open it, they'll see the brands you feature.</div>
-                </div>
-                <div style={{background:'rgba(99,91,255,.1)',border:'1px solid rgba(99,91,255,.3)',borderRadius:12,padding:'14px 16px',marginBottom:16}}>
-                  <div style={{fontSize:11,fontWeight:600,color:'#818CF8',marginBottom:6}}>Your unique link</div>
-                  <div style={{fontFamily:'monospace',fontSize:13,color:'#fff',wordBreak:'break-all',marginBottom:10}}>{generatedUrl}</div>
-                  <button onClick={copyUrl} style={{width:'100%',padding:'10px',background:urlCopied?'rgba(16,185,129,.2)':'rgba(99,91,255,.25)',border:`1px solid ${urlCopied?'rgba(16,185,129,.4)':'rgba(99,91,255,.4)'}`,borderRadius:8,color:urlCopied?'#34D399':'#818CF8',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",transition:'all .2s'}}>
-                    {urlCopied?'✅ Copied!':'📋 Copy link'}
-                  </button>
-                </div>
-                <div style={{display:'flex',gap:8}}>
-                  <a href={`https://wa.me/?text=${encodeURIComponent(`Check out my referral page: ${generatedUrl}`)}`} target="_blank" rel="noopener noreferrer"
-                    style={{flex:1,padding:'11px',background:'#25D366',borderRadius:10,color:'#fff',fontSize:13,fontWeight:700,textDecoration:'none',textAlign:'center',display:'block'}}>
-                    Share on WhatsApp
-                  </a>
-                  <button onClick={()=>setStep(6)} style={{flex:1,padding:'11px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,color:'rgba(255,255,255,.6)',fontSize:13,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                    Feature another brand
-                  </button>
-                </div>
-              </>)}
-            </>)}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1218,99 +495,109 @@ function FeaturedPage({ onGetStarted }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // LANDING PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
-function LandingPage({ onGetStarted, onFeatured, onInfluencer }) {
-  const TICKER = ['5,000+ referrals tracked','$2M+ paid out','Verified businesses','Real-time tracking','Instant payouts','Fraud protection','WhatsApp sharing','200+ businesses'];
+function LandingPage({ onGetStarted, onFeatured }) {
+  const TICKER = ['Verified Referrals','Business Approved','Instant Payouts','Bank & Mobile Payouts','Multi-Clinic Ready','Fraud Protected','Real-Time Tracking','WhatsApp Sharing'];
 
   return (
-    <div style={{minHeight:'100vh',background:'#fff',fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif",color:'#0A2540'}}>
+    <div style={{minHeight:'100vh',background:'#F7F9FC',fontFamily:"'Plus Jakarta Sans','DM Sans',sans-serif"}}>
 
       {/* ── NAV ── */}
       <nav className="lp-nav">
         <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{width:32,height:32,background:'#635BFF',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(99,91,255,.4)'}}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          <div style={{width:36,height:36,background:'linear-gradient(135deg,#0D9488,#059669)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(13,148,136,.4)'}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 9.5 19.79 19.79 0 01.88 4.72 2 2 0 012.88 2.54h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L7.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
           </div>
-          <span className="lp-logo">Easy<em>Recommend</em></span>
+          <span style={{fontWeight:800,fontSize:18,color:'#fff',letterSpacing:'-.02em'}}>Easy<span style={{color:'#2DD4BF'}}>Recommend</span></span>
         </div>
-        <div className="lp-nav-links">
-          <button className="lp-nav-link" onClick={onFeatured}>Browse</button>
-          <button className="lp-nav-link" onClick={onInfluencer}>Influencers</button>
-          <button className="lp-nav-link" onClick={onGetStarted}>Sign in</button>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <button onClick={onFeatured} className="lp-btn-ghost" style={{padding:'9px 16px',fontSize:13}}>🏢 Browse</button>
+          <button onClick={onGetStarted} className="lp-btn-ghost" style={{padding:'9px 20px',fontSize:13}}>Sign in</button>
+          <button onClick={onGetStarted} className="lp-btn-primary" style={{padding:'9px 20px',fontSize:13,boxShadow:'0 2px 12px rgba(13,148,136,.4)'}}>Get started →</button>
         </div>
-        <button className="lp-btn-primary" onClick={onGetStarted} style={{padding:'9px 20px',fontSize:14}}>
-          Get started →
-        </button>
       </nav>
 
       {/* ── HERO ── */}
-      <section className="lp-hero-bg">
-        <div className="lp-hero-content" style={{width:'100%',maxWidth:1080,margin:'0 auto',padding:'80px 40px 100px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:72,alignItems:'center'}}>
+      <section className="lp-hero-bg" style={{minHeight:'100vh',display:'flex',alignItems:'center',paddingTop:80}}>
+        <div className="lp-grid-overlay"/>
 
+        {/* Floating orbs */}
+        <div style={{position:'absolute',width:400,height:400,borderRadius:'50%',background:'radial-gradient(circle,rgba(13,148,136,.18) 0%,transparent 70%)',top:'10%',right:'-5%',pointerEvents:'none',animation:'floatSlow 7s ease-in-out infinite'}}/>
+        <div style={{position:'absolute',width:250,height:250,borderRadius:'50%',background:'radial-gradient(circle,rgba(16,185,129,.12) 0%,transparent 70%)',bottom:'15%',left:'5%',pointerEvents:'none',animation:'float 5s ease-in-out infinite'}}>
+          <div style={{position:'absolute',inset:0,borderRadius:'50%',border:'1px solid rgba(13,148,136,.2)',animation:'ripple 3s ease-out infinite'}}/>
+        </div>
+
+        <div className="lp-hero-content" style={{width:'100%',maxWidth:1100,margin:'0 auto',padding:'60px 40px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:60,alignItems:'center'}}>
+
+          {/* Left: copy */}
           <div>
-            <div className="au" style={{marginBottom:20}}>
+            <div className="au" style={{marginBottom:24}}>
               <div className="lp-badge"><span className="lp-badge-dot"/>The Referral Platform for Every Business</div>
             </div>
             <h1 className="au1 lp-headline" style={{marginBottom:22}}>
-              Refer clients.<br/>Earn <em>real money.</em><br/>Instantly.
+              Refer clients.<br/>
+              Earn <em>real money.</em><br/>
+              Instantly.
             </h1>
-            <p className="au2 lp-sub" style={{marginBottom:36,maxWidth:460}}>
-              Share your referral link. Earn when friends become clients — works for clinics, law firms, real estate agents, and more.
+            <p className="au2 lp-sub" style={{marginBottom:36,maxWidth:480}}>
+              Share your referral link with friends. Earn rewards when they become a client — works for clinics, law firms, real estate agents, and more.
             </p>
-            <div className="au3" style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:32}}>
-              <button className="lp-btn-primary" onClick={onGetStarted} style={{padding:'14px 28px',fontSize:16}}>
-                Start earning free
+            <div className="au3" style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'center',marginBottom:36}}>
+              <button onClick={onGetStarted} className="lp-btn-primary">
+                Start Earning Free
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </button>
-              <button onClick={()=>onGetStarted('doctor')} style={{display:'inline-flex',alignItems:'center',gap:8,padding:'13px 24px',borderRadius:9,background:'#fff',color:'#0A2540',border:'1.5px solid rgba(10,37,64,.15)',fontSize:15,fontWeight:600,cursor:'pointer',fontFamily:'inherit',transition:'all .2s'}}>
-                I'm a Business
+              <button onClick={onGetStarted} className="lp-btn-ghost">
+                I'm a Business →
               </button>
             </div>
+
+            {/* Trust row */}
             <div className="au4" style={{display:'flex',gap:20,flexWrap:'wrap'}}>
-              {[['✓','No credit card required'],['✓','Free to join'],['✓','Instant setup']].map(([ic,lb])=>(
-                <div key={lb} style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:'#697386',fontWeight:500}}>
-                  <span style={{color:'#635BFF',fontWeight:700}}>{ic}</span><span>{lb}</span>
+              {[['✅','Business Verified'],['🔒','Fraud Protected'],['💸','Cash Payouts']].map(([ic,lb])=>(
+                <div key={lb} style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:'rgba(248,250,252,.7)',fontWeight:500}}>
+                  <span>{ic}</span><span>{lb}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right: clean product mockup */}
-          <div style={{position:'relative',height:440,display:'grid',placeItems:'center'}}>
+          {/* Right: floating UI mockup cards */}
+          <div style={{position:'relative',height:420,display:'grid',placeItems:'center'}}>
             {/* Main card */}
-            <div className="lp-float-card au2" style={{width:'100%',maxWidth:320,animation:'float 6s ease-in-out infinite'}}>
+            <div className="lp-float-card au2" style={{width:'100%',maxWidth:300,animation:'float 6s ease-in-out infinite'}}>
               <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
-                <div style={{width:40,height:40,borderRadius:10,background:'rgba(99,91,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>⚖️</div>
-                <div>
-                  <div style={{fontSize:14,fontWeight:700,color:'#0A2540'}}>Legal Consultation</div>
-                  <div style={{fontSize:11,color:'#697386'}}>Hassan & Partners · SF</div>
-                </div>
+                <div style={{width:36,height:36,borderRadius:10,background:'rgba(13,148,136,.25)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>💊</div>
+                <div><div style={{fontSize:14,fontWeight:700,color:'#F8FAFC'}}>Legal Consultation</div><div style={{fontSize:11,color:'rgba(248,250,252,.5)'}}>Hassan & Partners</div></div>
               </div>
-              <div style={{background:'#F6F9FC',border:'1.5px dashed rgba(99,91,255,.3)',borderRadius:12,padding:16,textAlign:'center',marginBottom:14}}>
-                <div style={{fontSize:22,fontWeight:800,letterSpacing:'.14em',color:'#635BFF',fontFamily:'monospace'}}>PT3A9F2B</div>
-                <div style={{fontSize:11,color:'#697386',marginTop:4}}>Your referral code</div>
+              <div style={{background:'rgba(13,148,136,.15)',border:'1px dashed rgba(13,148,136,.4)',borderRadius:10,padding:16,textAlign:'center',marginBottom:14}}>
+                <div style={{fontSize:22,fontWeight:800,letterSpacing:'.12em',color:'#2DD4BF',fontFamily:'monospace'}}>PT3A9F2B</div>
+                <div style={{fontSize:11,color:'rgba(248,250,252,.5)',marginTop:4}}>Your referral code</div>
               </div>
               <div style={{display:'flex',gap:8}}>
-                <div style={{flex:1,background:'#635BFF',borderRadius:8,padding:'10px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'#fff',cursor:'pointer'}}>Share link</div>
-                <div style={{flex:1,background:'#F6F9FC',border:'1px solid rgba(10,37,64,.1)',borderRadius:8,padding:'10px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:600,color:'#425466'}}>Copy</div>
+                <div style={{flex:1,background:'#25D366',borderRadius:8,padding:'9px',display:'flex',alignItems:'center',justifyContent:'center',gap:6,fontSize:12,fontWeight:700,color:'#fff'}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                  WhatsApp
+                </div>
+                <div style={{flex:1,background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.15)',borderRadius:8,padding:'9px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:600,color:'rgba(248,250,252,.8)'}}>Copy</div>
               </div>
             </div>
 
-            {/* Notification */}
-            <div style={{position:'absolute',top:16,right:-8,background:'#fff',border:'1px solid rgba(10,37,64,.08)',boxShadow:'0 8px 32px rgba(10,37,64,.12)',borderRadius:14,padding:'12px 16px',display:'flex',alignItems:'center',gap:10,animation:'float 4s ease-in-out infinite .5s',minWidth:200}}>
-              <div style={{width:32,height:32,borderRadius:'50%',background:'rgba(16,185,129,.12)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>🎉</div>
-              <div>
-                <div style={{fontSize:13,fontWeight:700,color:'#0A2540'}}>$500 approved!</div>
-                <div style={{fontSize:11,color:'#697386'}}>Referral confirmed</div>
-              </div>
+            {/* Floating notification pill — top right */}
+            <div style={{position:'absolute',top:20,right:-10,background:'rgba(16,185,129,.15)',backdropFilter:'blur(10px)',border:'1px solid rgba(16,185,129,.3)',borderRadius:12,padding:'10px 14px',display:'flex',alignItems:'center',gap:8,animation:'float 4s ease-in-out infinite .5s'}}>
+              <div style={{width:28,height:28,borderRadius:'50%',background:'rgba(16,185,129,.25)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>🎉</div>
+              <div><div style={{fontSize:12,fontWeight:700,color:'#F8FAFC'}}>$500 approved!</div><div style={{fontSize:10,color:'rgba(248,250,252,.5)'}}>Legal consultation referral</div></div>
             </div>
 
-            {/* Status pill */}
-            <div style={{position:'absolute',bottom:20,left:-16,background:'#fff',border:'1px solid rgba(10,37,64,.08)',boxShadow:'0 4px 20px rgba(10,37,64,.1)',borderRadius:12,padding:'10px 16px',animation:'float 5s ease-in-out infinite 1s'}}>
-              <div style={{fontSize:11,color:'#697386',marginBottom:3}}>Referral status</div>
-              <div style={{display:'flex',alignItems:'center',gap:7}}><div style={{width:8,height:8,borderRadius:'50%',background:'#10B981',boxShadow:'0 0 6px rgba(16,185,129,.5)'}}/><span style={{fontSize:13,fontWeight:700,color:'#059669'}}>Approved & Paid</span></div>
+            {/* Floating approved badge — bottom left */}
+            <div style={{position:'absolute',bottom:30,left:-20,background:'rgba(15,23,42,.8)',backdropFilter:'blur(10px)',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,padding:'10px 14px',animation:'float 5s ease-in-out infinite 1s'}}>
+              <div style={{fontSize:11,color:'rgba(248,250,252,.5)',marginBottom:4}}>Referral status</div>
+              <div style={{display:'flex',alignItems:'center',gap:6}}><div style={{width:8,height:8,borderRadius:'50%',background:'#10B981',boxShadow:'0 0 6px rgba(16,185,129,.6)'}}/><span style={{fontSize:13,fontWeight:700,color:'#34D399'}}>✅ Approved by Business</span></div>
             </div>
           </div>
         </div>
+
+        {/* Bottom hero gradient fade */}
+        <div style={{position:'absolute',bottom:0,left:0,right:0,height:120,background:'linear-gradient(to bottom,transparent,#F7F9FC)',pointerEvents:'none'}}/>
       </section>
 
       {/* ── TICKER ── */}
@@ -1323,11 +610,11 @@ function LandingPage({ onGetStarted, onFeatured, onInfluencer }) {
       </div>
 
       {/* ── STATS ── */}
-      <section style={{background:'#0A2540',padding:'56px 24px'}}>
-        <div className="lp-stats-grid" style={{maxWidth:960,margin:'0 auto',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:0}}>
-          {[['5,000+','Referrals logged'],['$2M+','Paid out'],['200+','Active businesses'],['98%','Satisfaction rate']].map(([n,l],i)=>(
-            <div key={l} className="lp-stat" style={{borderRight:i<3?'1px solid rgba(255,255,255,.07)':undefined}}>
-              <div className="lp-stat-num" style={{background:'linear-gradient(135deg,#635BFF,#00D4FF)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>{n}</div>
+      <section style={{background:'#fff',borderBottom:'1px solid #E8EDF5'}}>
+        <div className="lp-stats-grid" style={{maxWidth:900,margin:'0 auto',padding:'12px 24px',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:0}}>
+          {[['5,000+','Referrals Logged'],['$2M+','Commissions Paid'],['200+','Businesses Onboarded'],['98%','Doctor Approval Rate']].map(([n,l],i)=>(
+            <div key={l} className="lp-stat" style={{borderRight:i<3?'1px solid #E8EDF5':undefined}}>
+              <div className="lp-stat-num">{n}</div>
               <div className="lp-stat-lbl">{l}</div>
             </div>
           ))}
@@ -1335,121 +622,126 @@ function LandingPage({ onGetStarted, onFeatured, onInfluencer }) {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section style={{background:'#F6F9FC',borderTop:'1px solid rgba(10,37,64,.06)',borderBottom:'1px solid rgba(10,37,64,.06)'}}>
-        <div className="lp-section" style={{textAlign:'center'}}>
-          <div className="lp-section-tag">How it works</div>
-          <h2 className="lp-section-h" style={{textAlign:'center'}}>Three steps to your first payout</h2>
-          <p className="lp-section-sub" style={{margin:'0 auto 56px'}}>No complicated setup. Share, track, and get paid.</p>
-          <div className="lp-steps-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:28,textAlign:'left'}}>
+      <section style={{background:'#F7F9FC'}}>
+        <div className="lp-section">
+          <div style={{textAlign:'center',marginBottom:56}}>
+            <div className="lp-section-tag">How it works</div>
+            <h2 className="lp-section-h" style={{textAlign:'center'}}>Three steps to your first payout</h2>
+            <p className="lp-section-sub" style={{textAlign:'center',margin:'0 auto'}}>No complicated setup. Just share, track, and get paid.</p>
+          </div>
+          <div className="lp-steps-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:24}}>
             {[
-              {n:'1',icon:'📱',title:'Get your link',body:'Sign up with your phone in 30 seconds. Instantly get a unique referral code and shareable link.'},
-              {n:'2',icon:'🤝',title:'Refer someone',body:'Share your link on WhatsApp or with friends. When they visit, they mention your code.'},
-              {n:'3',icon:'💰',title:'Get paid',body:'The business approves the visit and your commission drops into your wallet. Withdraw anytime.'},
+              {n:'1',icon:'📱',title:'Get your code',body:"Sign up with your phone in 30 seconds. You'll instantly get a unique referral code and shareable link.",color:'rgba(13,148,136,.1)',border:'rgba(13,148,136,.2)'},
+              {n:'2',icon:'🤝',title:'Refer someone',body:'Share your link on WhatsApp or with friends. When they visit the business, they mention your code.',color:'rgba(139,92,246,.08)',border:'rgba(139,92,246,.2)'},
+              {n:'3',icon:'💰',title:'Get paid',body:"The business approves the referral and your commission drops into your wallet. Withdraw to your bank or mobile wallet.",color:'rgba(16,185,129,.08)',border:'rgba(16,185,129,.2)'},
             ].map((s,i)=>(
-              <div key={s.n} style={{background:'#fff',borderRadius:16,padding:28,border:'1px solid rgba(10,37,64,.07)',boxShadow:'0 2px 8px rgba(10,37,64,.04)',position:'relative'}}>
-                <div style={{position:'absolute',top:20,right:20,fontSize:52,fontWeight:900,color:'#F0F4F8',lineHeight:1,userSelect:'none'}}>{s.n}</div>
-                <div className="lp-step-num" style={{marginBottom:16}}>{s.n}</div>
-                <div style={{fontSize:28,marginBottom:12}}>{s.icon}</div>
-                <div style={{fontSize:17,fontWeight:700,color:'#0A2540',marginBottom:8,letterSpacing:'-.01em'}}>{s.title}</div>
-                <div style={{fontSize:14,color:'#697386',lineHeight:1.7}}>{s.body}</div>
+              <div key={s.n} className="card lp-card-hover" style={{padding:28,position:'relative',border:'1px solid #E8EDF5'}}>
+                <div style={{position:'absolute',top:20,right:20,fontSize:60,fontWeight:900,color:'#F1F5F9',lineHeight:1,userSelect:'none'}}>{s.n}</div>
+                <div style={{width:52,height:52,borderRadius:14,background:s.color,border:`1px solid ${s.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,marginBottom:16}}>{s.icon}</div>
+                <div style={{fontSize:17,fontWeight:700,color:'#0F172A',marginBottom:8}}>{s.title}</div>
+                <div style={{fontSize:14,color:'#64748B',lineHeight:1.7}}>{s.body}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── FOR REFERRERS ── */}
-      <section style={{background:'#fff'}}>
+      {/* ── FEATURES SPLIT ── */}
+      <section style={{background:'#fff',borderTop:'1px solid #E8EDF5'}}>
         <div className="lp-section">
-          <div className="lp-feat-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:72,alignItems:'center'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:72,alignItems:'center'}}>
             <div>
               <div className="lp-section-tag">For Referrers</div>
               <h2 className="lp-section-h">Earn while you connect friends with great businesses</h2>
-              <p className="lp-section-sub" style={{marginBottom:36}}>Every successful referral puts real money in your pocket — no selling, no upfront cost, just sharing.</p>
-              <div style={{display:'flex',flexDirection:'column',gap:20}}>
+              <p className="lp-section-sub" style={{marginBottom:32}}>Every successful referral puts real money in your pocket — no selling, no upfront cost, just sharing.</p>
+              <div style={{display:'flex',flexDirection:'column',gap:16}}>
                 {[
-                  {icon:'🔗',title:'Your unique link',body:'Works with any partner business',bg:'rgba(99,91,255,.08)'},
-                  {icon:'📊',title:'Real-time tracking',body:'Watch referrals go from pending → paid',bg:'rgba(0,212,255,.08)'},
-                  {icon:'💳',title:'Instant withdrawal',body:'Cash out to bank or mobile wallet',bg:'rgba(16,185,129,.08)'},
-                  {icon:'🔔',title:'Instant notifications',body:'Alerted the moment you\'re approved',bg:'rgba(245,158,11,.08)'},
+                  {icon:'🔗',title:'Unique referral link',body:'Your personal link works with any partner business'},
+                  {icon:'📊',title:'Real-time tracking',body:'Watch every referral move from pending → approved → paid'},
+                  {icon:'💳',title:'Instant withdrawals',body:'Cash out to your bank account or mobile wallet'},
+                  {icon:'🔔',title:'Smart notifications',body:"Get alerted the moment your referral is approved or paid"},
                 ].map(f=>(
                   <div key={f.title} style={{display:'flex',gap:14,alignItems:'flex-start'}}>
-                    <div style={{width:40,height:40,borderRadius:10,background:f.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:17,flexShrink:0}}>{f.icon}</div>
-                    <div><div style={{fontSize:14,fontWeight:700,color:'#0A2540',marginBottom:3}}>{f.title}</div><div style={{fontSize:13,color:'#697386',lineHeight:1.6}}>{f.body}</div></div>
+                    <div style={{width:40,height:40,borderRadius:10,background:'rgba(13,148,136,.08)',border:'1px solid rgba(13,148,136,.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>{f.icon}</div>
+                    <div><div style={{fontSize:14,fontWeight:700,color:'#0F172A',marginBottom:3}}>{f.title}</div><div style={{fontSize:13,color:'#64748B',lineHeight:1.6}}>{f.body}</div></div>
                   </div>
                 ))}
               </div>
             </div>
-            <div style={{background:'#0A2540',borderRadius:20,padding:28,position:'relative',overflow:'hidden',boxShadow:'0 24px 64px rgba(10,37,64,.25)'}}>
-              <div style={{position:'absolute',top:-60,right:-60,width:200,height:200,borderRadius:'50%',background:'radial-gradient(circle,rgba(99,91,255,.25),transparent 70%)',pointerEvents:'none'}}/>
-              <div style={{fontSize:12,fontWeight:600,color:'rgba(255,255,255,.4)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:20}}>Your Wallet</div>
-              {[{lbl:'⏳ Pending',val:'$350',color:'#F59E0B'},{lbl:'✅ Approved',val:'$1,200',color:'#34D399'},{lbl:'💳 Withdrawable',val:'$850',color:'#818CF8'}].map(w=>(
-                <div key={w.lbl} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',borderRadius:10,marginBottom:10}}>
-                  <span style={{fontSize:13,color:'rgba(255,255,255,.6)',fontWeight:500}}>{w.lbl}</span>
-                  <span style={{fontSize:16,fontWeight:800,color:w.color}}>{w.val}</span>
+            <div style={{background:'linear-gradient(135deg,#0F172A,#0D4A45)',borderRadius:20,padding:28,position:'relative',overflow:'hidden'}}>
+              <div style={{position:'absolute',top:0,right:0,width:150,height:150,borderRadius:'50%',background:'radial-gradient(circle,rgba(13,148,136,.25),transparent 70%)',pointerEvents:'none'}}/>
+              <div style={{fontSize:13,fontWeight:600,color:'rgba(248,250,252,.5)',letterSpacing:'.08em',textTransform:'uppercase',marginBottom:16}}>Your Wallet</div>
+              {[{lbl:'⏳ Pending Earnings',val:'$350',color:'#F59E0B'},{lbl:'✅ Approved',val:'$1,200',color:'#34D399'},{lbl:'💳 Withdrawable',val:'$850',color:'#2DD4BF'}].map(w=>(
+                <div key={w.lbl} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:10,marginBottom:10}}>
+                  <span style={{fontSize:13,color:'rgba(248,250,252,.7)',fontWeight:500}}>{w.lbl}</span>
+                  <span style={{fontSize:15,fontWeight:800,color:w.color}}>{w.val}</span>
                 </div>
               ))}
-              <button onClick={onGetStarted} style={{width:'100%',marginTop:8,padding:'13px',background:'#635BFF',border:'none',borderRadius:10,color:'#fff',fontWeight:700,fontSize:14,cursor:'pointer',fontFamily:'inherit',boxShadow:'0 4px 16px rgba(99,91,255,.4)'}}>
-                Start earning →
+              <button onClick={onGetStarted} style={{width:'100%',marginTop:8,padding:'12px',background:'linear-gradient(135deg,#0D9488,#059669)',border:'none',borderRadius:10,color:'#fff',fontWeight:700,fontSize:14,cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+                Withdraw Now →
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── FOR BUSINESSES ── */}
-      <section style={{background:'#F6F9FC',borderTop:'1px solid rgba(10,37,64,.06)'}}>
+      {/* ── DOCTOR SECTION ── */}
+      <section style={{background:'#F7F9FC',borderTop:'1px solid #E8EDF5'}}>
         <div className="lp-section">
-          <div className="lp-feat-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:72,alignItems:'center'}}>
-            {/* Dashboard mockup */}
-            <div style={{background:'#fff',borderRadius:16,overflow:'hidden',border:'1px solid rgba(10,37,64,.08)',boxShadow:'0 8px 32px rgba(10,37,64,.08)'}}>
-              <div style={{background:'#F6F9FC',padding:'12px 16px',display:'flex',alignItems:'center',gap:6,borderBottom:'1px solid rgba(10,37,64,.07)'}}>
-                {['#EF4444','#F59E0B','#10B981'].map(c=><div key={c} style={{width:10,height:10,borderRadius:'50%',background:c}}/>)}
-                <span style={{fontSize:11,color:'#697386',marginLeft:6,fontFamily:'monospace'}}>dashboard.easyrecommend.co</span>
-              </div>
-              <div style={{padding:20}}>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
-                  {[{n:'47',l:'Referrals',c:'#635BFF'},{n:'38',l:'Approved',c:'#10B981'},{n:'81%',l:'Conversion',c:'#F59E0B'},{n:'$19K',l:'Paid Out',c:'#0EA5E9'}].map(s=>(
-                    <div key={s.l} style={{background:'#F6F9FC',borderRadius:10,padding:'14px',border:'1px solid rgba(10,37,64,.06)'}}>
-                      <div style={{fontSize:22,fontWeight:800,color:s.c,letterSpacing:'-.02em'}}>{s.n}</div>
-                      <div style={{fontSize:11,color:'#8898AA',fontWeight:600,textTransform:'uppercase',letterSpacing:'.04em',marginTop:3}}>{s.l}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{background:'#F6F9FC',borderRadius:10,padding:14,border:'1px solid rgba(10,37,64,.06)'}}>
-                  <div style={{fontSize:11,fontWeight:700,color:'#8898AA',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:12}}>Recent referrals</div>
-                  {[{n:'James R.',t:'Legal Consultation',s:'approved'},{n:'Sarah K.',t:'Property Viewing',s:'pending'},{n:'Mike T.',t:'Fitness Plan',s:'visit_completed'}].map(r=>(
-                    <div key={r.n} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 0',borderBottom:'1px solid rgba(10,37,64,.06)'}}>
-                      <div><div style={{fontSize:13,fontWeight:600,color:'#0A2540'}}>{r.n}</div><div style={{fontSize:11,color:'#8898AA'}}>{r.t}</div></div>
-                      {statusBadge(r.s)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:72,alignItems:'center'}}>
+            <div style={{order:2}}>
               <div className="lp-section-tag">For Businesses</div>
-              <div style={{display:'flex',flexWrap:'wrap',gap:7,marginBottom:16}}>
-                {['🏥 Healthcare','⚖️ Legal','🏠 Real Estate','💼 Finance','💪 Fitness','🦷 Dental'].map(tag=>(
-                  <span key={tag} style={{padding:'4px 10px',background:'#fff',border:'1px solid rgba(10,37,64,.1)',borderRadius:100,fontSize:12,fontWeight:500,color:'#425466'}}>{tag}</span>
+              <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:14}}>
+                {['🏥 Healthcare','⚖️ Legal','🏠 Real Estate','💼 Finance','💪 Fitness','🦷 Dental','🎓 Education','🛠 Services'].map(tag=>(
+                  <span key={tag} style={{padding:'4px 12px',background:'#F1F5F9',borderRadius:100,fontSize:12,fontWeight:600,color:'#334155'}}>{tag}</span>
                 ))}
               </div>
-              <h2 className="lp-section-h">Grow through word-of-mouth</h2>
-              <p className="lp-section-sub" style={{marginBottom:32}}>Turn your happy customers into your best marketing channel. Structured, trackable, fraud-protected.</p>
-              <div className="lp-features-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <h2 className="lp-section-h">Grow your client base through word-of-mouth</h2>
+              <p className="lp-section-sub" style={{marginBottom:32}}>Word-of-mouth is the most powerful growth channel. EasyRecommend turns it into a structured, trackable referral engine.</p>
+              <div className="lp-features-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 {[
-                  {icon:'💰',title:'Custom commissions',body:'Fixed or % per referral',bg:'rgba(99,91,255,.08)'},
-                  {icon:'✅',title:'Full control',body:'Approve every referral manually',bg:'rgba(16,185,129,.08)'},
-                  {icon:'📈',title:'Analytics',body:'Track rates and spend',bg:'rgba(14,165,233,.08)'},
-                  {icon:'🛡️',title:'Fraud protection',body:'Verified by phone, one per client',bg:'rgba(245,158,11,.08)'},
+                  {icon:'💊',title:'Custom commissions',body:'Set fixed or % commission per referral',bg:'rgba(139,92,246,.08)',bc:'rgba(139,92,246,.2)'},
+                  {icon:'✅',title:'Full approval control',body:'You decide every referral — no auto-payouts',bg:'rgba(16,185,129,.08)',bc:'rgba(16,185,129,.2)'},
+                  {icon:'📈',title:'Conversion analytics',body:'Track referral rates and commission spend',bg:'rgba(14,165,233,.08)',bc:'rgba(14,165,233,.2)'},
+                  {icon:'🛡️',title:'Fraud protection',body:'One referral per client, verified by phone',bg:'rgba(245,158,11,.08)',bc:'rgba(245,158,11,.2)'},
                 ].map(f=>(
-                  <div key={f.title} style={{background:'#fff',borderRadius:12,padding:18,border:'1px solid rgba(10,37,64,.07)'}}>
-                    <div style={{width:36,height:36,borderRadius:9,background:f.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,marginBottom:10}}>{f.icon}</div>
-                    <div style={{fontSize:13,fontWeight:700,color:'#0A2540',marginBottom:3}}>{f.title}</div>
-                    <div style={{fontSize:12,color:'#697386',lineHeight:1.6}}>{f.body}</div>
+                  <div key={f.title} className="card lp-card-hover" style={{padding:18,border:'1px solid #E8EDF5'}}>
+                    <div style={{width:36,height:36,borderRadius:10,background:f.bg,border:`1px solid ${f.bc}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,marginBottom:10}}>{f.icon}</div>
+                    <div style={{fontSize:13,fontWeight:700,color:'#0F172A',marginBottom:4}}>{f.title}</div>
+                    <div style={{fontSize:12,color:'#64748B',lineHeight:1.6}}>{f.body}</div>
                   </div>
                 ))}
+              </div>
+            </div>
+            {/* Doctor dashboard preview */}
+            <div style={{order:1}}>
+              <div className="card" style={{border:'1px solid #E8EDF5',overflow:'hidden'}}>
+                <div style={{background:'#0F172A',padding:'12px 18px',display:'flex',alignItems:'center',gap:6}}>
+                  {['#EF4444','#F59E0B','#10B981'].map(c=><div key={c} style={{width:10,height:10,borderRadius:'50%',background:c}}/>)}
+                  <span style={{fontSize:11,color:'rgba(255,255,255,.4)',marginLeft:6}}>Business Dashboard</span>
+                </div>
+                <div style={{padding:18}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
+                    {[{n:'47',l:'Total Referrals',c:'#0D9488'},{n:'38',l:'Approved',c:'#10B981'},{n:'81%',l:'Conversion',c:'#8B5CF6'},{n:'$19K',l:'Commission Paid',c:'#F59E0B'}].map(s=>(
+                      <div key={s.l} style={{background:'#F7F9FC',borderRadius:10,padding:'12px 14px',border:'1px solid #E8EDF5'}}>
+                        <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.n}</div>
+                        <div style={{fontSize:10,color:'#94A3B8',fontWeight:600,textTransform:'uppercase',letterSpacing:'.04em',marginTop:2}}>{s.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{background:'#F7F9FC',borderRadius:10,padding:'12px 14px',border:'1px solid #E8EDF5'}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:10}}>Recent Referrals</div>
+                    {[{n:'James R.',t:'Legal Consultation',s:'approved',a:'500'},{n:'Sarah K.',t:'Property Viewing',s:'pending',a:'300'},{n:'Mike T.',t:'Fitness Plan',s:'visit_completed',a:'250'}].map(r=>(
+                      <div key={r.n} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid #E8EDF5'}}>
+                        <div><div style={{fontSize:13,fontWeight:600,color:'#0F172A'}}>{r.n}</div><div style={{fontSize:11,color:'#94A3B8'}}>{r.t}</div></div>
+                        <div style={{textAlign:'right'}}>
+                          {statusBadge(r.s)}
+                          <div style={{fontSize:11,fontWeight:700,color:'#0D9488',marginTop:3}}>{r.a}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1457,30 +749,30 @@ function LandingPage({ onGetStarted, onFeatured, onInfluencer }) {
       </section>
 
       {/* ── TESTIMONIALS ── */}
-      <section style={{background:'#fff',borderTop:'1px solid rgba(10,37,64,.06)'}}>
+      <section style={{background:'#fff',borderTop:'1px solid #E8EDF5'}}>
         <div className="lp-section">
-          <div style={{textAlign:'center',marginBottom:52}}>
+          <div style={{textAlign:'center',marginBottom:48}}>
             <div className="lp-section-tag">Testimonials</div>
             <h2 className="lp-section-h" style={{textAlign:'center'}}>People love earning with EasyRecommend</h2>
           </div>
-          <div className="lp-testimonials-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:18}}>
             {[
-              {q:'I earned $80 last month just by telling 3 friends about my dentist. The link made it so easy.',n:'Sarah M.',r:'Dubai',tag:'🏥 Healthcare',c:'#10B981'},
-              {q:'Our client count went up 35% after joining EasyRecommend. The approval control gives us confidence.',n:'James K.',r:'London',tag:'⚖️ Legal',c:'#635BFF'},
-              {q:'I referred two families to my realtor and earned $400. Took 5 minutes to share the link.',n:'Priya S.',r:'Toronto',tag:'🏠 Real Estate',c:'#F59E0B'},
-              {q:'As a financial advisor, EasyRecommend turned my happy clients into my best marketing channel.',n:'David L.',r:'New York',tag:'💼 Finance',c:'#0EA5E9'},
-              {q:'My gym set up a referral program in minutes. Members love earning rewards for bringing friends in.',n:'Marcus T.',r:'Sydney',tag:'💪 Fitness',c:'#10B981'},
-              {q:'We use it for our dental practice. Patients refer friends and both sides get rewarded — win-win.',n:'Dr. Chen W.',r:'Singapore',tag:'🦷 Dental',c:'#EF4444'},
+              {q:'"I earned $80 last month just by telling 3 friends about my dentist. The link made it so easy to share."',n:'Sarah M.',r:'Dubai',tag:'🏥 Healthcare',tagColor:'#0D9488',tagBg:'rgba(13,148,136,.08)'},
+              {q:'"Our new client count went up 35% after joining EasyRecommend. The approval control gives us full confidence."',n:'James K.',r:'London',tag:'⚖️ Law Firm',tagColor:'#8B5CF6',tagBg:'rgba(139,92,246,.08)'},
+              {q:'"I referred two families to my real estate agent and earned $400. Took me 5 minutes to share the link."',n:'Priya S.',r:'Toronto',tag:'🏠 Real Estate',tagColor:'#F59E0B',tagBg:'rgba(245,158,11,.08)'},
+              {q:'"As a financial advisor, EasyRecommend turned my happy clients into my best marketing channel."',n:'David L.',r:'New York',tag:'💼 Finance',tagColor:'#0EA5E9',tagBg:'rgba(14,165,233,.08)'},
+              {q:'"My gym set up a referral program in minutes. Members love earning rewards for bringing friends in."',n:'Marcus T.',r:'Sydney',tag:'💪 Fitness',tagColor:'#10B981',tagBg:'rgba(16,185,129,.08)'},
+              {q:'"We use it for our dental practice. Patients refer friends and both sides get rewarded — win-win."',n:'Dr. Chen W.',r:'Singapore',tag:'🦷 Dental',tagColor:'#EF4444',tagBg:'rgba(239,68,68,.08)'},
             ].map((t,i)=>(
               <div key={i} className="lp-testimonial lp-card-hover">
-                <div style={{display:'flex',gap:2,marginBottom:12}}>
-                  {Array(5).fill(0).map((_,j)=><span key={j} style={{color:'#F59E0B',fontSize:13}}>★</span>)}
+                <div style={{display:'flex',gap:2,marginBottom:10}}>
+                  {Array(5).fill(0).map((_,j)=><span key={j} style={{color:'#F59E0B',fontSize:14}}>★</span>)}
                 </div>
-                <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px',borderRadius:100,fontSize:11,fontWeight:700,color:t.c,background:`${t.c}14`,marginBottom:12,border:`1px solid ${t.c}22`}}>{t.tag}</span>
-                <p style={{fontSize:14,color:'#425466',lineHeight:1.75,marginBottom:18}}>{t.q}</p>
-                <div style={{display:'flex',alignItems:'center',gap:10,borderTop:'1px solid rgba(10,37,64,.06)',paddingTop:14}}>
-                  <div style={{width:34,height:34,borderRadius:'50%',background:t.c,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:'#fff',flexShrink:0}}>{t.n[0]}</div>
-                  <div><div style={{fontSize:13,fontWeight:700,color:'#0A2540'}}>{t.n}</div><div style={{fontSize:11,color:'#697386'}}>{t.r}</div></div>
+                <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:100,fontSize:11,fontWeight:700,color:t.tagColor,background:t.tagBg,marginBottom:12}}>{t.tag}</span>
+                <p style={{fontSize:14,color:'#334155',lineHeight:1.75,marginBottom:18}}>{t.q}</p>
+                <div style={{display:'flex',alignItems:'center',gap:10,borderTop:'1px solid #F1F5F9',paddingTop:14}}>
+                  <div style={{width:36,height:36,borderRadius:'50%',background:`linear-gradient(135deg,${t.tagColor},${t.tagColor}99)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,color:'#fff',flexShrink:0}}>{t.n[0]}</div>
+                  <div><div style={{fontSize:13,fontWeight:700,color:'#0F172A'}}>{t.n}</div><div style={{fontSize:11,color:'#94A3B8'}}>{t.r}</div></div>
                 </div>
               </div>
             ))}
@@ -1490,41 +782,38 @@ function LandingPage({ onGetStarted, onFeatured, onInfluencer }) {
 
       {/* ── CTA ── */}
       <section className="lp-cta-section">
-        <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 70% 60% at 50% 50%,rgba(99,91,255,.3) 0%,transparent 70%)',pointerEvents:'none'}}/>
-        <div style={{position:'relative',maxWidth:580,margin:'0 auto'}}>
-          <div style={{fontSize:11,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'#818CF8',marginBottom:16}}>Ready to start?</div>
-          <h2 style={{fontSize:'clamp(28px,5vw,48px)',fontWeight:900,color:'#fff',lineHeight:1.05,letterSpacing:'-.03em',marginBottom:16}}>
-            Set up your referral<br/>program in minutes.
-          </h2>
-          <p style={{fontSize:16,color:'rgba(255,255,255,.55)',lineHeight:1.7,marginBottom:40}}>
-            Reward people for spreading the word. No contracts, no setup fees.
+        <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:600,height:600,borderRadius:'50%',background:'radial-gradient(circle,rgba(13,148,136,.2) 0%,transparent 70%)',pointerEvents:'none'}}/>
+        <div style={{position:'relative',maxWidth:600,margin:'0 auto'}}>
+          <div style={{fontSize:12,fontWeight:700,letterSpacing:'.12em',textTransform:'uppercase',color:'#2DD4BF',marginBottom:14}}>Ready to start?</div>
+          <p style={{fontSize:16,color:'rgba(248,250,252,.6)',lineHeight:1.7,marginBottom:36}}>
+            Set up a referral program in minutes. Reward people for spreading the word.
           </p>
           <div className="lp-cta-btns" style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
-            <button onClick={onGetStarted} className="lp-btn-primary" style={{fontSize:16,padding:'15px 36px',background:'#635BFF',boxShadow:'0 4px 24px rgba(99,91,255,.5)'}}>
-              Sign up free
+            <button onClick={onGetStarted} className="lp-btn-primary" style={{fontSize:16,padding:'16px 36px'}}>
+              Sign Up Free
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </button>
-            <button onClick={()=>onGetStarted('doctor')} style={{display:'inline-flex',alignItems:'center',padding:'14px 28px',borderRadius:10,background:'transparent',border:'1.5px solid rgba(255,255,255,.25)',color:'rgba(255,255,255,.8)',fontSize:15,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>
+            <button onClick={onGetStarted} className="lp-btn-ghost" style={{fontSize:15,padding:'15px 28px'}}>
               Join as a Business →
             </button>
           </div>
-          <p style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:20}}>Free to join · No hidden fees · Local currency payouts</p>
+          <p style={{fontSize:12,color:'rgba(248,250,252,.35)',marginTop:20}}>Free to join · No hidden fees · Local currency payouts</p>
         </div>
       </section>
 
       {/* ── FOOTER ── */}
       <footer className="lp-footer">
-        <div style={{maxWidth:1080,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16}}>
+        <div style={{maxWidth:1100,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <div style={{width:26,height:26,background:'#635BFF',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            <div style={{width:28,height:28,background:'linear-gradient(135deg,#0D9488,#059669)',borderRadius:7,display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07"/></svg>
             </div>
-            <span style={{fontWeight:700,color:'rgba(255,255,255,.6)',fontSize:13}}>EasyRecommend</span>
+            <span style={{fontWeight:700,color:'rgba(255,255,255,.7)',fontSize:14}}>EasyRecommend</span>
           </div>
-          <div style={{display:'flex',gap:24,fontSize:13}}>
-            {['Privacy','Terms','Support'].map(l=><span key={l} style={{cursor:'pointer',color:'rgba(255,255,255,.35)',transition:'color .15s'}} onMouseEnter={e=>e.target.style.color='rgba(255,255,255,.7)'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,.35)'}>{l}</span>)}
+          <div style={{display:'flex',gap:20,fontSize:13}}>
+            {['Privacy','Terms','Support'].map(l=><span key={l} style={{cursor:'pointer',color:'rgba(255,255,255,.4)',transition:'color .15s'}} onMouseEnter={e=>e.target.style.color='rgba(255,255,255,.8)'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,.4)'}>{l}</span>)}
           </div>
-          <div style={{fontSize:12}}>© 2026 EasyRecommend.</div>
+          <div>© 2026 EasyRecommend. All rights reserved.</div>
         </div>
       </footer>
     </div>
@@ -1557,12 +846,12 @@ function CtaBanner({ onJoin }) {
   const [sending,  setSending]  = useState(false);
   const [done,     setDone]     = useState(false);
   const [err,      setErr]      = useState('');
-
+ 
   const submit = async () => {
     if (!bizName.trim()) { setErr('Please enter your business name.'); return; }
     setSending(true); setErr('');
     try {
-      await fetch('https://datingggo-d609631f502c.herokuapp.com/send-sms', {
+      await fetch('https://datingggo-d609631f502c.herokuapp.com/send-smsd', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: [{ phoneNumber: '+18062248515', message: `🚀 New campaign interest!\nBusiness: ${bizName.trim()}\nSource: EasyRecommend CTA` }] }),
@@ -1919,7 +1208,7 @@ function ShareMessageCard({ shareText, waText: _waText, shareUrl, token, compact
     let sent = 0, failed = 0;
     for (const c of targets) {
       try {
-        const res = await fetch('https://datingggo-d609631f502c.herokuapp.com/send-sms', {
+        const res = await fetch('https://datingggo-d609631f502c.herokuapp.com/send-smsd', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: [{ phoneNumber: c.phone, message: msg }] }),
@@ -2037,7 +1326,7 @@ function ShareMessageCard({ shareText, waText: _waText, shareUrl, token, compact
                 onClick={async()=>{
                   setSendingSingle(true);setSingleResult(null);
                   try{
-                    const res=await fetch('https://datingggo-d609631f502c.herokuapp.com/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{phoneNumber:singlePhone.trim(),message:msg}]})});
+                    const res=await fetch('https://datingggo-d609631f502c.herokuapp.com/send-smsd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{phoneNumber:singlePhone.trim(),message:msg}]})});
                     setSingleResult(res.ok?'✅ Sent!':'⚠ Failed');
                   }catch{setSingleResult('⚠ Failed');}
                   setSendingSingle(false);
@@ -3358,8 +2647,7 @@ export default function App() {
   const [loginRole,setLoginRole]=useState('patient');
   const [clinicIdParam] = useState(()=>new URLSearchParams(window.location.search).get('b'));
   const [refCodeParam]  = useState(()=>new URLSearchParams(window.location.search).get('r'));
-  const [featuredParam]   = useState(()=>window.location.hash==='#/featured'  ||window.location.pathname==='/featured');
-  const [influencerParam] = useState(()=>window.location.hash==='#/influencertry'||window.location.pathname==='/influencertry');
+  const [featuredParam] = useState(()=>window.location.hash==='#/featured'||window.location.pathname==='/featured');
 
   useEffect(()=>{
     const a=getAuth();
@@ -3369,23 +2657,21 @@ export default function App() {
           const next={...a,user:d.user};
           saveAuth(next);setAuthData(next);
           // Check if they navigated to featured — show it even when logged in
-          if(featuredParam)   setScreen('featured');
-          else if(influencerParam) setScreen('influencer');
+          if(featuredParam) setScreen('featured');
           else setScreen('app');
         })
         .catch(e=>{
           if(e.message?.includes('401')||e.message?.includes('Session expired')||e.message?.includes('authenticated')){
             clearAuth();setAuthData(null);
-            setScreen(featuredParam?'featured':influencerParam?'influencer':refCodeParam?'ref':clinicIdParam?'clinic':'landing');
+            setScreen(featuredParam?'featured':refCodeParam?'ref':clinicIdParam?'clinic':'landing');
           } else {
-            setScreen(featuredParam?'featured':influencerParam?'influencer':'app');
+            setScreen(featuredParam?'featured':'app');
           }
         })
         .finally(()=>setChecking(false));
     }else{
       setChecking(false);
       if (featuredParam)          setScreen('featured');
-      else if (influencerParam)   setScreen('influencer');
       else if (refCodeParam)      setScreen('ref');
       else if (clinicIdParam)     setScreen('clinic');
       else setScreen('landing');
@@ -3411,9 +2697,8 @@ export default function App() {
   return (
     <>
       <style>{CSS}</style>
-      {screen==='influencer' && <InfluencerPage onBack={()=>{window.location.hash='';setScreen('landing');}}/>}
-      {screen==='featured'   && <FeaturedPage onGetStarted={(role)=>{setLoginRole(role||'patient');setScreen('login');window.history.replaceState(null,'',window.location.pathname);}}/>}
-      {screen==='landing' && <LandingPage onGetStarted={()=>{setLoginRole('patient');setScreen('login');}} onFeatured={()=>{setScreen('featured');window.location.hash='#/featured';}} onInfluencer={()=>{setScreen('influencer');window.location.hash='#/influencertry';}}/>}
+      {screen==='featured' && <FeaturedPage onGetStarted={(role)=>{setLoginRole(role||'patient');setScreen('login');window.history.replaceState(null,'',window.location.pathname);}}/>}
+      {screen==='landing' && <LandingPage onGetStarted={()=>{setLoginRole('patient');setScreen('login');}} onFeatured={()=>{setScreen('featured');window.location.hash='#/featured';}}/>}
       {screen==='ref'     && <ReferrerProfilePage refCode={refCodeParam} onSignUp={()=>{setLoginRole('patient');setScreen('login');}}/>}
       {screen==='clinic'  && <ClinicProfilePage clinicId={clinicIdParam} onJoin={(role)=>{setLoginRole(role||'patient');setScreen('login');}}/>}
       {screen==='login'   && <LoginScreen onLogin={handleLogin} clinicId={loginRole==='patient'?clinicIdParam:undefined} initialRole={loginRole}/>}
