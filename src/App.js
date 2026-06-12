@@ -782,8 +782,10 @@ function EditProfileModal({ token, current, onClose, onSaved }) {
   );
 }
 function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh }) {
-  const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false);
+  const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false);
   const isOwner = session && session.role === "creator" && session.username === handle;
+  const profileUrl = `${window.location.origin}/@${handle}`;
+  const copyLink = async () => { try { await navigator.clipboard.writeText(profileUrl); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
   const load = () => api(`/creator/${handle}`).then(setData).catch((e) => setErr(e.message));
   useEffect(() => { setData(null); setErr(""); load(); }, [handle, dataVersion]);
   const removeBrand = async (businessId) => { try { await api("/creator/link", { method: "DELETE", body: { token: session.token, businessId } }); await load(); onRefresh(); } catch (e) { alert(e.message); } };
@@ -804,7 +806,10 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
               <p style={{ margin: "2px 0 0", fontSize: 14.5, color: C.muted }}>{data.bio || "Curating businesses worth trusting."}</p>
               <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
             </div>
-            {isOwner && <button className="er-btn er-btn-light er-btn-sm" onClick={() => setEditing(true)}><Edit size={14} /> Edit profile</button>}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", flexShrink: 0 }}>
+              <button className="er-btn er-btn-light er-btn-sm" onClick={copyLink} style={{ color: copied ? C.accent : C.ink }}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}</button>
+              {isOwner && <button className="er-btn er-btn-light er-btn-sm" onClick={() => setEditing(true)}><Edit size={14} /> Edit profile</button>}
+            </div>
           </div>
         </div>
       </div>
@@ -815,18 +820,22 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
         </div>
         {recs.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "40px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No recommendations yet.{isOwner ? " Add a brand to get started." : ""}</p> : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {recs.map((b) => { const cc = catOf(b); const photo = (b.photos || [])[0];
-              return <div key={b.id} className="er-card er-card-h" role="button" tabIndex={0} onClick={() => onOpenBusiness(b.id)}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenBusiness(b.id); } }} style={{ overflow: "hidden", cursor: "pointer" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 16 }}>
-                  {photo ? <img src={photo} alt="" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} /> : <span style={{ width: 48, height: 48, borderRadius: 12, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={19} /></span>}
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}><h3 className="er-serif" style={{ margin: 0, fontSize: 19, fontWeight: 500 }}>{b.name}</h3><span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 999, background: cc.bg, color: cc.color }}>{b.categories[0]}</span></div>
-                    <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : b.city}{b.discount > 0 ? ` · ${b.discount}% off via this link` : ""}</p></div>
-                  {isOwner
-                    ? <button className="er-btn er-btn-ghost er-btn-sm" onClick={(e) => { e.stopPropagation(); removeBrand(b.id); }}><Close size={14} /> Remove</button>
-                    : b.website ? <button className="er-btn er-btn-primary er-btn-sm" onClick={(e) => { e.stopPropagation(); trackClick(data.username, b.id); openSite(b.website); }}>Visit <Arrow size={14} /></button>
-                      : <button className="er-btn er-btn-ghost er-btn-sm" onClick={(e) => { e.stopPropagation(); onOpenBusiness(b.id); }}>Details <ChevR size={14} /></button>}
+            {recs.map((b) => { const cc = catOf(b); const photo = (b.photos || [])[0]; const site = (b.website || "").replace(/^https?:\/\//i, "").replace(/\/$/, ""); const hasContact = b.website || b.phone || b.email;
+              return <div key={b.id} className="er-card" style={{ overflow: "hidden" }}>
+                <div style={{ padding: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    {photo ? <img src={photo} alt="" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} /> : <span style={{ width: 48, height: 48, borderRadius: 12, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={19} /></span>}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}><h3 className="er-serif" style={{ margin: 0, fontSize: 19, fontWeight: 500 }}>{b.name}</h3><span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 999, background: cc.bg, color: cc.color }}>{b.categories[0]}</span></div>
+                      <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : b.city}{b.discount > 0 ? ` · ${b.discount}% off via this link` : ""}</p></div>
+                    {isOwner && <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => removeBrand(b.id)}><Close size={14} /> Remove</button>}
+                  </div>
+                  {!isOwner && hasContact && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 13 }}>
+                    {b.website && <button className="er-btn er-btn-primary er-btn-sm" onClick={() => { trackClick(data.username, b.id); openSite(b.website); }}><Globe size={14} /> {site}</button>}
+                    {b.email && <a href={`mailto:${b.email}`} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Mail size={14} /> {b.email}</a>}
+                    {b.phone && <a href={`tel:${b.phone}`} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Phone size={14} /> {b.phone}</a>}
+                  </div>}
+                  {!isOwner && !hasContact && <p style={{ margin: "12px 0 0", fontSize: 12.5, color: C.muted }}>Contact details coming soon.</p>}
                 </div>
                 {b.review && <div style={{ borderTop: `1px solid ${C.line}`, background: C.panel, padding: "13px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}><Stars value={b.review.stars} /><span style={{ fontSize: 12, fontWeight: 600, color: C.inkSoft }}>@{data.username}'s review</span></div>
@@ -855,17 +864,17 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
     <div>
       <header style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(253,252,250,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
-          <button onClick={top} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer" }}><Seal size={20} /><span className="er-serif" style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-.01em", color: C.ink }}>Easy Recommend</span></button>
+          <button onClick={top} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer" }}><Seal size={20} /><span className="er-serif er-hide-xs" style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-.01em", color: C.ink }}>Easy Recommend</span></button>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {session ? <>
               {session.role === "creator"
                 ? <button className="er-btn er-btn-ghost er-btn-sm" onClick={onMyProfile}>My profile</button>
                 : <button className="er-btn er-btn-ghost er-btn-sm" onClick={onMyBiz}>My business</button>}
-              <button className="er-nav" onClick={onLogout}>Log out</button>
+              <button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogout}>Log out</button>
             </> : <>
-              <button className="er-nav" onClick={onLogin}>Log in</button>
-              <button className="er-btn er-btn-ghost er-btn-sm" onClick={onList}>List business</button>
-              <button className="er-btn er-btn-primary er-btn-sm" onClick={onCreator}>Join as creator</button>
+              <button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogin}>Log in</button>
+              <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onList}>List business</button>
+              <button className="er-btn er-btn-primary er-btn-sm" onClick={onCreator}>Join</button>
             </>}
           </div>
         </div>
@@ -999,7 +1008,8 @@ const STYLES = `
 .er-creators{display:grid;grid-template-columns:1fr;gap:14px}
 .er-stepwork{display:grid;grid-template-columns:1fr;gap:0}
 @media(min-width:560px){.er-modal-overlay{align-items:center;padding:18px}.er-modal{border-radius:22px}}
-@media(max-width:559px){.er-nav{display:none}}
+@media(max-width:559px){.er-nav{display:none}.er-hide-sm{display:none}}
+@media(max-width:400px){.er-hide-xs{display:none}}
 @media(min-width:680px){.er-cards{grid-template-columns:1fr 1fr}.er-creators{grid-template-columns:1fr 1fr}}
 @media(min-width:1000px){.er-cards{grid-template-columns:1fr 1fr 1fr}.er-hero{grid-template-columns:1.05fr .95fr;gap:60px}.er-stepwork{grid-template-columns:1fr 1fr 1fr}}
 .er-root button:focus-visible,.er-root input:focus-visible,.er-root a:focus-visible{outline:2px solid ${C.accent};outline-offset:2px}
