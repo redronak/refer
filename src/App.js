@@ -15,25 +15,45 @@ const C = {
 const SERIF = "'Fraunces','Georgia',serif";
 
 const CATS = {
-  Beauty:    { color: "#B0566B", bg: "#F7E9EC" },
-  Legal:     { color: "#2E4D71", bg: "#E9EFF5" },
-  Education: { color: "#9A6B1E", bg: "#F4EBD9" },
+  Beauty:         { color: "#B0566B", bg: "#F7E9EC" },
+  Legal:          { color: "#2E4D71", bg: "#E9EFF5" },
+  Education:      { color: "#9A6B1E", bg: "#F4EBD9" },
+  Wellness:       { color: "#5E7F4E", bg: "#EBF0E4" },
+  Fitness:        { color: "#B5572E", bg: "#F6E8DF" },
+  "Food & Drink": { color: "#A33B3B", bg: "#F6E5E3" },
+  Home:           { color: "#6B6242", bg: "#F0ECE0" },
+  Finance:        { color: "#3D3A78", bg: "#ECEBF5" },
+  Travel:         { color: "#2D6E8E", bg: "#E5F0F4" },
+  Fashion:        { color: "#7A3E6B", bg: "#F2E7EF" },
 };
-const CAT_LIST = ["Beauty", "Legal", "Education"];
+const CAT_LIST = Object.keys(CATS);
 const slugify = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+/* Commission can be a percentage, flat cash, or both. */
+const commissionLabel = (b) => {
+  if (b.commissionType === "flat") return `$${b.commissionFlat}`;
+  if (b.commissionType === "both") return `${b.commissionPct}% + $${b.commissionFlat}`;
+  return `${b.commissionPct}%`;
+};
 
 const INVITE_CODE = "EASY2025";
 const DEMO_OTP = "123123";
 
 /* ---------- Seed data ---------- */
 const SEED_BUSINESSES = [
-  { id: 1, name: "Lumière Skincare", categories: ["Beauty"], city: "San Francisco", online: true, commission: 15, discount: 10, status: "approved", blurb: "Clinical-grade serums and quiet, unhurried facials." },
-  { id: 2, name: "Glow Bar", categories: ["Beauty"], city: "Austin", online: false, commission: 12, discount: 15, status: "approved", blurb: "Walk-in glow facials and a no-fuss lash bar." },
-  { id: 3, name: "Hartwell Law", categories: ["Legal"], city: "New York", online: true, commission: 8, discount: 0, status: "approved", blurb: "Startup and IP counsel that talks like a human." },
-  { id: 4, name: "Sterling Legal", categories: ["Legal"], city: "Chicago", online: false, commission: 10, discount: 0, status: "approved", blurb: "Immigration and family law, handled with care." },
-  { id: 5, name: "BrightPath Tutoring", categories: ["Education"], city: "Boston", online: true, commission: 20, discount: 10, status: "approved", blurb: "One-to-one SAT and STEM tutoring that actually sticks." },
-  { id: 6, name: "CodeLeap Academy", categories: ["Education"], city: "Online", online: true, commission: 18, discount: 0, status: "approved", blurb: "Live cohort bootcamps for people who ship." },
-  { id: 7, name: "Velvet Beauty Co", categories: ["Beauty"], city: "Miami", online: false, commission: 14, discount: 20, status: "pending", blurb: "A luxury bridal makeup studio." },
+  { id: 1, name: "Lumière Skincare", categories: ["Beauty"], city: "San Francisco", online: true, commissionType: "percent", commissionPct: 15, commissionFlat: 0, discount: 10, status: "approved", blurb: "Clinical-grade serums and quiet, unhurried facials." },
+  { id: 2, name: "Glow Bar", categories: ["Beauty"], city: "Austin", online: false, commissionType: "flat", commissionPct: 0, commissionFlat: 20, discount: 15, status: "approved", blurb: "Walk-in glow facials and a no-fuss lash bar." },
+  { id: 3, name: "Hartwell Law", categories: ["Legal"], city: "New York", online: true, commissionType: "flat", commissionPct: 0, commissionFlat: 150, discount: 0, status: "approved", blurb: "Startup and IP counsel that talks like a human." },
+  { id: 4, name: "Sterling Legal", categories: ["Legal"], city: "Chicago", online: false, commissionType: "percent", commissionPct: 10, commissionFlat: 0, discount: 0, status: "approved", blurb: "Immigration and family law, handled with care." },
+  { id: 5, name: "BrightPath Tutoring", categories: ["Education"], city: "Boston", online: true, commissionType: "both", commissionPct: 15, commissionFlat: 10, discount: 10, status: "approved", blurb: "One-to-one SAT and STEM tutoring that actually sticks." },
+  { id: 6, name: "CodeLeap Academy", categories: ["Education"], city: "Online", online: true, commissionType: "percent", commissionPct: 18, commissionFlat: 0, discount: 0, status: "approved", blurb: "Live cohort bootcamps for people who ship." },
+  { id: 7, name: "Stillpoint Acupuncture", categories: ["Wellness"], city: "Portland", online: false, commissionType: "flat", commissionPct: 0, commissionFlat: 30, discount: 10, status: "approved", blurb: "Calm, careful sessions for stress and chronic pain." },
+  { id: 8, name: "Iron & Oak Gym", categories: ["Fitness"], city: "Denver", online: false, commissionType: "both", commissionPct: 10, commissionFlat: 15, discount: 20, status: "approved", blurb: "Strength coaching without the ego." },
+  { id: 9, name: "Maison Verde", categories: ["Food & Drink"], city: "Los Angeles", online: false, commissionType: "percent", commissionPct: 12, commissionFlat: 0, discount: 0, status: "approved", blurb: "Seasonal, plant-forward tasting menus." },
+  { id: 10, name: "Northbeam Advisors", categories: ["Finance"], city: "New York", online: true, commissionType: "flat", commissionPct: 0, commissionFlat: 200, discount: 0, status: "approved", blurb: "Fee-only financial planning for founders." },
+  { id: 11, name: "Wander Collective", categories: ["Travel"], city: "Online", online: true, commissionType: "both", commissionPct: 8, commissionFlat: 50, discount: 10, status: "approved", blurb: "Small-group trips to places worth the flight." },
+  { id: 12, name: "Atelier Mode", categories: ["Fashion"], city: "Miami", online: true, commissionType: "percent", commissionPct: 20, commissionFlat: 0, discount: 15, status: "approved", blurb: "Made-to-measure essentials, ethically sourced." },
+  { id: 13, name: "Velvet Beauty Co", categories: ["Beauty"], city: "Miami", online: false, commissionType: "both", commissionPct: 14, commissionFlat: 10, discount: 20, status: "pending", blurb: "A luxury bridal makeup studio." },
 ];
 const SEED_INFLUENCERS = [
   { handle: "miaglow", name: "Mia Chen", image: "", bio: "Skincare, slowly. Based in SF." },
@@ -157,10 +177,12 @@ function RecCard({ name, handle, image, category, quote, brand, stars = 5, style
 }
 
 /* ---------- Business card ---------- */
-function BusinessCard({ b, backers }) {
+function BusinessCard({ b, backers, onOpen }) {
   const cat = CATS[b.categories[0]] || CATS.Beauty;
   return (
-    <div className="er-card er-card-h" style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div className="er-card er-card-h" role="button" tabIndex={0} onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      style={{ display: "flex", flexDirection: "column", overflow: "hidden", cursor: "pointer", textAlign: "left" }}>
       <div style={{ padding: "18px 18px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 999, background: cat.bg, color: cat.color }}>{b.categories[0]}</span>
         <Seal size={18} />
@@ -193,14 +215,78 @@ function BusinessCard({ b, backers }) {
   );
 }
 
-/* ---------- Brand onboarding ---------- */
+/* ---------- Business detail ---------- */
+function BusinessDetail({ b, reviews, backers, onClose, onProfile, onRecommend }) {
+  const cc = CATS[b.categories[0]] || CATS.Beauty;
+  return (
+    <Modal onClose={onClose} wide>
+      <div style={{ height: 120, background: cc.bg, display: "grid", placeItems: "center" }}>
+        <span style={{ width: 56, height: 56, borderRadius: 15, display: "grid", placeItems: "center", background: "#fff", color: cc.color, boxShadow: "0 4px 14px rgba(0,0,0,.07)" }}><Store size={24} /></span>
+      </div>
+      <div style={{ padding: "22px 28px 28px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 999, background: cc.bg, color: cc.color }}>{b.categories[0]}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: C.accent }}><Seal size={15} /> Verified</span>
+        </div>
+        <h2 className="er-serif" style={{ margin: "12px 0 0", fontSize: 28, fontWeight: 500, letterSpacing: "-.01em" }}>{b.name}</h2>
+        <p style={{ margin: "6px 0 0", fontSize: 15, color: C.inkSoft, lineHeight: 1.5 }}>{b.blurb}</p>
+        <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 16, fontSize: 13.5, color: C.inkSoft }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{b.online ? <Globe size={15} color={C.muted} /> : <Pin size={15} color={C.muted} />}{b.online ? "Online" : b.city}</span>
+          {b.discount > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: C.accent, fontWeight: 600 }}>{b.discount}% member perk</span>}
+        </div>
+
+        <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
+          <button className="er-btn er-btn-primary" onClick={() => onRecommend(b.id)}>Recommend &amp; earn <Arrow size={16} /></button>
+          <button className="er-btn er-btn-ghost">Visit website</button>
+        </div>
+
+        <div style={{ height: 1, background: C.line, margin: "24px 0 18px" }} />
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <h3 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>What creators say</h3>
+          {backers.length > 0 && (
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ display: "flex" }}>{backers.slice(0, 4).map((bk, i) => (
+                <span key={i} style={{ marginLeft: i ? -8 : 0, border: "2px solid #fff", borderRadius: "50%", display: "flex" }}><Avatar name={bk.name} image={bk.image} size={24} /></span>
+              ))}</span>
+              <span style={{ fontSize: 12.5, color: C.muted }}>{backers.length} backing</span>
+            </span>
+          )}
+        </div>
+
+        {reviews.length === 0 ? (
+          <p style={{ background: C.panel, borderRadius: 14, padding: "26px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>No reviews yet — be the first creator to recommend this.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {reviews.map((r) => (
+              <button key={r.id} onClick={() => onProfile(r.handle)} className="er-card er-row-h" style={{ textAlign: "left", cursor: "pointer", padding: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                  <Avatar name={r.inf ? r.inf.name : r.handle} image={r.inf ? r.inf.image : ""} size={38} />
+                  <div style={{ flex: 1, lineHeight: 1.25 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>@{r.handle}</div>
+                    <div style={{ fontSize: 12, color: C.muted }}>Tap to view profile</div>
+                  </div>
+                  <Stars value={r.stars} />
+                </div>
+                {r.text && <p className="er-serif" style={{ margin: "12px 0 0", fontSize: 16.5, lineHeight: 1.4, color: C.ink }}>&ldquo;{r.text}&rdquo;</p>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+
 function BrandModal({ onClose, onSubmit }) {
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: "", phone: "", email: "", categories: [], city: "", online: false, commission: 15, discount: 0, photos: 2 });
+  const [f, setF] = useState({ name: "", phone: "", email: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: 2 });
   const [otp, setOtp] = useState(""); const [otpSent, setOtpSent] = useState(false);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
-  const valid = [f.name && f.phone && f.email, f.categories.length > 0 && (f.online || f.city), f.commission > 0, otp === DEMO_OTP];
+  const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
+  const valid = [f.name && f.phone && f.email, f.categories.length > 0 && (f.online || f.city), commValid, otp === DEMO_OTP];
   const titles = ["About your business", "Where to find you", "Your terms", "Verify your number"];
   const cat0 = CATS[f.categories[0]] || CATS.Beauty;
 
@@ -239,12 +325,33 @@ function BrandModal({ onClose, onSubmit }) {
           </>}
 
           {step === 2 && <>
-            <Field label="Commission paid to creators" hint="Your cut shared on each converted sale. Kept private from the public.">
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <input type="range" min="5" max="40" value={f.commission} onChange={(e) => set("commission", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
-                <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.accentSoft, color: C.accentD }}>{f.commission}%</span>
+            <Field label="How you'll reward creators" hint="Kept private from the public — creators see it only when they generate a link.">
+              <div style={{ display: "flex", gap: 8 }}>
+                {[["percent", "Percentage"], ["flat", "Flat cash"], ["both", "Both"]].map(([t, lbl]) => {
+                  const on = f.commissionType === t;
+                  return <button key={t} type="button" onClick={() => set("commissionType", t)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, padding: "10px 8px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{lbl}</button>;
+                })}
               </div>
             </Field>
+            {(f.commissionType === "percent" || f.commissionType === "both") && (
+              <Field label="Percentage of each sale">
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <input type="range" min="1" max="40" value={f.commissionPct} onChange={(e) => set("commissionPct", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
+                  <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.accentSoft, color: C.accentD }}>{f.commissionPct}%</span>
+                </div>
+              </Field>
+            )}
+            {(f.commissionType === "flat" || f.commissionType === "both") && (
+              <Field label="Flat cash per sale" hint="A fixed amount paid on every conversion.">
+                <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "11px 14px", maxWidth: 180 }}>
+                  <span style={{ fontSize: 15, color: C.muted, marginRight: 2 }}>$</span>
+                  <input type="number" min="0" value={f.commissionFlat} onChange={(e) => set("commissionFlat", Math.max(0, +e.target.value))} style={{ flex: 1, border: "none", outline: "none", background: "none", fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: C.ink, width: "100%" }} />
+                </div>
+              </Field>
+            )}
+            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: C.inkSoft }}>
+              Creators earn <b style={{ color: C.ink }}>{commValid ? commissionLabel(f) : "—"}</b> per sale.
+            </div>
             <Field label="Customer perk" hint="Optional discount shown on your public listing.">
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <input type="range" min="0" max="40" value={f.discount} onChange={(e) => set("discount", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
@@ -315,10 +422,10 @@ function CopyRow({ label, value }) {
   );
 }
 
-function CreatorModal({ businesses, onClose, onComplete, onViewProfile }) {
+function CreatorModal({ businesses, initialBusinessId, onClose, onComplete, onViewProfile }) {
   const [step, setStep] = useState(0);
   const [code, setCode] = useState(""); const [username, setUsername] = useState(""); const [image, setImage] = useState("");
-  const [pickedId, setPickedId] = useState(null); const [stars, setStars] = useState(0); const [text, setText] = useState("");
+  const [pickedId, setPickedId] = useState(initialBusinessId || null); const [stars, setStars] = useState(0); const [text, setText] = useState("");
   const approved = businesses.filter((b) => b.status === "approved");
   const picked = approved.find((b) => b.id === pickedId);
   const handle = username.replace(/[^a-z0-9_]/gi, "").toLowerCase();
@@ -368,7 +475,7 @@ function CreatorModal({ businesses, onClose, onComplete, onViewProfile }) {
                   <span style={{ width: 40, height: 40, borderRadius: 10, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={18} /></span>
                   <span style={{ minWidth: 0, flex: 1 }}>
                     <span style={{ display: "block", fontWeight: 600, fontSize: 14.5, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
-                    <span style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: C.accent }}>You earn {b.commission}%</span>
+                    <span style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: C.accent }}>You earn {commissionLabel(b)}</span>
                   </span>
                   {on && <Check size={18} color={C.accent} />}
                 </button>
@@ -398,7 +505,7 @@ function CreatorModal({ businesses, onClose, onComplete, onViewProfile }) {
         {step === 3 && <div style={{ textAlign: "center", paddingTop: 6 }}>
           <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={50} /></div>
           <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 24, fontWeight: 500 }}>Your link is live</h2>
-          <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Share the referral link to earn {picked?.commission}% per sale, and drop your profile in your bio.</p>
+          <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Share the referral link to earn {picked ? commissionLabel(picked) : ""} per sale, and drop your profile in your bio.</p>
           <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }}>
             <CopyRow label="Referral link" value={refUrl} />
             <CopyRow label="Your profile · add to bio" value={profileUrl} />
@@ -416,7 +523,10 @@ function CreatorModal({ businesses, onClose, onComplete, onViewProfile }) {
 /* ---------- Admin ---------- */
 function AdminRow({ b, onApprove, onReject, onEdit }) {
   const [editing, setEditing] = useState(false);
-  const [c, setC] = useState(b.commission); const [d, setD] = useState(b.discount);
+  const [type, setType] = useState(b.commissionType || "percent");
+  const [pct, setPct] = useState(b.commissionPct || 0);
+  const [flat, setFlat] = useState(b.commissionFlat || 0);
+  const [d, setD] = useState(b.discount);
   const cc = CATS[b.categories[0]] || CATS.Beauty;
   return (
     <div className="er-card" style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16 }}>
@@ -427,15 +537,24 @@ function AdminRow({ b, onApprove, onReject, onEdit }) {
           <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>{b.categories.join(", ")} · {b.online ? "Online" : b.city}</p>
         </div>
         {!editing && <>
-          <span style={{ fontSize: 12, fontWeight: 700, padding: "5px 9px", borderRadius: 8, background: C.accentSoft, color: C.accentD }}>{b.commission}%</span>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: "5px 9px", borderRadius: 8, background: C.accentSoft, color: C.accentD, whiteSpace: "nowrap" }}>{commissionLabel(b)}</span>
           {b.discount > 0 && <span style={{ fontSize: 12, fontWeight: 700, padding: "5px 9px", borderRadius: 8, background: C.panel, color: C.ink }}>{b.discount}% off</span>}
         </>}
       </div>
       {editing ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <label style={{ fontSize: 12.5, color: C.muted }}>Commission <input type="number" value={c} onChange={(e) => setC(+e.target.value)} className="er-input" style={{ width: 70, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} />%</label>
-          <label style={{ fontSize: 12.5, color: C.muted }}>Discount <input type="number" value={d} onChange={(e) => setD(+e.target.value)} className="er-input" style={{ width: 70, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} />%</label>
-          <button className="er-btn er-btn-primary er-btn-sm" onClick={() => { onEdit(b.id, { commission: c, discount: d }); setEditing(false); }}><Check size={14} /> Save</button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[["percent", "%"], ["flat", "$"], ["both", "Both"]].map(([t, lbl]) => {
+              const on = type === t;
+              return <button key={t} onClick={() => setType(t)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "8px 6px", borderRadius: 8, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{lbl}</button>;
+            })}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            {(type === "percent" || type === "both") && <label style={{ fontSize: 12.5, color: C.muted }}>Percent <input type="number" value={pct} onChange={(e) => setPct(+e.target.value)} className="er-input" style={{ width: 66, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} />%</label>}
+            {(type === "flat" || type === "both") && <label style={{ fontSize: 12.5, color: C.muted }}>Flat $<input type="number" value={flat} onChange={(e) => setFlat(+e.target.value)} className="er-input" style={{ width: 70, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} /></label>}
+            <label style={{ fontSize: 12.5, color: C.muted }}>Discount <input type="number" value={d} onChange={(e) => setD(+e.target.value)} className="er-input" style={{ width: 66, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} />%</label>
+            <button className="er-btn er-btn-primary er-btn-sm" onClick={() => { onEdit(b.id, { commissionType: type, commissionPct: pct, commissionFlat: flat, discount: d }); setEditing(false); }}><Check size={14} /> Save</button>
+          </div>
         </div>
       ) : (
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -544,7 +663,7 @@ function InfluencerProfile({ handle, influencers, businesses, links, reviews, on
 }
 
 /* ---------- Landing ---------- */
-function Landing({ activeCat, setActiveCat, businesses, links, influencers, onList, onCreator, onAdmin, onProfile }) {
+function Landing({ activeCat, setActiveCat, businesses, links, influencers, onList, onCreator, onAdmin, onProfile, onOpenBusiness }) {
   const backersOf = (id) => links.filter((l) => l.businessId === id).map((l) => influencers.find((i) => i.handle === l.handle)).filter(Boolean);
   const visible = businesses.filter((b) => b.status === "approved" && b.categories.includes(activeCat));
   const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
@@ -614,7 +733,7 @@ function Landing({ activeCat, setActiveCat, businesses, links, influencers, onLi
             </div>
           </div>
           <div className="er-cards" style={{ marginTop: 28 }}>
-            {visible.map((b) => <BusinessCard key={b.id} b={b} backers={backersOf(b.id)} />)}
+            {visible.map((b) => <BusinessCard key={b.id} b={b} backers={backersOf(b.id)} onOpen={() => onOpenBusiness(b.id)} />)}
           </div>
           {visible.length === 0 && <p style={{ marginTop: 28, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: "44px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No live businesses in {activeCat} yet.</p>}
         </div>
@@ -704,6 +823,8 @@ const STYLES = `
 .er-card{background:#fff;border:1px solid ${C.line};border-radius:18px}
 .er-card-h{transition:transform .15s ease,box-shadow .15s ease}
 .er-card-h:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(28,26,23,.10)}
+.er-row-h{transition:border-color .15s ease}
+.er-row-h:hover{border-color:#CFC8BA}
 .er-link{background:none;border:none;padding:0;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:${C.accent}}
 .er-nav{background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:${C.muted};padding:8px 10px;border-radius:8px}
 .er-nav:hover{color:${C.ink}}
@@ -736,6 +857,8 @@ export default function App() {
   const [brandOpen, setBrandOpen] = useState(false);
   const [brandDone, setBrandDone] = useState(null);
   const [creatorOpen, setCreatorOpen] = useState(false);
+  const [creatorPreselect, setCreatorPreselect] = useState(null);
+  const [detailId, setDetailId] = useState(null);
 
   // Load fonts + inject styles once.
   useEffect(() => {
@@ -753,7 +876,7 @@ export default function App() {
   const goHome = () => { setView("home"); window.scrollTo(0, 0); };
 
   const submitBrand = (f) => {
-    setBusinesses((p) => [...p, { id: Date.now(), name: f.name, categories: f.categories, city: f.city, online: f.online, commission: f.commission, discount: f.discount, status: "pending", blurb: "Newly submitted business." }]);
+    setBusinesses((p) => [...p, { id: Date.now(), name: f.name, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount, status: "pending", blurb: "Newly submitted business." }]);
     setBrandOpen(false); setBrandDone(f.name);
   };
   const completeCreator = ({ handle, name, image, businessId, review }) => {
@@ -766,7 +889,7 @@ export default function App() {
     <div className="er-root">
       {view === "home" && (
         <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} links={links} influencers={influencers}
-          onList={() => setBrandOpen(true)} onCreator={() => setCreatorOpen(true)} onAdmin={() => { setView("admin"); window.scrollTo(0, 0); }} onProfile={goProfile} />
+          onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={() => { setView("admin"); window.scrollTo(0, 0); }} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} />
       )}
       {view === "admin" && (
         <AdminPanel businesses={businesses}
@@ -779,9 +902,20 @@ export default function App() {
         <InfluencerProfile handle={profileHandle} influencers={influencers} businesses={businesses} links={links} reviews={reviews} onBack={goHome} onBrowse={goHome} />
       )}
 
+      {detailId != null && (() => {
+        const b = businesses.find((x) => x.id === detailId);
+        if (!b) return null;
+        const rv = reviews.filter((r) => r.businessId === b.id).map((r) => ({ ...r, inf: influencers.find((i) => i.handle === r.handle) }));
+        const bk = links.filter((l) => l.businessId === b.id).map((l) => influencers.find((i) => i.handle === l.handle)).filter(Boolean);
+        return <BusinessDetail b={b} reviews={rv} backers={bk}
+          onClose={() => setDetailId(null)}
+          onProfile={(h) => { setDetailId(null); goProfile(h); }}
+          onRecommend={(id) => { setDetailId(null); setCreatorPreselect(id); setCreatorOpen(true); }} />;
+      })()}
+
       {brandOpen && <BrandModal onClose={() => setBrandOpen(false)} onSubmit={submitBrand} />}
       {brandDone && <BrandSuccess name={brandDone} onClose={() => setBrandDone(null)} />}
-      {creatorOpen && <CreatorModal businesses={businesses} onClose={() => setCreatorOpen(false)} onComplete={completeCreator} onViewProfile={goProfile} />}
+      {creatorOpen && <CreatorModal businesses={businesses} initialBusinessId={creatorPreselect} onClose={() => setCreatorOpen(false)} onComplete={completeCreator} onViewProfile={goProfile} />}
     </div>
   );
 }
