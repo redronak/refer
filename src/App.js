@@ -1,40 +1,43 @@
-import { useState } from "react";
-import {
-  Sparkles, Scale, GraduationCap, MapPin, Globe, Check, X, Star,
-  ChevronRight, ChevronLeft, Copy, Link2, ShieldCheck, Plus,
-  ArrowRight, Pencil, BadgeCheck, Wand2, Store, Phone, Mail, Tag,
-} from "lucide-react";
+import { useState, useEffect } from "react";
 
-/* ---------- Brand tokens (Stripe-inspired) ---------- */
-const PURPLE = "#635BFF";
-const PURPLE_DK = "#4F46E5";
-const NAVY = "#0A2540";
-const SLATE = "#425466";
-const MUTED = "#697386";
-const LIGHT = "#F6F9FC";
-const LINE = "#E6EBF1";
+/* ============================================================================
+   Easy Recommend — single-file React app
+   - No external packages (icons are inline SVG)
+   - No Tailwind: styling via inline styles + one injected <style> block,
+     so it renders identically on any CRA / Netlify deploy.
+   ========================================================================== */
 
-const CATEGORIES = [
-  { name: "Beauty", icon: Sparkles, grad: "linear-gradient(135deg,#FF7AA2,#FF5C8A,#A855F7)" },
-  { name: "Legal", icon: Scale, grad: "linear-gradient(135deg,#0A2540,#1E3A8A,#635BFF)" },
-  { name: "Education", icon: GraduationCap, grad: "linear-gradient(135deg,#06B6D4,#3B82F6,#635BFF)" },
-];
-const catGrad = (c) => (CATEGORIES.find((x) => x.name === c) || CATEGORIES[0]).grad;
-const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const C = {
+  ink: "#1C1A17", inkSoft: "#3A362F", paper: "#FDFCFA", panel: "#F4F1EA",
+  line: "#E5DFD4", muted: "#6E675B", accent: "#0F6B4F", accentD: "#0A4F3A",
+  accentSoft: "#E4F0EA", gold: "#D99A00",
+};
+const SERIF = "'Fraunces','Georgia',serif";
+
+const CATS = {
+  Beauty:    { color: "#B0566B", bg: "#F7E9EC" },
+  Legal:     { color: "#2E4D71", bg: "#E9EFF5" },
+  Education: { color: "#9A6B1E", bg: "#F4EBD9" },
+};
+const CAT_LIST = ["Beauty", "Legal", "Education"];
+const slugify = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+const INVITE_CODE = "EASY2025";
+const DEMO_OTP = "123123";
 
 /* ---------- Seed data ---------- */
 const SEED_BUSINESSES = [
-  { id: 1, name: "Lumière Skincare", categories: ["Beauty"], city: "San Francisco", online: true, commission: 15, discount: 10, status: "approved", blurb: "Clinical-grade serums and facials." },
-  { id: 2, name: "Glow Bar", categories: ["Beauty"], city: "Austin", online: false, commission: 12, discount: 15, status: "approved", blurb: "Walk-in glow facials & lash bar." },
-  { id: 3, name: "Hartwell Law", categories: ["Legal"], city: "New York", online: true, commission: 8, discount: 0, status: "approved", blurb: "Startup & IP counsel for founders." },
-  { id: 4, name: "Sterling Legal", categories: ["Legal"], city: "Chicago", online: false, commission: 10, discount: 0, status: "approved", blurb: "Immigration and family law." },
-  { id: 5, name: "BrightPath Tutoring", categories: ["Education"], city: "Boston", online: true, commission: 20, discount: 10, status: "approved", blurb: "1:1 SAT and STEM tutoring." },
-  { id: 6, name: "CodeLeap Academy", categories: ["Education"], city: "Online", online: true, commission: 18, discount: 0, status: "approved", blurb: "Live cohort coding bootcamps." },
-  { id: 7, name: "Velvet Beauty Co", categories: ["Beauty"], city: "Miami", online: false, commission: 14, discount: 20, status: "pending", blurb: "Luxury bridal makeup studio." },
+  { id: 1, name: "Lumière Skincare", categories: ["Beauty"], city: "San Francisco", online: true, commission: 15, discount: 10, status: "approved", blurb: "Clinical-grade serums and quiet, unhurried facials." },
+  { id: 2, name: "Glow Bar", categories: ["Beauty"], city: "Austin", online: false, commission: 12, discount: 15, status: "approved", blurb: "Walk-in glow facials and a no-fuss lash bar." },
+  { id: 3, name: "Hartwell Law", categories: ["Legal"], city: "New York", online: true, commission: 8, discount: 0, status: "approved", blurb: "Startup and IP counsel that talks like a human." },
+  { id: 4, name: "Sterling Legal", categories: ["Legal"], city: "Chicago", online: false, commission: 10, discount: 0, status: "approved", blurb: "Immigration and family law, handled with care." },
+  { id: 5, name: "BrightPath Tutoring", categories: ["Education"], city: "Boston", online: true, commission: 20, discount: 10, status: "approved", blurb: "One-to-one SAT and STEM tutoring that actually sticks." },
+  { id: 6, name: "CodeLeap Academy", categories: ["Education"], city: "Online", online: true, commission: 18, discount: 0, status: "approved", blurb: "Live cohort bootcamps for people who ship." },
+  { id: 7, name: "Velvet Beauty Co", categories: ["Beauty"], city: "Miami", online: false, commission: 14, discount: 20, status: "pending", blurb: "A luxury bridal makeup studio." },
 ];
 const SEED_INFLUENCERS = [
-  { handle: "miaglow", name: "Mia Chen", bio: "Skincare & self-care · SF" },
-  { handle: "thelegaledit", name: "Sam Rivera", bio: "Demystifying founder legal" },
+  { handle: "miaglow", name: "Mia Chen", image: "", bio: "Skincare, slowly. Based in SF." },
+  { handle: "thelegaledit", name: "Sam Rivera", image: "", bio: "Making founder legal less scary." },
 ];
 const SEED_LINKS = [
   { id: 1, handle: "miaglow", businessId: 1 },
@@ -42,153 +45,149 @@ const SEED_LINKS = [
   { id: 3, handle: "thelegaledit", businessId: 3 },
 ];
 const SEED_REVIEWS = [
-  { id: 1, handle: "miaglow", businessId: 1, stars: 5, text: "My skin has never looked better. The vitamin C serum is unreal." },
-  { id: 2, handle: "miaglow", businessId: 5, stars: 4, text: "Tutors are patient and genuinely good. Score jumped 180 points." },
-  { id: 3, handle: "thelegaledit", businessId: 3, stars: 5, text: "Handled our SAFE round in a week. Founder-friendly pricing." },
+  { id: 1, handle: "miaglow", businessId: 1, stars: 5, text: "My skin has never looked better — the vitamin C serum is unreal. I send everyone here." },
+  { id: 2, handle: "miaglow", businessId: 5, stars: 4, text: "Patient, sharp tutors. My brother's score jumped 180 points." },
+  { id: 3, handle: "thelegaledit", businessId: 3, stars: 5, text: "Handled our SAFE round in a week, founder-friendly the whole way." },
 ];
 
-const INVITE_CODE = "EASY2025";
-const DEMO_OTP = "123123";
+/* ---------- Inline SVG icons ---------- */
+const Svg = ({ size = 18, sw = 1.7, color = "currentColor", fill = "none", children }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={sw}
+    strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }}>{children}</svg>
+);
+const Check = (p) => <Svg {...p}><path d="M20 6 9 17l-5-5" /></Svg>;
+const Close = (p) => <Svg {...p}><path d="M18 6 6 18M6 6l12 12" /></Svg>;
+const Arrow = (p) => <Svg {...p}><path d="M5 12h14M13 6l6 6-6 6" /></Svg>;
+const ChevL = (p) => <Svg {...p}><path d="M15 6l-6 6 6 6" /></Svg>;
+const ChevR = (p) => <Svg {...p}><path d="M9 6l6 6-6 6" /></Svg>;
+const Plus = (p) => <Svg {...p}><path d="M12 5v14M5 12h14" /></Svg>;
+const Pin = (p) => <Svg {...p}><path d="M20 10c0 5.5-8 12-8 12s-8-6.5-8-12a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.6" /></Svg>;
+const Globe = (p) => <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3c2.4 2.5 2.4 15.5 0 18M12 3c-2.4 2.5-2.4 15.5 0 18" /></Svg>;
+const Copy = (p) => <Svg {...p}><rect x="9" y="9" width="11" height="11" rx="2.2" /><path d="M5 15V6.2A1.2 1.2 0 0 1 6.2 5H15" /></Svg>;
+const Edit = (p) => <Svg {...p}><path d="M12 20h9" /><path d="M16.4 3.6a2 2 0 0 1 2.9 2.8L7.6 18.1 3.5 19.2l1.1-4.1z" /></Svg>;
+const Send = (p) => <Svg {...p}><path d="M21 3 3 10.6l7 2.4 2.4 7z" /><path d="M21 3 10 14" /></Svg>;
+const Store = (p) => <Svg {...p}><path d="M4 9h16M5 9l1-4h12l1 4M5 9v10h14V9M9.5 19v-5h5v5" /></Svg>;
+const Spark = (p) => <Svg {...p}><path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z" /></Svg>;
+const Star = ({ size = 16, on = true }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={on ? C.gold : "none"} stroke={on ? C.gold : "#D9D2C5"} strokeWidth="1.2" strokeLinejoin="round" style={{ display: "block" }}>
+    <path d="M12 17.3 6.2 20.6l1.5-6.5L2.7 9.7l6.6-.6L12 3l2.7 6.1 6.6.6-5 4.4 1.5 6.5z" />
+  </svg>
+);
+const Seal = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "block", flexShrink: 0 }}>
+    <circle cx="12" cy="12" r="10" fill={C.accent} />
+    <path d="M8.3 12.2l2.4 2.4 5-5.2" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
-/* ---------- Small UI atoms ---------- */
-function Btn({ children, onClick, variant = "primary", className = "", style = {}, disabled, type = "button" }) {
-  const base = {
-    primary: { background: PURPLE, color: "#fff", boxShadow: "0 2px 6px rgba(99,91,255,.35)" },
-    dark: { background: NAVY, color: "#fff" },
-    ghost: { background: "#fff", color: NAVY, border: `1px solid ${LINE}` },
-    soft: { background: "#EEF0FF", color: PURPLE_DK },
-  }[variant];
+/* ---------- Atoms ---------- */
+function Avatar({ name, image, size = 44 }) {
+  if (image) return <img src={image} alt={name || ""} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", display: "block" }} />;
+  const init = (name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition active:translate-y-px disabled:opacity-40 disabled:cursor-not-allowed ${className}`}
-      style={{ ...base, ...style }}
-    >
-      {children}
-    </button>
+    <span style={{ width: size, height: size, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: C.paper, fontFamily: SERIF, fontWeight: 500, fontSize: size / 2.4, flexShrink: 0 }}>{init}</span>
   );
 }
-
-function Field({ label, children, hint }) {
+function Stars({ value = 5, size = 14 }) {
+  return <span style={{ display: "inline-flex", gap: 2 }}>{[1, 2, 3, 4, 5].map((n) => <Star key={n} size={size} on={n <= value} />)}</span>;
+}
+function StarPicker({ value, onChange }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-semibold" style={{ color: NAVY }}>{label}</span>
+    <div style={{ display: "flex", gap: 6 }}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} type="button" onClick={() => onChange(n)} style={{ background: "none", border: "none", cursor: "pointer", padding: 2 }}>
+          <Star size={30} on={n <= value} />
+        </button>
+      ))}
+    </div>
+  );
+}
+function Field({ label, hint, children }) {
+  return (
+    <label style={{ display: "block" }}>
+      <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, marginBottom: 7, color: C.ink }}>{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-xs" style={{ color: MUTED }}>{hint}</span>}
+      {hint && <span style={{ display: "block", fontSize: 12, color: C.muted, marginTop: 6 }}>{hint}</span>}
     </label>
   );
 }
-const inputCls = "w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition";
-const inputStyle = { border: `1px solid ${LINE}`, color: NAVY, background: "#fff" };
-
-function StarPicker({ value, onChange }) {
+function Stepper({ step, total }) {
   return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button key={n} type="button" onClick={() => onChange(n)} className="transition hover:scale-110">
-          <Star size={30} strokeWidth={1.5} fill={n <= value ? "#FFB020" : "none"} color={n <= value ? "#FFB020" : "#C9CFD8"} />
-        </button>
+    <div style={{ display: "flex", gap: 6 }}>
+      {Array.from({ length: total }).map((_, i) => (
+        <span key={i} style={{ height: 5, flex: 1, borderRadius: 99, background: i <= step ? C.ink : C.line }} />
       ))}
     </div>
   );
 }
-function StarsRow({ value }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <Star key={n} size={15} fill={n <= value ? "#FFB020" : "none"} color={n <= value ? "#FFB020" : "#D6DBE2"} />
-      ))}
-    </div>
-  );
-}
-
-function Logo({ onClick }) {
-  return (
-    <button onClick={onClick} className="flex items-center gap-2">
-      <span className="grid h-8 w-8 place-items-center rounded-lg" style={{ background: PURPLE, color: "#fff" }}>
-        <ArrowRight size={18} />
-      </span>
-      <span className="text-lg font-bold tracking-tight" style={{ color: NAVY }}>
-        Easy<span style={{ color: PURPLE }}>Recommend</span>
-      </span>
-    </button>
-  );
-}
-
-function Avatar({ name, image, size = 44 }) {
-  if (image) {
-    return <img src={image} alt={name} className="rounded-full object-cover" style={{ width: size, height: size }} />;
-  }
-  const initials = (name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-  return (
-    <span className="grid place-items-center rounded-full font-bold text-white" style={{ width: size, height: size, fontSize: size / 2.6, background: "linear-gradient(135deg,#635BFF,#A855F7)" }}>
-      {initials}
-    </span>
-  );
-}
-
 function Modal({ children, onClose, wide }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4" style={{ background: "rgba(10,37,64,.45)", backdropFilter: "blur(2px)" }} onClick={onClose}>
-      <div
-        className={`relative w-full ${wide ? "sm:max-w-2xl" : "sm:max-w-md"} max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white sm:rounded-3xl`}
-        style={{ boxShadow: "0 30px 60px rgba(10,37,64,.25)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button onClick={onClose} className="absolute right-4 top-4 z-10 grid h-8 w-8 place-items-center rounded-full" style={{ background: LIGHT, color: SLATE }}>
-          <X size={16} />
-        </button>
+    <div className="er-modal-overlay" onClick={onClose}>
+      <div className={`er-modal${wide ? " er-modal-wide" : ""}`} onClick={(e) => e.stopPropagation()}>
+        <button className="er-close" onClick={onClose} aria-label="Close"><Close size={16} /></button>
         {children}
       </div>
     </div>
   );
 }
 
-function Stepper({ step, total }) {
+/* ---------- Signature: recommendation card ---------- */
+function RecCard({ name, handle, image, category, quote, brand, stars = 5, style }) {
+  const cat = CATS[category] || CATS.Beauty;
   return (
-    <div className="flex gap-1.5">
-      {Array.from({ length: total }).map((_, i) => (
-        <span key={i} className="h-1.5 flex-1 rounded-full transition" style={{ background: i <= step ? PURPLE : LINE }} />
-      ))}
+    <div className="er-card" style={{ padding: "22px 22px 18px", ...style }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+        <Avatar name={name} image={image} size={42} />
+        <div style={{ lineHeight: 1.25 }}>
+          <div style={{ fontWeight: 600, fontSize: 14.5 }}>@{handle}</div>
+          <span style={{ fontSize: 12, fontWeight: 600, color: cat.color }}>{category}</span>
+        </div>
+        <div style={{ marginLeft: "auto" }}><Stars value={stars} /></div>
+      </div>
+      <p className="er-serif" style={{ margin: "16px 0 0", fontSize: 20.5, lineHeight: 1.36, fontWeight: 400, letterSpacing: "-.005em" }}>
+        <span style={{ color: cat.color, fontSize: 30, lineHeight: 0, verticalAlign: "-7px", marginRight: 1 }}>&ldquo;</span>{quote}&rdquo;
+      </p>
+      <div style={{ height: 1, background: C.line, margin: "16px 0 12px" }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, color: C.muted }}>
+        <span>Recommends</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600, color: C.ink }}><Seal size={15} /> {brand}</span>
+      </div>
     </div>
   );
 }
 
 /* ---------- Business card ---------- */
-function BusinessCard({ b, recommendCount }) {
+function BusinessCard({ b, backers }) {
+  const cat = CATS[b.categories[0]] || CATS.Beauty;
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl bg-white transition hover:-translate-y-0.5" style={{ border: `1px solid ${LINE}`, boxShadow: "0 1px 2px rgba(10,37,64,.06)" }}>
-      <div className="relative h-28" style={{ background: catGrad(b.categories[0]) }}>
-        <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold" style={{ color: NAVY }}>
-          {b.categories[0]}
-        </span>
-        {b.discount > 0 && (
-          <span className="absolute right-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold text-white" style={{ background: "rgba(10,37,64,.55)" }}>
-            {b.discount}% off
-          </span>
-        )}
+    <div className="er-card er-card-h" style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ padding: "18px 18px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 999, background: cat.bg, color: cat.color }}>{b.categories[0]}</span>
+        <Seal size={18} />
       </div>
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-center gap-1.5">
-          <h3 className="text-base font-bold" style={{ color: NAVY }}>{b.name}</h3>
-          <BadgeCheck size={16} color={PURPLE} />
-        </div>
-        <p className="mt-1 text-sm" style={{ color: MUTED }}>{b.blurb}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: SLATE }}>
-          <span className="inline-flex items-center gap-1">
-            {b.online ? <Globe size={13} /> : <MapPin size={13} />} {b.online ? "Online" : b.city}
-          </span>
-        </div>
-        <div className="mt-4 flex items-center justify-between border-t pt-3" style={{ borderColor: LINE }}>
-          <span className="text-xs" style={{ color: MUTED }}>
-            {recommendCount > 0
-              ? <span className="inline-flex items-center gap-1"><Star size={12} fill="#FFB020" color="#FFB020" /> Backed by {recommendCount} creator{recommendCount > 1 ? "s" : ""}</span>
-              : "Verified business"}
-          </span>
-          <span className="inline-flex items-center gap-1 text-sm font-semibold" style={{ color: PURPLE }}>Visit <ArrowRight size={14} /></span>
-        </div>
+      <div style={{ padding: "13px 18px 0", flex: 1 }}>
+        <h3 className="er-serif" style={{ margin: 0, fontSize: 21, fontWeight: 500, letterSpacing: "-.01em" }}>{b.name}</h3>
+        <p style={{ margin: "5px 0 0", fontSize: 14, color: C.muted, lineHeight: 1.45 }}>{b.blurb}</p>
+      </div>
+      <div style={{ padding: "14px 18px 0", display: "flex", alignItems: "center", gap: 14, fontSize: 13, color: C.inkSoft }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>{b.online ? <Globe size={14} color={C.muted} /> : <Pin size={14} color={C.muted} />}{b.online ? "Online" : b.city}</span>
+        {b.discount > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.accent, fontWeight: 600 }}>{b.discount}% member perk</span>}
+      </div>
+      <div style={{ height: 1, background: C.line, margin: "16px 18px 0" }} />
+      <div style={{ padding: "12px 18px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+        {backers.length > 0 ? (
+          <>
+            <span style={{ display: "flex" }}>
+              {backers.slice(0, 3).map((bk, i) => (
+                <span key={i} style={{ marginLeft: i ? -8 : 0, border: "2px solid #fff", borderRadius: "50%", display: "flex" }}>
+                  <Avatar name={bk.name} image={bk.image} size={24} />
+                </span>
+              ))}
+            </span>
+            <span style={{ fontSize: 12.5, color: C.muted }}>Backed by {backers.length} creator{backers.length > 1 ? "s" : ""}</span>
+          </>
+        ) : <span style={{ fontSize: 12.5, color: C.muted }}>Newly vetted</span>}
+        <span style={{ marginLeft: "auto", color: C.ink }}><Arrow size={16} /></span>
       </div>
     </div>
   );
@@ -198,135 +197,90 @@ function BusinessCard({ b, recommendCount }) {
 function BrandModal({ onClose, onSubmit }) {
   const [step, setStep] = useState(0);
   const [f, setF] = useState({ name: "", phone: "", email: "", categories: [], city: "", online: false, commission: 15, discount: 0, photos: 2 });
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState(""); const [otpSent, setOtpSent] = useState(false);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
-
-  const valid = [
-    f.name && f.phone && f.email,
-    f.categories.length > 0 && (f.online || f.city),
-    f.commission > 0,
-    otp === DEMO_OTP,
-  ];
-
-  const titles = ["About your business", "Where to find you", "Your offer", "Verify your number"];
+  const valid = [f.name && f.phone && f.email, f.categories.length > 0 && (f.online || f.city), f.commission > 0, otp === DEMO_OTP];
+  const titles = ["About your business", "Where to find you", "Your terms", "Verify your number"];
+  const cat0 = CATS[f.categories[0]] || CATS.Beauty;
 
   return (
     <Modal onClose={onClose} wide>
-      <div className="p-6 sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-wider" style={{ color: PURPLE }}>List your business</p>
-        <h2 className="mt-1 text-2xl font-bold" style={{ color: NAVY }}>{titles[step]}</h2>
-        <p className="mt-1 text-sm" style={{ color: MUTED }}>Step {step + 1} of 4 · Creators send you customers, you pay only per result.</p>
-        <div className="mt-4"><Stepper step={step} total={4} /></div>
+      <div style={{ padding: "30px 28px" }}>
+        <span className="er-eyebrow">List your business</span>
+        <h2 className="er-serif" style={{ margin: "8px 0 4px", fontSize: 27, fontWeight: 500 }}>{titles[step]}</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 14, color: C.muted }}>Step {step + 1} of 4 · You only pay creators when a referral converts.</p>
+        <Stepper step={step} total={4} />
 
-        <div className="mt-6 space-y-4">
-          {step === 0 && (
-            <>
-              <Field label="Brand name">
-                <input className={inputCls} style={inputStyle} placeholder="Lumière Skincare" value={f.name} onChange={(e) => set("name", e.target.value)} />
-              </Field>
-              <Field label="Phone number">
-                <input className={inputCls} style={inputStyle} placeholder="+1 555 010 2030" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
-              </Field>
-              <Field label="Email">
-                <input className={inputCls} style={inputStyle} placeholder="hello@brand.com" value={f.email} onChange={(e) => set("email", e.target.value)} />
-              </Field>
-            </>
-          )}
+        <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
+          {step === 0 && <>
+            <Field label="Brand name"><input className="er-input" placeholder="Lumière Skincare" value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
+            <Field label="Phone number"><input className="er-input" placeholder="+1 555 010 2030" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
+            <Field label="Email"><input className="er-input" placeholder="hello@brand.com" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
+          </>}
 
-          {step === 1 && (
-            <>
-              <Field label="Categories" hint="Pick all that apply.">
-                <div className="flex flex-wrap gap-2">
-                  {CATEGORIES.map((c) => {
-                    const on = f.categories.includes(c.name);
-                    return (
-                      <button key={c.name} type="button" onClick={() => toggleCat(c.name)}
-                        className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold transition"
-                        style={on ? { background: PURPLE, color: "#fff" } : { background: "#fff", color: SLATE, border: `1px solid ${LINE}` }}>
-                        <c.icon size={15} /> {c.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </Field>
-              <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: LIGHT, border: `1px solid ${LINE}` }}>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: NAVY }}>Online business</p>
-                  <p className="text-xs" style={{ color: MUTED }}>Serve customers anywhere, no fixed location.</p>
-                </div>
-                <button type="button" onClick={() => set("online", !f.online)} className="relative h-7 w-12 rounded-full transition" style={{ background: f.online ? PURPLE : "#C9CFD8" }}>
-                  <span className="absolute top-0.5 h-6 w-6 rounded-full bg-white transition-all" style={{ left: f.online ? 22 : 2 }} />
-                </button>
+          {step === 1 && <>
+            <Field label="Categories" hint="Pick all that apply.">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {CAT_LIST.map((c) => {
+                  const on = f.categories.includes(c); const cc = CATS[c];
+                  return <button key={c} type="button" onClick={() => toggleCat(c)}
+                    style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "9px 15px", borderRadius: 999, border: `1px solid ${on ? cc.color : C.line}`, background: on ? cc.bg : "#fff", color: on ? cc.color : C.inkSoft }}>{c}</button>;
+                })}
               </div>
-              <Field label="City" hint={f.online ? "Optional for online businesses." : "Where customers visit you."}>
-                <input className={inputCls} style={inputStyle} placeholder="San Francisco" value={f.city} onChange={(e) => set("city", e.target.value)} />
-              </Field>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <Field label="Commission paid to creators" hint="Percent of each sale you'll share.">
-                <div className="flex items-center gap-3">
-                  <input type="range" min="5" max="40" value={f.commission} onChange={(e) => set("commission", +e.target.value)} className="flex-1" style={{ accentColor: PURPLE }} />
-                  <span className="w-14 rounded-lg px-2 py-1 text-center text-sm font-bold" style={{ background: "#EEFBF3", color: "#0E9F6E" }}>{f.commission}%</span>
-                </div>
-              </Field>
-              <Field label="Discount for customers" hint="Optional incentive shown on your listing.">
-                <div className="flex items-center gap-3">
-                  <input type="range" min="0" max="40" value={f.discount} onChange={(e) => set("discount", +e.target.value)} className="flex-1" style={{ accentColor: PURPLE }} />
-                  <span className="w-14 rounded-lg px-2 py-1 text-center text-sm font-bold" style={{ background: "#EEF0FF", color: PURPLE_DK }}>{f.discount}%</span>
-                </div>
-              </Field>
-              <Field label="Photos" hint="Add a couple so creators can showcase you.">
-                <div className="flex flex-wrap gap-3">
-                  {Array.from({ length: f.photos }).map((_, i) => (
-                    <div key={i} className="relative h-20 w-20 rounded-xl" style={{ background: catGrad(f.categories[0] || "Beauty") }}>
-                      <button type="button" onClick={() => set("photos", Math.max(0, f.photos - 1))} className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white shadow" style={{ color: SLATE }}>
-                        <X size={11} />
-                      </button>
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => set("photos", f.photos + 1)} className="grid h-20 w-20 place-items-center rounded-xl border-2 border-dashed" style={{ borderColor: LINE, color: MUTED }}>
-                    <Plus size={20} />
-                  </button>
-                </div>
-              </Field>
-            </>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4">
-              <div className="rounded-xl px-4 py-3" style={{ background: LIGHT, border: `1px solid ${LINE}` }}>
-                <p className="text-sm" style={{ color: SLATE }}>We sent a 6-digit code to <b style={{ color: NAVY }}>{f.phone || "your phone"}</b>.</p>
-              </div>
-              {!otpSent ? (
-                <Btn variant="dark" onClick={() => setOtpSent(true)} className="w-full">
-                  <Phone size={16} /> Send verification code
-                </Btn>
-              ) : (
-                <>
-                  <Field label="Enter code" hint={`Demo code: ${DEMO_OTP}`}>
-                    <input className={inputCls} style={{ ...inputStyle, letterSpacing: "0.3em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} />
-                  </Field>
-                  {otp && otp !== DEMO_OTP && <p className="text-xs font-semibold" style={{ color: "#E0245E" }}>That code doesn't match. Try {DEMO_OTP}.</p>}
-                </>
-              )}
+            </Field>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px" }}>
+              <div><div style={{ fontSize: 14, fontWeight: 600 }}>Online business</div><div style={{ fontSize: 12.5, color: C.muted }}>Serve customers anywhere.</div></div>
+              <button type="button" onClick={() => set("online", !f.online)} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: "pointer", background: f.online ? C.accent : "#CFC8BA", transition: "background .15s" }}>
+                <span style={{ position: "absolute", top: 3, left: f.online ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
+              </button>
             </div>
-          )}
+            <Field label="City" hint={f.online ? "Optional for online businesses." : "Where customers visit you."}><input className="er-input" placeholder="San Francisco" value={f.city} onChange={(e) => set("city", e.target.value)} /></Field>
+          </>}
+
+          {step === 2 && <>
+            <Field label="Commission paid to creators" hint="Your cut shared on each converted sale. Kept private from the public.">
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <input type="range" min="5" max="40" value={f.commission} onChange={(e) => set("commission", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
+                <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.accentSoft, color: C.accentD }}>{f.commission}%</span>
+              </div>
+            </Field>
+            <Field label="Customer perk" hint="Optional discount shown on your public listing.">
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <input type="range" min="0" max="40" value={f.discount} onChange={(e) => set("discount", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
+                <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.panel, color: C.ink }}>{f.discount}%</span>
+              </div>
+            </Field>
+            <Field label="Photos" hint="Add a couple so creators can showcase you.">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                {Array.from({ length: f.photos }).map((_, i) => (
+                  <div key={i} style={{ position: "relative", width: 76, height: 76, borderRadius: 12, background: cat0.bg, border: `1px solid ${C.line}` }}>
+                    <button type="button" onClick={() => set("photos", Math.max(0, f.photos - 1))} style={{ position: "absolute", top: -7, right: -7, width: 20, height: 20, borderRadius: "50%", border: "none", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.15)", cursor: "pointer", color: C.muted, display: "grid", placeItems: "center" }}><Close size={11} /></button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => set("photos", f.photos + 1)} style={{ width: 76, height: 76, borderRadius: 12, border: `2px dashed ${C.line}`, background: "none", cursor: "pointer", color: C.muted, display: "grid", placeItems: "center" }}><Plus size={20} /></button>
+              </div>
+            </Field>
+          </>}
+
+          {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>We sent a 6-digit code to <b style={{ color: C.ink }}>{f.phone || "your phone"}</b>.</div>
+            {!otpSent ? (
+              <button className="er-btn er-btn-primary er-btn-block" onClick={() => setOtpSent(true)}><Send size={16} /> Send verification code</button>
+            ) : <>
+              <Field label="Enter code" hint={`Demo code: ${DEMO_OTP}`}>
+                <input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} />
+              </Field>
+              {otp && otp !== DEMO_OTP && <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "#C0392B" }}>That code doesn't match. Try {DEMO_OTP}.</p>}
+            </>}
+          </div>}
         </div>
 
-        <div className="mt-7 flex items-center justify-between">
-          {step > 0 ? (
-            <Btn variant="ghost" onClick={() => setStep(step - 1)}><ChevronLeft size={16} /> Back</Btn>
-          ) : <span />}
-          {step < 3 ? (
-            <Btn onClick={() => setStep(step + 1)} disabled={!valid[step]}>Continue <ChevronRight size={16} /></Btn>
-          ) : (
-            <Btn onClick={() => onSubmit(f)} disabled={!valid[3]}><Check size={16} /> Submit for review</Btn>
-          )}
+        <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          {step > 0 ? <button className="er-btn er-btn-ghost" onClick={() => setStep(step - 1)}><ChevL size={16} /> Back</button> : <span />}
+          {step < 3
+            ? <button className="er-btn er-btn-primary" disabled={!valid[step]} onClick={() => setStep(step + 1)}>Continue <ChevR size={16} /></button>
+            : <button className="er-btn er-btn-primary" disabled={!valid[3]} onClick={() => onSubmit(f)}><Check size={16} /> Submit for review</button>}
         </div>
       </div>
     </Modal>
@@ -336,312 +290,243 @@ function BrandModal({ onClose, onSubmit }) {
 function BrandSuccess({ name, onClose }) {
   return (
     <Modal onClose={onClose}>
-      <div className="p-8 text-center">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-full" style={{ background: "#EEFBF3" }}>
-          <ShieldCheck size={28} color="#0E9F6E" />
-        </div>
-        <h2 className="mt-4 text-xl font-bold" style={{ color: NAVY }}>You're in the queue</h2>
-        <p className="mt-2 text-sm" style={{ color: SLATE }}>
-          <b style={{ color: NAVY }}>{name}</b> was submitted for review. Our team approves new businesses before they go live under their category. You'll get a text once you're listed.
-        </p>
-        <Btn onClick={onClose} className="mt-6 w-full">Done</Btn>
+      <div style={{ padding: 32, textAlign: "center" }}>
+        <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={52} /></div>
+        <h2 className="er-serif" style={{ margin: "16px 0 0", fontSize: 24, fontWeight: 500 }}>You're in the queue</h2>
+        <p style={{ margin: "10px 0 0", fontSize: 14.5, color: C.inkSoft, lineHeight: 1.5 }}><b>{name}</b> was submitted for review. We approve every business before it's listed under its category — you'll get a text once you're live.</p>
+        <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 24 }} onClick={onClose}>Done</button>
       </div>
     </Modal>
   );
 }
 
-/* ---------- Creator (influencer) flow ---------- */
+/* ---------- Creator flow ---------- */
 function CopyRow({ label, value }) {
   const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(value); } catch (e) { /* sandboxed */ }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
-  };
+  const copy = async () => { try { await navigator.clipboard.writeText(value); } catch (e) { /* sandbox */ } setCopied(true); setTimeout(() => setCopied(false), 1600); };
   return (
     <div>
-      <p className="mb-1.5 text-xs font-bold uppercase tracking-wide" style={{ color: MUTED }}>{label}</p>
-      <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: LIGHT, border: `1px solid ${LINE}` }}>
-        <Link2 size={15} color={PURPLE} className="shrink-0" />
-        <code className="flex-1 truncate text-sm" style={{ color: NAVY }}>{value}</code>
-        <button onClick={copy} className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold" style={{ background: copied ? "#EEFBF3" : "#fff", color: copied ? "#0E9F6E" : PURPLE, border: `1px solid ${LINE}` }}>
-          {copied ? <span className="inline-flex items-center gap-1"><Check size={13} /> Copied</span> : <span className="inline-flex items-center gap-1"><Copy size={13} /> Copy</span>}
-        </button>
+      <p style={{ margin: "0 0 7px", fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted }}>{label}</p>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 11, padding: "10px 12px" }}>
+        <code style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13.5, color: C.ink }}>{value}</code>
+        <button onClick={copy} className="er-btn er-btn-light er-btn-sm" style={{ color: copied ? C.accent : C.ink }}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}</button>
       </div>
     </div>
   );
 }
 
-function CreatorModal({ businesses, influencers, onClose, onComplete, onViewProfile }) {
+function CreatorModal({ businesses, onClose, onComplete, onViewProfile }) {
   const [step, setStep] = useState(0);
-  const [code, setCode] = useState("");
-  const [username, setUsername] = useState("");
-  const [image, setImage] = useState("");
-  const [pickedId, setPickedId] = useState(null);
-  const [stars, setStars] = useState(0);
-  const [text, setText] = useState("");
-
-  const onPickPhoto = (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setImage(reader.result);
-    reader.readAsDataURL(file);
-  };
-
+  const [code, setCode] = useState(""); const [username, setUsername] = useState(""); const [image, setImage] = useState("");
+  const [pickedId, setPickedId] = useState(null); const [stars, setStars] = useState(0); const [text, setText] = useState("");
   const approved = businesses.filter((b) => b.status === "approved");
   const picked = approved.find((b) => b.id === pickedId);
-  const handleClean = username.replace(/[^a-z0-9_]/gi, "").toLowerCase();
+  const handle = username.replace(/[^a-z0-9_]/gi, "").toLowerCase();
 
-  const finish = (withReview) => {
-    onComplete({
-      handle: handleClean, name: handleClean, image, businessId: pickedId,
-      review: withReview && stars > 0 ? { stars, text } : null,
-    });
-    setStep(3);
-  };
-
-  const refUrl = picked ? `easyrecommend.co/r/${handleClean}/${slug(picked.name)}` : "";
-  const profileUrl = `easyrecommend.co/@${handleClean}`;
+  const onPhoto = (e) => { const file = e.target.files && e.target.files[0]; if (!file) return; const r = new FileReader(); r.onload = () => setImage(r.result); r.readAsDataURL(file); };
+  const finish = (withReview) => { onComplete({ handle, name: handle, image, businessId: pickedId, review: withReview && stars > 0 ? { stars, text } : null }); setStep(3); };
+  const refUrl = picked ? `easyrecommend.co/r/${handle}/${slugify(picked.name)}` : "";
+  const profileUrl = `easyrecommend.co/@${handle}`;
 
   return (
     <Modal onClose={onClose} wide>
-      <div className="p-6 sm:p-8">
-        {step < 3 && (
-          <>
-            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: PURPLE }}>For creators</p>
-            <div className="mt-2"><Stepper step={step} total={3} /></div>
-          </>
-        )}
+      <div style={{ padding: "30px 28px" }}>
+        {step < 3 && <><span className="er-eyebrow">For creators</span><div style={{ marginTop: 12 }}><Stepper step={step} total={3} /></div></>}
 
-        {step === 0 && (
-          <div className="mt-6 space-y-4">
-            <h2 className="text-2xl font-bold" style={{ color: NAVY }}>Set up your creator profile</h2>
-            <p className="text-sm" style={{ color: MUTED }}>Easy Recommend is invite-only. Add a photo and username — that's your whole profile.</p>
-            <Field label="Invite code" hint={`Demo code: ${INVITE_CODE}`}>
-              <input className={inputCls} style={{ ...inputStyle, letterSpacing: "0.15em", fontWeight: 700 }} placeholder="EASY2025" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-            </Field>
-            <Field label="Profile photo">
-              <div className="flex items-center gap-4">
-                {image
-                  ? <img src={image} alt="" className="h-16 w-16 rounded-full object-cover" />
-                  : <span className="grid h-16 w-16 place-items-center rounded-full" style={{ background: "linear-gradient(135deg,#635BFF,#A855F7)", color: "#fff" }}><Sparkles size={22} /></span>}
-                <label className="cursor-pointer rounded-full px-4 py-2 text-sm font-semibold" style={{ background: "#EEF0FF", color: PURPLE_DK }}>
-                  {image ? "Change photo" : "Upload photo"}
-                  <input type="file" accept="image/*" className="hidden" onChange={onPickPhoto} />
-                </label>
-              </div>
-            </Field>
-            <Field label="Username" hint="This becomes your public profile link.">
-              <div className="flex items-center rounded-xl px-3.5 py-2.5" style={inputStyle}>
-                <span className="text-sm" style={{ color: MUTED }}>easyrecommend.co/@</span>
-                <input className="flex-1 bg-transparent text-sm outline-none" style={{ color: NAVY }} placeholder="miaglow" value={username} onChange={(e) => setUsername(e.target.value)} />
-              </div>
-            </Field>
-            <Btn className="w-full" disabled={code !== INVITE_CODE || !handleClean} onClick={() => setStep(1)}>Continue <ArrowRight size={16} /></Btn>
-            {code && code !== INVITE_CODE && <p className="text-center text-xs font-semibold" style={{ color: "#E0245E" }}>Invalid code. Try {INVITE_CODE}.</p>}
-          </div>
-        )}
+        {step === 0 && <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
+          <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Set up your profile</h2>
+            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Invite-only. A photo and a username — that's the whole profile.</p></div>
+          <Field label="Invite code" hint={`Demo code: ${INVITE_CODE}`}>
+            <input className="er-input" style={{ letterSpacing: ".15em", fontWeight: 700 }} placeholder="EASY2025" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+          </Field>
+          <Field label="Profile photo">
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              {image ? <img src={image} alt="" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }} />
+                : <span style={{ width: 64, height: 64, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: C.paper }}><Spark size={24} /></span>}
+              <label className="er-btn er-btn-light er-btn-sm" style={{ cursor: "pointer" }}>{image ? "Change photo" : "Upload photo"}
+                <input type="file" accept="image/*" style={{ display: "none" }} onChange={onPhoto} /></label>
+            </div>
+          </Field>
+          <Field label="Username" hint="This becomes your public profile link.">
+            <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "11px 14px" }}>
+              <span style={{ fontSize: 14.5, color: C.muted }}>easyrecommend.co/@</span>
+              <input style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 14.5, fontFamily: "inherit", color: C.ink }} placeholder="miaglow" value={username} onChange={(e) => setUsername(e.target.value)} />
+            </div>
+          </Field>
+          <button className="er-btn er-btn-primary er-btn-block" disabled={code !== INVITE_CODE || !handle} onClick={() => setStep(1)}>Continue <Arrow size={16} /></button>
+          {code && code !== INVITE_CODE && <p style={{ margin: 0, textAlign: "center", fontSize: 12.5, fontWeight: 600, color: "#C0392B" }}>Invalid code. Try {INVITE_CODE}.</p>}
+        </div>}
 
-        {step === 1 && (
-          <div className="mt-6">
-            <h2 className="text-2xl font-bold" style={{ color: NAVY }}>Pick a business to recommend</h2>
-            <p className="mt-1 text-sm" style={{ color: MUTED }}>We'll generate a tracked link so you earn on every sale.</p>
-            <div className="mt-5 grid max-h-72 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
-              {approved.map((b) => {
-                const on = pickedId === b.id;
-                return (
-                  <button key={b.id} onClick={() => setPickedId(b.id)} className="flex items-center gap-3 rounded-xl p-3 text-left transition" style={{ border: `1.5px solid ${on ? PURPLE : LINE}`, background: on ? "#F7F7FF" : "#fff" }}>
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-white" style={{ background: catGrad(b.categories[0]) }}>
-                      <Store size={17} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-bold" style={{ color: NAVY }}>{b.name}</span>
-                      <span className="block text-xs font-semibold" style={{ color: "#0E9F6E" }}>You earn {b.commission}%</span>
-                    </span>
-                    {on && <Check size={18} color={PURPLE} />}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-6 flex justify-between">
-              <Btn variant="ghost" onClick={() => setStep(0)}><ChevronLeft size={16} /> Back</Btn>
-              <Btn disabled={!pickedId} onClick={() => setStep(2)}>Continue <ChevronRight size={16} /></Btn>
-            </div>
+        {step === 1 && <div style={{ marginTop: 22 }}>
+          <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Pick a business to back</h2>
+          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>We generate a tracked link so you earn on every sale.</p>
+          <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1fr", gap: 8, maxHeight: 280, overflowY: "auto" }}>
+            {approved.map((b) => {
+              const on = pickedId === b.id; const cc = CATS[b.categories[0]];
+              return (
+                <button key={b.id} onClick={() => setPickedId(b.id)} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: 12, borderRadius: 12, cursor: "pointer", border: `1.5px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff" }}>
+                  <span style={{ width: 40, height: 40, borderRadius: 10, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={18} /></span>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: "block", fontWeight: 600, fontSize: 14.5, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
+                    <span style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: C.accent }}>You earn {b.commission}%</span>
+                  </span>
+                  {on && <Check size={18} color={C.accent} />}
+                </button>
+              );
+            })}
           </div>
-        )}
+          <div style={{ marginTop: 22, display: "flex", justifyContent: "space-between" }}>
+            <button className="er-btn er-btn-ghost" onClick={() => setStep(0)}><ChevL size={16} /> Back</button>
+            <button className="er-btn er-btn-primary" disabled={!pickedId} onClick={() => setStep(2)}>Continue <ChevR size={16} /></button>
+          </div>
+        </div>}
 
-        {step === 2 && (
-          <div className="mt-6">
-            <h2 className="text-2xl font-bold" style={{ color: NAVY }}>Leave a review</h2>
-            <p className="mt-1 text-sm" style={{ color: MUTED }}>Your honest take on <b style={{ color: NAVY }}>{picked?.name}</b> shows on your profile. Optional, but it builds trust.</p>
-            <div className="mt-5 flex flex-col items-center gap-3 rounded-2xl py-5" style={{ background: LIGHT }}>
-              <StarPicker value={stars} onChange={setStars} />
-              <span className="text-xs font-semibold" style={{ color: MUTED }}>{["Tap to rate", "Poor", "Fair", "Good", "Great", "Amazing"][stars]}</span>
-            </div>
-            <div className="mt-4">
-              <textarea className={inputCls} style={{ ...inputStyle, minHeight: 90, resize: "none" }} placeholder="What did you love about them?" value={text} onChange={(e) => setText(e.target.value)} />
-            </div>
-            <div className="mt-6 flex items-center justify-between">
-              <button onClick={() => finish(false)} className="text-sm font-semibold" style={{ color: MUTED }}>Skip for now</button>
-              <Btn onClick={() => finish(true)}><Wand2 size={16} /> Generate my link</Btn>
-            </div>
+        {step === 2 && <div style={{ marginTop: 22 }}>
+          <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Leave a review</h2>
+          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Your honest take on <b style={{ color: C.ink }}>{picked?.name}</b> shows on your profile. Optional, but it's what builds trust.</p>
+          <div style={{ marginTop: 18, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: C.panel, borderRadius: 16, padding: "20px 0" }}>
+            <StarPicker value={stars} onChange={setStars} />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: C.muted }}>{["Tap to rate", "Poor", "Fair", "Good", "Great", "Exceptional"][stars]}</span>
           </div>
-        )}
+          <textarea className="er-input" style={{ marginTop: 14 }} placeholder="What did you love about them?" value={text} onChange={(e) => setText(e.target.value)} />
+          <div style={{ marginTop: 22, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <button className="er-link" onClick={() => finish(false)} style={{ color: C.muted }}>Skip for now</button>
+            <button className="er-btn er-btn-primary" onClick={() => finish(true)}><Spark size={16} /> Generate my link</button>
+          </div>
+        </div>}
 
-        {step === 3 && (
-          <div className="py-2 text-center">
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full" style={{ background: "#EEF0FF" }}>
-              <Sparkles size={26} color={PURPLE} />
-            </div>
-            <h2 className="mt-4 text-xl font-bold" style={{ color: NAVY }}>Your link is live</h2>
-            <p className="mt-1 text-sm" style={{ color: MUTED }}>Share the referral link to earn {picked?.commission}% per sale, and drop your profile link in your bio.</p>
-            <div className="mt-5 space-y-4 text-left">
-              <CopyRow label="Referral link" value={refUrl} />
-              <CopyRow label="Your profile · add to bio" value={profileUrl} />
-            </div>
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <Btn variant="ghost" onClick={onClose}>Close</Btn>
-              <Btn onClick={() => { onViewProfile(handleClean); onClose(); }}>View my profile <ArrowRight size={16} /></Btn>
-            </div>
+        {step === 3 && <div style={{ textAlign: "center", paddingTop: 6 }}>
+          <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={50} /></div>
+          <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 24, fontWeight: 500 }}>Your link is live</h2>
+          <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Share the referral link to earn {picked?.commission}% per sale, and drop your profile in your bio.</p>
+          <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }}>
+            <CopyRow label="Referral link" value={refUrl} />
+            <CopyRow label="Your profile · add to bio" value={profileUrl} />
           </div>
-        )}
+          <div style={{ marginTop: 22, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+            <button className="er-btn er-btn-ghost" onClick={onClose}>Close</button>
+            <button className="er-btn er-btn-primary" onClick={() => { onViewProfile(handle); onClose(); }}>View my profile <Arrow size={16} /></button>
+          </div>
+        </div>}
       </div>
     </Modal>
   );
 }
 
-/* ---------- Admin panel ---------- */
+/* ---------- Admin ---------- */
+function AdminRow({ b, onApprove, onReject, onEdit }) {
+  const [editing, setEditing] = useState(false);
+  const [c, setC] = useState(b.commission); const [d, setD] = useState(b.discount);
+  const cc = CATS[b.categories[0]] || CATS.Beauty;
+  return (
+    <div className="er-card" style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ width: 44, height: 44, borderRadius: 11, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={18} /></span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p className="er-serif" style={{ margin: 0, fontSize: 17, fontWeight: 500 }}>{b.name}</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>{b.categories.join(", ")} · {b.online ? "Online" : b.city}</p>
+        </div>
+        {!editing && <>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: "5px 9px", borderRadius: 8, background: C.accentSoft, color: C.accentD }}>{b.commission}%</span>
+          {b.discount > 0 && <span style={{ fontSize: 12, fontWeight: 700, padding: "5px 9px", borderRadius: 8, background: C.panel, color: C.ink }}>{b.discount}% off</span>}
+        </>}
+      </div>
+      {editing ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <label style={{ fontSize: 12.5, color: C.muted }}>Commission <input type="number" value={c} onChange={(e) => setC(+e.target.value)} className="er-input" style={{ width: 70, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} />%</label>
+          <label style={{ fontSize: 12.5, color: C.muted }}>Discount <input type="number" value={d} onChange={(e) => setD(+e.target.value)} className="er-input" style={{ width: 70, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} />%</label>
+          <button className="er-btn er-btn-primary er-btn-sm" onClick={() => { onEdit(b.id, { commission: c, discount: d }); setEditing(false); }}><Check size={14} /> Save</button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          {b.status === "pending" ? <>
+            <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => onReject(b.id)}><Close size={14} /> Reject</button>
+            <button className="er-btn er-btn-accent er-btn-sm" onClick={() => onApprove(b.id)}><Check size={14} /> Approve</button>
+          </> : <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setEditing(true)}><Edit size={14} /> Edit terms</button>}
+        </div>
+      )}
+    </div>
+  );
+}
 function AdminPanel({ businesses, onApprove, onReject, onEdit, onBack }) {
-  const [editing, setEditing] = useState(null);
   const pending = businesses.filter((b) => b.status === "pending");
   const approved = businesses.filter((b) => b.status === "approved");
-
-  const Row = ({ b }) => {
-    const isEdit = editing === b.id;
-    const [c, setC] = useState(b.commission);
-    const [d, setD] = useState(b.discount);
-    return (
-      <div className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-center" style={{ border: `1px solid ${LINE}` }}>
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white" style={{ background: catGrad(b.categories[0]) }}>
-          <Store size={18} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-bold" style={{ color: NAVY }}>{b.name}</p>
-          <p className="text-xs" style={{ color: MUTED }}>{b.categories.join(", ")} · {b.online ? "Online" : b.city}</p>
-        </div>
-        {isEdit ? (
-          <div className="flex items-center gap-2">
-            <label className="text-xs" style={{ color: MUTED }}>Comm
-              <input type="number" value={c} onChange={(e) => setC(+e.target.value)} className="ml-1 w-14 rounded-lg px-2 py-1 text-sm" style={inputStyle} />%
-            </label>
-            <label className="text-xs" style={{ color: MUTED }}>Disc
-              <input type="number" value={d} onChange={(e) => setD(+e.target.value)} className="ml-1 w-14 rounded-lg px-2 py-1 text-sm" style={inputStyle} />%
-            </label>
-            <Btn className="!px-3 !py-2" onClick={() => { onEdit(b.id, { commission: c, discount: d }); setEditing(null); }}><Check size={15} /></Btn>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: "#EEFBF3", color: "#0E9F6E" }}>{b.commission}%</span>
-            {b.discount > 0 && <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: "#EEF0FF", color: PURPLE_DK }}>{b.discount}% off</span>}
-            {b.status === "pending" ? (
-              <>
-                <Btn variant="ghost" className="!px-3 !py-2" onClick={() => onReject(b.id)}><X size={15} /></Btn>
-                <Btn className="!px-3 !py-2" onClick={() => onApprove(b.id)}><Check size={15} /> Approve</Btn>
-              </>
-            ) : (
-              <Btn variant="ghost" className="!px-3 !py-2" onClick={() => setEditing(b.id)}><Pencil size={14} /> Edit</Btn>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
-    <div className="mx-auto max-w-3xl px-5 py-10">
-      <button onClick={onBack} className="mb-4 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: PURPLE }}><ChevronLeft size={15} /> Back to site</button>
-      <h1 className="text-3xl font-bold" style={{ color: NAVY }}>Admin review</h1>
-      <p className="mt-1 text-sm" style={{ color: MUTED }}>Approve businesses to make them visible under their category, or adjust their terms.</p>
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 22px 80px" }}>
+      <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
+      <h1 className="er-serif" style={{ margin: 0, fontSize: 34, fontWeight: 500 }}>Admin review</h1>
+      <p style={{ margin: "6px 0 0", fontSize: 14.5, color: C.muted }}>Approve businesses to list them under their category, or adjust their terms. Commission is admin-only.</p>
 
-      <h2 className="mb-3 mt-8 flex items-center gap-2 text-sm font-bold uppercase tracking-wide" style={{ color: SLATE }}>
-        Pending {pending.length > 0 && <span className="rounded-full px-2 py-0.5 text-xs text-white" style={{ background: "#FF8A00" }}>{pending.length}</span>}
+      <h2 style={{ margin: "32px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft, display: "flex", alignItems: "center", gap: 8 }}>
+        Pending {pending.length > 0 && <span style={{ background: "#D97706", color: "#fff", borderRadius: 999, fontSize: 11, padding: "1px 7px" }}>{pending.length}</span>}
       </h2>
-      <div className="space-y-3">
-        {pending.length === 0 ? <p className="rounded-2xl py-8 text-center text-sm" style={{ background: LIGHT, color: MUTED }}>Nothing waiting. You're all caught up.</p> : pending.map((b) => <Row key={b.id} b={b} />)}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {pending.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "28px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>Nothing waiting — you're all caught up.</p>
+          : pending.map((b) => <AdminRow key={b.id} b={b} onApprove={onApprove} onReject={onReject} onEdit={onEdit} />)}
       </div>
 
-      <h2 className="mb-3 mt-8 text-sm font-bold uppercase tracking-wide" style={{ color: SLATE }}>Live ({approved.length})</h2>
-      <div className="space-y-3">{approved.map((b) => <Row key={b.id} b={b} />)}</div>
+      <h2 style={{ margin: "32px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Live ({approved.length})</h2>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {approved.map((b) => <AdminRow key={b.id} b={b} onApprove={onApprove} onReject={onReject} onEdit={onEdit} />)}
+      </div>
     </div>
   );
 }
 
-/* ---------- Influencer public profile ---------- */
+/* ---------- Influencer profile ---------- */
 function InfluencerProfile({ handle, influencers, businesses, links, reviews, onBack, onBrowse }) {
   const inf = influencers.find((i) => i.handle === handle);
-  const myLinks = links.filter((l) => l.handle === handle);
-  const myBizIds = [...new Set(myLinks.map((l) => l.businessId))];
-  const myBiz = myBizIds.map((id) => businesses.find((b) => b.id === id)).filter(Boolean);
-  const myReviews = reviews.filter((r) => r.handle === handle);
-  const reviewFor = (id) => myReviews.find((r) => r.businessId === id);
+  if (!inf) return <div style={{ maxWidth: 560, margin: "0 auto", padding: "80px 22px", textAlign: "center" }}>
+    <p style={{ color: C.muted }}>That profile doesn't exist yet.</p>
+    <button className="er-btn er-btn-primary" style={{ marginTop: 16 }} onClick={onBack}>Back home</button>
+  </div>;
 
-  if (!inf) return (
-    <div className="mx-auto max-w-xl px-5 py-20 text-center">
-      <p style={{ color: MUTED }}>That profile doesn't exist yet.</p>
-      <Btn onClick={onBack} className="mt-4">Back home</Btn>
-    </div>
-  );
+  const myLinks = links.filter((l) => l.handle === handle);
+  const ids = [...new Set(myLinks.map((l) => l.businessId))];
+  const myBiz = ids.map((id) => businesses.find((b) => b.id === id)).filter(Boolean);
+  const reviewFor = (id) => reviews.find((r) => r.handle === handle && r.businessId === id);
 
   return (
     <div>
-      <div className="px-5 pt-6" style={{ background: `linear-gradient(180deg,${LIGHT},#fff)` }}>
-        <div className="mx-auto max-w-2xl">
-          <button onClick={onBack} className="inline-flex items-center gap-1 text-sm font-semibold" style={{ color: PURPLE }}><ChevronLeft size={15} /> Easy Recommend</button>
-          <div className="mt-6 flex items-center gap-4 pb-8">
-            <Avatar name={inf.name} image={inf.image} size={72} />
+      <div style={{ background: C.panel, borderBottom: `1px solid ${C.line}` }}>
+        <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 22px 36px" }}>
+          <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><ChevL size={15} /> Easy Recommend</button>
+          <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 18 }}>
+            <Avatar name={inf.name} image={inf.image} size={76} />
             <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-2xl font-bold" style={{ color: NAVY }}>{inf.name}</h1>
-                <BadgeCheck size={20} color={PURPLE} />
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <h1 className="er-serif" style={{ margin: 0, fontSize: 30, fontWeight: 500 }}>@{inf.handle}</h1><Seal size={20} />
               </div>
-              <p className="text-sm" style={{ color: MUTED }}>@{inf.handle} · {inf.bio || "Curating brands I trust"}</p>
-              <p className="mt-1 text-xs font-semibold" style={{ color: SLATE }}>{myBiz.length} recommendation{myBiz.length !== 1 ? "s" : ""}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 14.5, color: C.muted }}>{inf.bio || "Curating businesses worth trusting."}</p>
+              <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{myBiz.length} recommendation{myBiz.length !== 1 ? "s" : ""}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-2xl px-5 py-8">
-        <h2 className="mb-4 text-sm font-bold uppercase tracking-wide" style={{ color: SLATE }}>Brands I recommend</h2>
-        {myBiz.length === 0 ? (
-          <p className="rounded-2xl py-10 text-center text-sm" style={{ background: LIGHT, color: MUTED }}>No recommendations yet.</p>
-        ) : (
-          <div className="space-y-4">
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 22px 60px" }}>
+        <h2 style={{ margin: "0 0 16px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Brands I back</h2>
+        {myBiz.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "40px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No recommendations yet.</p> : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {myBiz.map((b) => {
-              const rev = reviewFor(b.id);
+              const rev = reviewFor(b.id); const cc = CATS[b.categories[0]];
               return (
-                <div key={b.id} className="overflow-hidden rounded-2xl bg-white" style={{ border: `1px solid ${LINE}`, boxShadow: "0 1px 2px rgba(10,37,64,.06)" }}>
-                  <div className="flex items-center gap-3 p-4">
-                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-white" style={{ background: catGrad(b.categories[0]) }}>
-                      <Store size={19} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="font-bold" style={{ color: NAVY }}>{b.name}</h3>
-                        <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: LIGHT, color: SLATE }}>{b.categories[0]}</span>
+                <div key={b.id} className="er-card" style={{ overflow: "hidden" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 16 }}>
+                    <span style={{ width: 48, height: 48, borderRadius: 12, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={19} /></span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <h3 className="er-serif" style={{ margin: 0, fontSize: 19, fontWeight: 500 }}>{b.name}</h3>
+                        <span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 999, background: cc.bg, color: cc.color }}>{b.categories[0]}</span>
                       </div>
-                      <p className="text-xs" style={{ color: MUTED }}>{b.online ? "Online" : b.city}{b.discount > 0 ? ` · ${b.discount}% off via this link` : ""}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : b.city}{b.discount > 0 ? ` · ${b.discount}% off via this link` : ""}</p>
                     </div>
-                    <Btn className="!px-4 !py-2 shrink-0">Visit <ArrowRight size={14} /></Btn>
+                    <button className="er-btn er-btn-primary er-btn-sm">Visit <Arrow size={14} /></button>
                   </div>
                   {rev && (
-                    <div className="border-t px-4 py-3" style={{ borderColor: LINE, background: LIGHT }}>
-                      <div className="flex items-center gap-2">
-                        <StarsRow value={rev.stars} />
-                        <span className="text-xs font-semibold" style={{ color: SLATE }}>{inf.name.split(" ")[0]}'s review</span>
-                      </div>
-                      {rev.text && <p className="mt-1.5 text-sm" style={{ color: SLATE }}>"{rev.text}"</p>}
+                    <div style={{ borderTop: `1px solid ${C.line}`, background: C.panel, padding: "13px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}><Stars value={rev.stars} /><span style={{ fontSize: 12, fontWeight: 600, color: C.inkSoft }}>{inf.name.split(" ")[0]}'s review</span></div>
+                      {rev.text && <p className="er-serif" style={{ margin: "8px 0 0", fontSize: 16, lineHeight: 1.45, color: C.inkSoft }}>&ldquo;{rev.text}&rdquo;</p>}
                     </div>
                   )}
                 </div>
@@ -649,9 +534,9 @@ function InfluencerProfile({ handle, influencers, businesses, links, reviews, on
             })}
           </div>
         )}
-        <div className="mt-8 rounded-2xl p-5 text-center" style={{ background: NAVY }}>
-          <p className="text-sm font-semibold text-white">Want recommendations like these?</p>
-          <Btn variant="soft" className="mt-3" onClick={onBrowse}>Browse all brands <ArrowRight size={15} /></Btn>
+        <div style={{ marginTop: 28, background: C.ink, borderRadius: 18, padding: "26px 24px", textAlign: "center" }}>
+          <p className="er-serif" style={{ margin: 0, color: C.paper, fontSize: 19, fontWeight: 500 }}>Want recommendations like these?</p>
+          <button className="er-btn er-btn-sm" style={{ marginTop: 14, background: C.paper, color: C.ink }} onClick={onBrowse}>Browse all brands <Arrow size={15} /></button>
         </div>
       </div>
     </div>
@@ -659,227 +544,244 @@ function InfluencerProfile({ handle, influencers, businesses, links, reviews, on
 }
 
 /* ---------- Landing ---------- */
-function Landing({ activeCat, setActiveCat, businesses, links, onList, onCreator, onAdmin, influencers, onProfile }) {
-  const counts = (id) => links.filter((l) => l.businessId === id).length;
+function Landing({ activeCat, setActiveCat, businesses, links, influencers, onList, onCreator, onAdmin, onProfile }) {
+  const backersOf = (id) => links.filter((l) => l.businessId === id).map((l) => influencers.find((i) => i.handle === l.handle)).filter(Boolean);
   const visible = businesses.filter((b) => b.status === "approved" && b.categories.includes(activeCat));
+  const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
+  const steps = [
+    { t: "Businesses apply", d: "They add their details and a customer perk. We review every one before it's listed." },
+    { t: "Creators curate", d: "With an invite, a creator backs the businesses they trust and gets a tracked link." },
+    { t: "Everyone wins", d: "Customers save, creators earn their cut, and businesses only pay on real results." },
+  ];
 
   return (
     <div>
-      {/* Nav */}
-      <header className="sticky top-0 z-30 border-b bg-white/80" style={{ borderColor: LINE, backdropFilter: "blur(10px)" }}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
-          <Logo onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
-          <div className="flex items-center gap-2">
-            <button onClick={onAdmin} className="hidden rounded-full px-3 py-2 text-sm font-semibold sm:block" style={{ color: SLATE }}>Admin</button>
-            <Btn variant="ghost" onClick={onCreator}>I'm a creator</Btn>
-            <Btn variant="dark" onClick={onList}>List business</Btn>
+      <header style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(253,252,250,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
+        <div className="er-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
+          <button onClick={top} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer" }}>
+            <Seal size={20} /><span className="er-serif" style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-.01em", color: C.ink }}>Easy Recommend</span>
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button className="er-nav" onClick={onAdmin}>Admin</button>
+            <button className="er-btn er-btn-ghost er-btn-sm" onClick={onList}>List business</button>
+            <button className="er-btn er-btn-primary er-btn-sm" onClick={onCreator}>Join as creator</button>
           </div>
         </div>
       </header>
 
-      {/* Hero with Stripe-style angled gradient */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-[440px] -z-0"
-          style={{ background: "linear-gradient(135deg,#1A1F71 0%,#635BFF 45%,#A855F7 75%,#FF7AA2 100%)", clipPath: "polygon(0 0,100% 0,100% 72%,0 100%)" }} />
-        <div className="relative mx-auto max-w-6xl px-5 pb-16 pt-16 sm:pt-24">
-          <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur">
-              <Sparkles size={13} /> Creators earn per commission
-            </span>
-            <h1 className="mt-5 text-4xl font-bold leading-[1.08] text-white sm:text-6xl">
-              Recommendations<br />that actually pay out.
+      {/* Hero */}
+      <section className="er-wrap" style={{ padding: "70px 22px 60px" }}>
+        <div className="er-hero">
+          <div>
+            <span className="er-eyebrow">Invite-only · creator network</span>
+            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>
+              Send people somewhere good. Get paid when they go.
             </h1>
-            <p className="mt-5 max-w-lg text-base text-white/85 sm:text-lg">
-              Easy Recommend connects vetted local and online businesses with creators. Brands pay only when a referral converts. Creators get a link, a profile, and a cut of every sale.
+            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>
+              A small network of creators sharing the beauty, legal, and education businesses they actually trust — earning on every customer who follows the link.
             </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Btn variant="primary" onClick={onCreator} style={{ background: "#fff", color: PURPLE }}>Start earning <ArrowRight size={16} /></Btn>
-              <Btn onClick={onList} style={{ background: "rgba(255,255,255,.16)", color: "#fff", boxShadow: "none" }}>List your business</Btn>
+            <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <button className="er-btn er-btn-primary" onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
+              <button className="er-btn er-btn-ghost" onClick={onList}>List your business</button>
+            </div>
+            <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Every business is reviewed before it's listed.</p>
+          </div>
+
+          <div style={{ position: "relative" }}>
+            <div className="er-card" style={{ position: "absolute", inset: 0, transform: "rotate(-3.5deg) translateY(12px)", background: C.panel }} />
+            <RecCard style={{ position: "relative" }} name="Mia Chen" handle="miaglow" category="Beauty"
+              quote="My skin has never looked better — the vitamin C serum is unreal. I send everyone here." brand="Lumière Skincare" stars={5} />
+            <div className="er-card" style={{ position: "absolute", right: -8, bottom: -20, padding: "9px 13px", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 12px 26px rgba(28,26,23,.14)" }}>
+              <Stars value={5} size={13} /><span style={{ fontSize: 12.5, fontWeight: 600 }}>4,200+ booked</span>
             </div>
           </div>
-
-          {/* Floating stat card */}
-          <div className="mt-12 grid gap-4 sm:grid-cols-3">
-            {[
-              { k: "Pay per result", v: "No upfront", d: "Brands fund only converted referrals." },
-              { k: "Avg. commission", v: "8–20%", d: "Set by each business, paid on every sale." },
-              { k: "One link, one bio", v: "Your profile", d: "Every brand you back, in one place." },
-            ].map((s) => (
-              <div key={s.k} className="rounded-2xl bg-white p-5" style={{ boxShadow: "0 20px 40px rgba(10,37,64,.12)", border: `1px solid ${LINE}` }}>
-                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: MUTED }}>{s.k}</p>
-                <p className="mt-1 text-2xl font-bold" style={{ color: NAVY }}>{s.v}</p>
-                <p className="mt-1 text-sm" style={{ color: SLATE }}>{s.d}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
-      {/* Browse by category */}
-      <section className="mx-auto max-w-6xl px-5 py-16">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: PURPLE }}>Browse</p>
-            <h2 className="mt-1 text-3xl font-bold" style={{ color: NAVY }}>Vetted businesses by category</h2>
+      {/* Browse directory */}
+      <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+        <div className="er-wrap" style={{ padding: "72px 22px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", justifyContent: "space-between" }}>
+            <div>
+              <span className="er-eyebrow">The directory</span>
+              <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(28px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em" }}>Browsed and vouched for</h2>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {CAT_LIST.map((c) => {
+                const on = activeCat === c; const cc = CATS[c];
+                return <button key={c} onClick={() => setActiveCat(c)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "9px 16px", borderRadius: 999, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : "#fff", color: on ? C.paper : C.inkSoft }}>{c}</button>;
+              })}
+            </div>
           </div>
-          <div className="flex gap-2">
-            {CATEGORIES.map((c) => {
-              const on = activeCat === c.name;
-              return (
-                <button key={c.name} onClick={() => setActiveCat(c.name)}
-                  className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition"
-                  style={on ? { background: NAVY, color: "#fff" } : { background: "#fff", color: SLATE, border: `1px solid ${LINE}` }}>
-                  <c.icon size={15} /> {c.name}
-                </button>
-              );
-            })}
+          <div className="er-cards" style={{ marginTop: 28 }}>
+            {visible.map((b) => <BusinessCard key={b.id} b={b} backers={backersOf(b.id)} />)}
           </div>
+          {visible.length === 0 && <p style={{ marginTop: 28, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: "44px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No live businesses in {activeCat} yet.</p>}
         </div>
-
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((b) => <BusinessCard key={b.id} b={b} recommendCount={counts(b.id)} />)}
-        </div>
-        {visible.length === 0 && <p className="mt-8 rounded-2xl py-12 text-center text-sm" style={{ background: LIGHT, color: MUTED }}>No live businesses in {activeCat} yet. Check back soon.</p>}
       </section>
 
-      {/* Featured creators */}
-      <section className="border-t" style={{ borderColor: LINE, background: LIGHT }}>
-        <div className="mx-auto max-w-6xl px-5 py-16">
-          <h2 className="text-3xl font-bold" style={{ color: NAVY }}>Creators on Easy Recommend</h2>
-          <p className="mt-1 text-sm" style={{ color: MUTED }}>Tap a profile to see the brands they back and their reviews.</p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {influencers.map((inf) => {
-              const n = links.filter((l) => l.handle === inf.handle).length;
-              return (
-                <button key={inf.handle} onClick={() => onProfile(inf.handle)} className="flex items-center gap-4 rounded-2xl bg-white p-4 text-left transition hover:-translate-y-0.5" style={{ border: `1px solid ${LINE}` }}>
-                  <Avatar name={inf.name} image={inf.image} />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="font-bold" style={{ color: NAVY }}>{inf.name}</p>
-                      <BadgeCheck size={15} color={PURPLE} />
-                    </div>
-                    <p className="text-xs" style={{ color: MUTED }}>@{inf.handle} · {n} recommendation{n !== 1 ? "s" : ""}</p>
-                  </div>
-                  <ChevronRight size={18} color={MUTED} />
-                </button>
-              );
-            })}
-          </div>
+      {/* Creators */}
+      <section className="er-wrap" style={{ padding: "72px 22px" }}>
+        <span className="er-eyebrow">The contributors</span>
+        <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(28px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em" }}>The people doing the recommending</h2>
+        <p style={{ margin: "8px 0 0", fontSize: 15, color: C.muted }}>Tap a profile to see the brands they back and what they had to say.</p>
+        <div className="er-creators" style={{ marginTop: 28 }}>
+          {influencers.map((inf) => {
+            const n = links.filter((l) => l.handle === inf.handle).length;
+            return (
+              <button key={inf.handle} onClick={() => onProfile(inf.handle)} className="er-card er-card-h" style={{ display: "flex", alignItems: "center", gap: 16, textAlign: "left", padding: 16, cursor: "pointer" }}>
+                <Avatar name={inf.name} image={inf.image} size={48} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}><span className="er-serif" style={{ fontSize: 18, fontWeight: 500 }}>{inf.name}</span><Seal size={15} /></div>
+                  <p style={{ margin: "1px 0 0", fontSize: 13, color: C.muted }}>@{inf.handle} · {n} recommendation{n !== 1 ? "s" : ""}</p>
+                </div>
+                <ChevR size={18} color={C.muted} />
+              </button>
+            );
+          })}
         </div>
       </section>
 
       {/* How it works */}
-      <section className="mx-auto max-w-6xl px-5 py-16">
-        <h2 className="text-3xl font-bold" style={{ color: NAVY }}>How it works</h2>
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
-          {[
-            { t: "Brands list & get approved", d: "Add your details, offer a commission, verify by text. We review before you go live." , i: Store },
-            { t: "Creators generate a link", d: "Use your invite code, pick a brand, leave a review, and get a tracked referral link.", i: Link2 },
-            { t: "Earn on every sale", d: "Drop your profile link in your bio. Customers save, you earn your commission.", i: BadgeCheck },
-          ].map((s, i) => (
-            <div key={i} className="rounded-2xl p-6" style={{ border: `1px solid ${LINE}`, background: "#fff" }}>
-              <span className="grid h-11 w-11 place-items-center rounded-xl" style={{ background: "#EEF0FF", color: PURPLE }}><s.i size={20} /></span>
-              <p className="mt-4 text-xs font-bold" style={{ color: PURPLE }}>0{i + 1}</p>
-              <h3 className="mt-1 text-lg font-bold" style={{ color: NAVY }}>{s.t}</h3>
-              <p className="mt-1 text-sm" style={{ color: SLATE }}>{s.d}</p>
+      <section className="er-wrap" style={{ padding: "0 22px 72px" }}>
+        <div className="er-stepwork">
+          {steps.map((s, i) => (
+            <div key={i} style={{ padding: "28px 26px 28px 0", borderTop: `1px solid ${C.ink}` }}>
+              <span className="er-eyebrow">0{i + 1}</span>
+              <h3 className="er-serif" style={{ margin: "12px 0 6px", fontSize: 22, fontWeight: 500 }}>{s.t}</h3>
+              <p style={{ margin: 0, fontSize: 14.5, color: C.muted, lineHeight: 1.5 }}>{s.d}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="mx-auto max-w-6xl px-5 pb-20">
-        <div className="overflow-hidden rounded-3xl px-8 py-14 text-center" style={{ background: "linear-gradient(120deg,#0A2540,#1A1F71,#635BFF)" }}>
-          <h2 className="text-3xl font-bold text-white sm:text-4xl">Start earning per recommendation</h2>
-          <p className="mx-auto mt-3 max-w-md text-white/80">Join as a creator with your invite code, or list your business in minutes.</p>
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
-            <Btn onClick={onCreator} style={{ background: "#fff", color: PURPLE }}>I'm a creator</Btn>
-            <Btn onClick={onList} style={{ background: "rgba(255,255,255,.16)", color: "#fff", boxShadow: "none" }}>List your business</Btn>
+      <section className="er-wrap" style={{ padding: "0 22px 80px" }}>
+        <div style={{ background: C.ink, borderRadius: 24, padding: "60px 32px", textAlign: "center" }}>
+          <h2 className="er-serif" style={{ margin: 0, color: C.paper, fontSize: "clamp(28px,4.5vw,44px)", fontWeight: 500, letterSpacing: "-.01em" }}>Good taste, finally compensated.</h2>
+          <p style={{ margin: "14px auto 0", maxWidth: 440, color: "rgba(253,252,250,.72)", fontSize: 16.5 }}>Join with an invite and start earning on the places you'd recommend anyway.</p>
+          <div style={{ marginTop: 26, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <button className="er-btn" style={{ background: C.paper, color: C.ink }} onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
+            <button className="er-btn er-btn-ghost" style={{ color: "#fff", borderColor: "rgba(255,255,255,.25)" }} onClick={onList}>List your business</button>
           </div>
         </div>
       </section>
 
-      <footer className="border-t" style={{ borderColor: LINE }}>
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-7 sm:flex-row">
-          <Logo onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
-          <p className="text-xs" style={{ color: MUTED }}>© {new Date().getFullYear()} Easy Recommend · Creators earn per commission</p>
-          <button onClick={onAdmin} className="text-xs font-semibold" style={{ color: SLATE }}>Admin</button>
+      <footer style={{ borderTop: `1px solid ${C.line}` }}>
+        <div className="er-wrap" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", padding: "26px 22px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 17, fontWeight: 600 }}>Easy Recommend</span></div>
+          <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} · Recommendations worth passing on</p>
+          <button className="er-link" style={{ color: C.muted, fontWeight: 500 }} onClick={onAdmin}>Admin</button>
         </div>
       </footer>
     </div>
   );
 }
 
+/* ---------- Injected stylesheet ---------- */
+const STYLES = `
+.er-root{background:${C.paper};color:${C.ink};font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+.er-root *{box-sizing:border-box}
+.er-serif{font-family:${SERIF}}
+.er-wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+.er-eyebrow{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:${C.accent}}
+.er-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-weight:600;font-size:15px;line-height:1;padding:13px 20px;border-radius:11px;border:1px solid transparent;cursor:pointer;transition:transform .12s ease,background .15s ease,box-shadow .15s ease,border-color .15s ease;text-decoration:none}
+.er-btn:active{transform:translateY(1px)}
+.er-btn[disabled]{opacity:.4;cursor:not-allowed}
+.er-btn-primary{background:${C.ink};color:${C.paper}}
+.er-btn-primary:hover:not([disabled]){background:#000;box-shadow:0 6px 18px rgba(28,26,23,.18)}
+.er-btn-accent{background:${C.accent};color:#fff}
+.er-btn-accent:hover:not([disabled]){background:${C.accentD}}
+.er-btn-ghost{background:transparent;color:${C.ink};border-color:${C.line}}
+.er-btn-ghost:hover:not([disabled]){background:#fff;border-color:#CFC8BA}
+.er-btn-light{background:#fff;color:${C.ink};border-color:${C.line}}
+.er-btn-light:hover:not([disabled]){border-color:#CFC8BA}
+.er-btn-sm{padding:9px 14px;font-size:13.5px;border-radius:9px}
+.er-btn-block{width:100%}
+.er-input{width:100%;font-family:inherit;font-size:15px;color:${C.ink};background:#fff;border:1px solid ${C.line};border-radius:11px;padding:12px 14px;outline:none;transition:border-color .15s,box-shadow .15s}
+.er-input:focus{border-color:${C.accent};box-shadow:0 0 0 3px ${C.accentSoft}}
+.er-input::placeholder{color:#A9A296}
+.er-card{background:#fff;border:1px solid ${C.line};border-radius:18px}
+.er-card-h{transition:transform .15s ease,box-shadow .15s ease}
+.er-card-h:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(28,26,23,.10)}
+.er-link{background:none;border:none;padding:0;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:${C.accent}}
+.er-nav{background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:${C.muted};padding:8px 10px;border-radius:8px}
+.er-nav:hover{color:${C.ink}}
+.er-modal-overlay{position:fixed;inset:0;z-index:50;background:rgba(28,26,23,.42);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
+.er-modal{position:relative;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;background:${C.paper};border-radius:22px 22px 0 0;box-shadow:0 30px 70px rgba(28,26,23,.30)}
+.er-modal-wide{max-width:680px}
+.er-close{position:absolute;right:16px;top:16px;z-index:5;width:34px;height:34px;border-radius:999px;border:1px solid ${C.line};background:#fff;display:grid;place-items:center;cursor:pointer;color:${C.muted}}
+.er-close:hover{color:${C.ink}}
+.er-hero{display:grid;grid-template-columns:1fr;gap:48px;align-items:center}
+.er-cards{display:grid;grid-template-columns:1fr;gap:18px}
+.er-creators{display:grid;grid-template-columns:1fr;gap:14px}
+.er-stepwork{display:grid;grid-template-columns:1fr;gap:0}
+@media(min-width:560px){.er-modal-overlay{align-items:center;padding:18px}.er-modal{border-radius:22px}}
+@media(max-width:559px){.er-nav{display:none}}
+@media(min-width:680px){.er-cards{grid-template-columns:1fr 1fr}.er-creators{grid-template-columns:1fr 1fr}}
+@media(min-width:1000px){.er-cards{grid-template-columns:1fr 1fr 1fr}.er-hero{grid-template-columns:1.05fr .95fr;gap:60px}.er-stepwork{grid-template-columns:1fr 1fr 1fr}}
+.er-root button:focus-visible,.er-root input:focus-visible,.er-root a:focus-visible{outline:2px solid ${C.accent};outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.er-root *{transition:none!important}}
+`;
+
 /* ---------- Root ---------- */
 export default function App() {
-  const [view, setView] = useState("home"); // home | admin | profile
+  const [view, setView] = useState("home");
   const [profileHandle, setProfileHandle] = useState(null);
   const [activeCat, setActiveCat] = useState("Beauty");
-
   const [businesses, setBusinesses] = useState(SEED_BUSINESSES);
   const [influencers, setInfluencers] = useState(SEED_INFLUENCERS);
   const [links, setLinks] = useState(SEED_LINKS);
   const [reviews, setReviews] = useState(SEED_REVIEWS);
-
   const [brandOpen, setBrandOpen] = useState(false);
   const [brandDone, setBrandDone] = useState(null);
   const [creatorOpen, setCreatorOpen] = useState(false);
+
+  // Load fonts + inject styles once.
+  useEffect(() => {
+    const f = document.createElement("link");
+    f.rel = "stylesheet";
+    f.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap";
+    document.head.appendChild(f);
+    const s = document.createElement("style");
+    s.textContent = STYLES;
+    document.head.appendChild(s);
+    return () => { document.head.removeChild(f); document.head.removeChild(s); };
+  }, []);
 
   const goProfile = (h) => { setProfileHandle(h); setView("profile"); window.scrollTo(0, 0); };
   const goHome = () => { setView("home"); window.scrollTo(0, 0); };
 
   const submitBrand = (f) => {
-    const id = Date.now();
-    setBusinesses((p) => [...p, { id, name: f.name, categories: f.categories, city: f.city, online: f.online, commission: f.commission, discount: f.discount, status: "pending", blurb: "Newly submitted business." }]);
-    setBrandOpen(false);
-    setBrandDone(f.name);
+    setBusinesses((p) => [...p, { id: Date.now(), name: f.name, categories: f.categories, city: f.city, online: f.online, commission: f.commission, discount: f.discount, status: "pending", blurb: "Newly submitted business." }]);
+    setBrandOpen(false); setBrandDone(f.name);
   };
-
   const completeCreator = ({ handle, name, image, businessId, review }) => {
-    setInfluencers((p) => p.find((i) => i.handle === handle) ? p : [...p, { handle, name, image: image || "", bio: "Curating brands I trust" }]);
+    setInfluencers((p) => p.find((i) => i.handle === handle) ? p : [...p, { handle, name, image: image || "", bio: "Curating businesses worth trusting." }]);
     setLinks((p) => [...p, { id: Date.now(), handle, businessId }]);
     if (review) setReviews((p) => [...p, { id: Date.now() + 1, handle, businessId, stars: review.stars, text: review.text }]);
   };
 
   return (
-    <div style={{ background: "#fff", fontFamily: "ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif", color: NAVY, minHeight: "100vh" }}>
+    <div className="er-root">
       {view === "home" && (
-        <Landing
-          activeCat={activeCat} setActiveCat={setActiveCat}
-          businesses={businesses} links={links} influencers={influencers}
-          onList={() => setBrandOpen(true)} onCreator={() => setCreatorOpen(true)}
-          onAdmin={() => { setView("admin"); window.scrollTo(0, 0); }}
-          onProfile={goProfile}
-        />
+        <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} links={links} influencers={influencers}
+          onList={() => setBrandOpen(true)} onCreator={() => setCreatorOpen(true)} onAdmin={() => { setView("admin"); window.scrollTo(0, 0); }} onProfile={goProfile} />
       )}
-
       {view === "admin" && (
-        <AdminPanel
-          businesses={businesses}
+        <AdminPanel businesses={businesses}
           onApprove={(id) => setBusinesses((p) => p.map((b) => b.id === id ? { ...b, status: "approved" } : b))}
           onReject={(id) => setBusinesses((p) => p.filter((b) => b.id !== id))}
           onEdit={(id, patch) => setBusinesses((p) => p.map((b) => b.id === id ? { ...b, ...patch } : b))}
-          onBack={goHome}
-        />
+          onBack={goHome} />
       )}
-
       {view === "profile" && (
-        <InfluencerProfile
-          handle={profileHandle} influencers={influencers} businesses={businesses}
-          links={links} reviews={reviews} onBack={goHome} onBrowse={goHome}
-        />
+        <InfluencerProfile handle={profileHandle} influencers={influencers} businesses={businesses} links={links} reviews={reviews} onBack={goHome} onBrowse={goHome} />
       )}
 
       {brandOpen && <BrandModal onClose={() => setBrandOpen(false)} onSubmit={submitBrand} />}
       {brandDone && <BrandSuccess name={brandDone} onClose={() => setBrandDone(null)} />}
-      {creatorOpen && (
-        <CreatorModal
-          businesses={businesses} influencers={influencers}
-          onClose={() => setCreatorOpen(false)}
-          onComplete={completeCreator}
-          onViewProfile={goProfile}
-        />
-      )}
+      {creatorOpen && <CreatorModal businesses={businesses} onClose={() => setCreatorOpen(false)} onComplete={completeCreator} onViewProfile={goProfile} />}
     </div>
   );
 }
