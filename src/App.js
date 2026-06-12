@@ -900,7 +900,7 @@ export default function App() {
       )}
       {view === "profile" && (
         <InfluencerProfile handle={profileHandle} influencers={influencers} businesses={businesses} links={links} reviews={reviews} onBack={goHome} onBrowse={goHome} />
-      )}
+      )}  
 
       {detailId != null && (() => {
         const b = businesses.find((x) => x.id === detailId);
