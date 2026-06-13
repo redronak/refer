@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 /* ============================================================================
    Easy Recommend — wired to the Express backend (router mounted at /easyrecommend)
@@ -159,7 +159,61 @@ function RecCard({ name, handle, image, category, quote, brand, stars = 5, style
   );
 }
 
-/* ---------- Business card ---------- */
+/* ---------- Swipeable testimonial stack (hero) ---------- */
+const TESTIMONIALS = [
+  { handle: "miaglow", category: "Beauty", quote: "My skin has never looked better — the vitamin C serum is unreal. I send everyone here.", brand: "Lumière Skincare" },
+  { handle: "coachkay", category: "Fitness", quote: "Strongest I've felt in years, and the coaches actually remember your name.", brand: "Iron & Oak Studio" },
+  { handle: "forkfeed", category: "Food & Drink", quote: "I've sent half my followers here. The tasting menu is worth every penny.", brand: "Cedar & Salt" },
+  { handle: "roamwithjo", category: "Travel", quote: "Booked three trips through them now — zero stress, all magic.", brand: "Wanderwell" },
+  { handle: "calmwithana", category: "Wellness", quote: "Six weeks in and my sleep is a different story. Genuinely life-changing.", brand: "Stillwater" },
+  { handle: "nestednina", category: "Home", quote: "Every piece I've ordered has outlasted the hype. My place finally feels like me.", brand: "Maika Home" },
+  { handle: "moneymara", category: "Finance", quote: "Finally someone who explains money like a human. My savings thank them.", brand: "Northbank" },
+  { handle: "studywithsam", category: "Education", quote: "I passed because of these courses — the instructors genuinely care.", brand: "Brightpath" },
+  { handle: "thelegaledit", category: "Legal", quote: "They made something terrifying feel simple. Worth every minute.", brand: "Harbor Legal" },
+  { handle: "stylebyel", category: "Fashion", quote: "Three years of compliments on one jacket. Quality you can feel.", brand: "Vela Studio" },
+];
+function SwipeStack() {
+  const [idx, setIdx] = useState(0);
+  const [dx, setDx] = useState(0);
+  const [leaving, setLeaving] = useState(0);
+  const startX = useRef(null);
+  const list = TESTIMONIALS;
+  const advance = (dir) => { setLeaving(dir); setTimeout(() => { setIdx((i) => (i + 1) % list.length); setDx(0); setLeaving(0); }, 280); };
+  const down = (e) => { startX.current = e.touches ? e.touches[0].clientX : e.clientX; };
+  const move = (e) => { if (startX.current == null) return; const x = e.touches ? e.touches[0].clientX : e.clientX; setDx(x - startX.current); };
+  const up = () => { if (startX.current == null) return; const d = dx; startX.current = null; if (Math.abs(d) > 80) advance(d > 0 ? 1 : -1); else setDx(0); };
+  const cur = list[idx];
+  return (
+    <div>
+      <div style={{ position: "relative", minHeight: 252, touchAction: "pan-y" }}
+        onMouseMove={move} onMouseUp={up} onMouseLeave={up} onTouchMove={move} onTouchEnd={up}>
+        {[2, 1, 0].map((depth) => {
+          const t = list[(idx + depth) % list.length]; const isTop = depth === 0;
+          let transform = `translateY(${depth * 12}px) scale(${1 - depth * 0.045})`;
+          let opacity = 1, transition = "transform .28s ease, opacity .28s ease";
+          if (isTop) {
+            const out = leaving ? leaving * 460 : dx;
+            transform = `translateX(${out}px) rotate(${out / 24}deg)`;
+            opacity = leaving ? 0 : 1;
+            transition = startX.current != null && !leaving ? "none" : "transform .28s ease, opacity .28s ease";
+          }
+          return (
+            <div key={depth} style={{ position: "absolute", inset: 0, transform, opacity, transition, zIndex: 10 - depth, cursor: isTop ? "grab" : "default" }}
+              onMouseDown={isTop ? down : undefined} onTouchStart={isTop ? down : undefined}>
+              <RecCard name={t.handle} handle={t.handle} category={t.category} quote={t.quote} brand={t.brand} stars={5} style={{ minHeight: 220 }} />
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <button aria-label="Skip" onClick={() => advance(-1)} style={{ width: 46, height: 46, borderRadius: "50%", border: `1px solid ${C.line}`, background: "#fff", cursor: "pointer", display: "grid", placeItems: "center", color: C.muted }}><Close size={18} /></button>
+        <div style={{ display: "flex", gap: 6 }}>{list.map((_, i) => <span key={i} style={{ width: i === idx ? 18 : 6, height: 6, borderRadius: 999, background: i === idx ? C.accent : C.line, transition: "width .2s, background .2s" }} />)}</div>
+        <button aria-label="Next" onClick={() => advance(1)} style={{ width: 46, height: 46, borderRadius: "50%", border: "none", background: C.ink, cursor: "pointer", display: "grid", placeItems: "center", color: C.paper }}><Arrow size={18} /></button>
+      </div>
+      <p style={{ margin: "12px 0 0", textAlign: "center", fontSize: 12.5, color: C.muted }}>Swipe through real recommendations · {cur.category}</p>
+    </div>
+  );
+}
 function BusinessCard({ b, onOpen }) {
   const cat = catOf(b); const backers = b.backers || []; const count = b.backerCount || 0;
   const photo = (b.photos || [])[0]; const tint = tintFor(b.id || b.name);
@@ -288,7 +342,7 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
 /* ---------- Brand onboarding ---------- */
 function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: "", phone: "", email: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: [] });
+  const [f, setF] = useState({ name: "", phone: "", email: "", password: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: [] });
   const [otp, setOtp] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const onPhotos = async (e) => {
@@ -300,8 +354,9 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   };
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
-  const valid = [f.name && f.phone && f.email, f.categories.length > 0 && (f.online || f.city), commValid, otp.length >= 6];
-  const titles = ["About your business", "Where to find you", "Your terms", "Verify your number"];
+  const valid = [f.name && f.email && f.password.length >= 6, f.categories.length > 0 && (f.online || f.city), commValid, otp.length >= 6];
+  const hasPhone = !!(f.phone && f.phone.trim());
+  const titles = ["About your business", "Where to find you", "Your terms", "Confirm & submit"];
 
   const sendCode = async () => { setErr(""); try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); } catch (e) { setErr(e.message); } };
   const submit = async (via = "phone") => {
@@ -324,8 +379,9 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
         <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           {step === 0 && <>
             <Field label="Brand name"><input className="er-input" placeholder="Lumière Skincare" value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
-            <Field label="Phone number" hint="Used to verify you — and shown on your listing so customers can reach you."><input className="er-input" placeholder="+1 555 010 2030" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
+            <Field label="Phone number" hint="Optional — add it to verify by text and show it on your listing."><input className="er-input" placeholder="+1 555 010 2030" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
             <Field label="Email" hint="Shown on your listing."><input className="er-input" placeholder="hello@brand.com" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
+            <Field label="Password" hint="You'll use this with your email to log in and manage your listing."><input type="password" className="er-input" placeholder="At least 6 characters" value={f.password} onChange={(e) => set("password", e.target.value)} /></Field>
             <Field label="Website" hint="Optional — the link customers visit."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>
           </>}
           {step === 1 && <>
@@ -377,20 +433,27 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
             </Field>
           </>}
           {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone || "your phone"}</b>.</div>
-            <Field label="Verification code">
-              <input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
-            <button className="er-link" onClick={sendCode} style={{ alignSelf: "flex-start" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={14} /> Text a code to my phone</span></button>
-            <ErrBox msg={err} />
-            <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.muted, fontSize: 12.5 }}><div style={{ flex: 1, height: 1, background: C.line }} />or<div style={{ flex: 1, height: 1, background: C.line }} /></div>
-            <button className="er-btn er-btn-ghost er-btn-block" disabled={!f.email || busy} onClick={() => submit("email")}><Mail size={15} /> Continue with email — no code</button>
+            {hasPhone ? <>
+              <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone}</b>.</div>
+              <Field label="Verification code">
+                <input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
+              <button className="er-link" onClick={sendCode} style={{ alignSelf: "flex-start" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={14} /> Text a code to my phone</span></button>
+              <ErrBox msg={err} />
+              <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.muted, fontSize: 12.5 }}><div style={{ flex: 1, height: 1, background: C.line }} />or<div style={{ flex: 1, height: 1, background: C.line }} /></div>
+              <button className="er-btn er-btn-ghost er-btn-block" disabled={!f.email || busy} onClick={() => submit("email")}><Mail size={15} /> Continue with email — no code</button>
+            </> : <>
+              <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>You're all set — we'll use <b style={{ color: C.ink }}>{f.email}</b> for sign-in and to reach you. Submit and your listing goes to review.</div>
+              <ErrBox msg={err} />
+            </>}
           </div>}
         </div>
         <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {step > 0 ? <button className="er-btn er-btn-ghost" onClick={() => setStep(step - 1)}><ChevL size={16} /> Back</button> : <span />}
           {step < 3
             ? <button className="er-btn er-btn-primary" disabled={!valid[step]} onClick={() => setStep(step + 1)}>Continue <ChevR size={16} /></button>
-            : <button className="er-btn er-btn-primary" disabled={!valid[3] || busy} onClick={() => submit("phone")}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
+            : hasPhone
+              ? <button className="er-btn er-btn-primary" disabled={!valid[3] || busy} onClick={() => submit("phone")}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>
+              : <button className="er-btn er-btn-primary" disabled={!f.email || busy} onClick={() => submit("email")}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
         </div>
       </div>
     </Modal>
@@ -411,8 +474,8 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
   // creator
   const [cName, setCName] = useState(""); const [cCode, setCCode] = useState("");
   // brand
-  const [bmethod, setBmethod] = useState("phone");
-  const [phone, setPhone] = useState(""); const [email, setEmail] = useState(""); const [otp, setOtp] = useState(""); const [sent, setSent] = useState(false);
+  const [bmethod, setBmethod] = useState("email");
+  const [phone, setPhone] = useState(""); const [email, setEmail] = useState(""); const [pw, setPw] = useState(""); const [otp, setOtp] = useState(""); const [sent, setSent] = useState(false);
 
   const creatorLogin = async () => {
     setBusy(true); setErr("");
@@ -427,7 +490,7 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
   };
   const emailLogin = async () => {
     setBusy(true); setErr("");
-    try { const r = await api("/business/login/email", { method: "POST", body: { email } }); onLogin({ role: "brand", token: r.token, email }); onAfterBrand(); }
+    try { const r = await api("/business/login/password", { method: "POST", body: { email, password: pw } }); onLogin({ role: "brand", token: r.token, email }); onAfterBrand(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
 
@@ -471,8 +534,9 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
                 <button className="er-btn er-btn-primary er-btn-block" disabled={otp.length < 6 || busy} onClick={brandLogin}>{busy ? "…" : "Log in"}</button>
               </>}
           </> : <>
-            <Field label="Email" hint="The email you listed your business with. No code needed."><input className="er-input" placeholder="hello@brand.com" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-            <button className="er-btn er-btn-primary er-btn-block" disabled={!email || busy} onClick={emailLogin}>{busy ? "…" : "Log in"} <Arrow size={16} /></button>
+            <Field label="Email"><input className="er-input" placeholder="hello@brand.com" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+            <Field label="Password"><input type="password" className="er-input" placeholder="Your password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && email && pw) emailLogin(); }} /></Field>
+            <button className="er-btn er-btn-primary er-btn-block" disabled={!email || !pw || busy} onClick={emailLogin}>{busy ? "…" : "Log in"} <Arrow size={16} /></button>
           </>}
           <ErrBox msg={err} />
           <button className="er-btn er-btn-ghost" style={{ alignSelf: "flex-start" }} onClick={() => { setMode(null); setSent(false); }}><ChevL size={16} /> Back</button>
@@ -643,24 +707,26 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             {picked.map((id) => { const b = approved.find((x) => x.id === id); if (!b) return null;
               return <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.ink, color: C.paper, borderRadius: 999, padding: "5px 6px 5px 12px", fontSize: 13, fontWeight: 600 }}>{b.name}<button onClick={() => toggle(id)} style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.22)", color: C.paper, cursor: "pointer" }}><Close size={11} /></button></span>; })}
           </div>}
-          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflowY: "auto" }}>
-            {cats.map((c) => { const list = byCat[c].filter(match); if (q && !list.length) return null; const open = q ? true : openCat === c; const x = CATS[c] || CATS.Beauty; const selCount = list.filter((b) => picked.includes(b.id)).length;
-              return <div key={c} style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden" }}>
-                <button onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", background: "#fff", border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
-                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: x.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontWeight: 600, fontSize: 15, color: C.ink }}>{c}</span>
-                  {selCount > 0 && <span style={{ fontSize: 11.5, fontWeight: 700, color: x.color, background: x.bg, borderRadius: 999, padding: "2px 9px" }}>{selCount} picked</span>}
-                  <span style={{ fontSize: 12.5, color: C.muted }}>{list.length}</span>
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10, maxHeight: 340, overflowY: "auto", paddingRight: 2 }}>
+            {cats.map((c) => { const all = byCat[c]; const list = all.filter(match); if (q && !list.length) return null; const open = q ? true : openCat === c; const x = CATS[c] || CATS.Beauty; const selCount = all.filter((b) => picked.includes(b.id)).length;
+              return <div key={c} style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff" }}>
+                <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "14px 15px", background: open ? x.bg : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
+                  <span style={{ width: 11, height: 11, borderRadius: "50%", background: x.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5, color: C.ink }}>{c}</span>
+                  {selCount > 0 && <span style={{ fontSize: 11.5, fontWeight: 700, color: "#fff", background: x.color, borderRadius: 999, padding: "3px 10px" }}>{selCount} picked</span>}
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: C.muted }}>{list.length}</span>
                   <span style={{ color: C.muted, display: "flex", transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}><ChevR size={16} /></span>
                 </button>
-                {open && <div>
-                  {list.map((b) => { const on = picked.includes(b.id);
-                    return <button key={b.id} onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: "11px 14px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : "#fff", cursor: "pointer" }}>
+                {open && <div style={{ borderTop: `1px solid ${C.line}` }}>
+                  {list.map((b) => { const on = picked.includes(b.id); const bt = tintFor(b.id || b.name); const photo = (b.photos || [])[0];
+                    return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: "11px 15px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : "#fff", cursor: "pointer" }}>
                       <span style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center", border: `1.5px solid ${on ? C.accent : "#CFC8BA"}`, background: on ? C.accent : "#fff", color: "#fff" }}>{on && <Check size={14} />}</span>
-                      <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "block", fontWeight: 600, fontSize: 14.5, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span><span style={{ display: "block", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : b.city}</span></span>
+                      <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: "grid", placeItems: "center", background: bt.bg, color: bt.color, overflow: "hidden" }}>{photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={14} />}</span>
+                      <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "block", fontWeight: 600, fontSize: 14.5, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span><span style={{ display: "block", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : (b.city || "—")}</span></span>
                     </button>; })}
                 </div>}
               </div>; })}
+            {!cats.length && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "24px 0" }}>No live businesses yet — check back soon.</p>}
             {noMatches && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "20px 0" }}>No brands match &ldquo;{query}&rdquo;.</p>}
           </div>
           <div style={{ marginTop: 22, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -709,33 +775,85 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
 }
 
 /* ---------- Admin (fetches its own list) ---------- */
+function VisToggle({ label, value, sub, onChange }) {
+  return (
+    <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0" }}>
+      <button type="button" onClick={() => onChange(!value)} style={{ position: "relative", width: 42, height: 25, borderRadius: 99, border: "none", cursor: "pointer", background: value ? C.accent : "#CFC8BA", flexShrink: 0 }}><span style={{ position: "absolute", top: 3, left: value ? 20 : 3, width: 19, height: 19, borderRadius: "50%", background: "#fff" }} /></button>
+      <span style={{ minWidth: 0 }}><span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: C.ink }}>{label}</span>{sub && <span style={{ display: "block", fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>}</span>
+    </label>
+  );
+}
 function AdminRow({ b, reload }) {
-  const [editing, setEditing] = useState(false);
-  const [type, setType] = useState(b.commissionType || "percent");
-  const [pct, setPct] = useState(b.commissionPct || 0); const [flat, setFlat] = useState(b.commissionFlat || 0); const [d, setD] = useState(b.discount || 0);
+  const [editing, setEditing] = useState(false); const [busy, setBusy] = useState(false);
+  const init = () => ({
+    name: b.name || "", blurb: b.blurb || "", website: b.website || "", categories: b.categories || [],
+    city: b.city || "", online: !!b.online, commissionType: b.commissionType || "percent",
+    commissionPct: b.commissionPct || 0, commissionFlat: b.commissionFlat || 0, discount: b.discount || 0,
+    photos: b.photos || [], hidePhone: !!b.hidePhone, hideEmail: !!b.hideEmail, hideWebsite: !!b.hideWebsite,
+  });
+  const [d, setDraft] = useState(init);
+  const set = (k, v) => setDraft((p) => ({ ...p, [k]: v }));
   const cc = catOf(b);
   const act = async (fn) => { try { await fn(); await reload(); } catch (e) { alert(e.message); } };
+  const onPhotos = async (e) => { const files = [...(e.target.files || [])]; if (!files.length) return; const urls = []; for (const file of files) { try { urls.push(await fileToDataURL(file, 1000, 0.82)); } catch (x) {} } set("photos", [...d.photos, ...urls].slice(0, 6)); e.target.value = ""; };
+  const toggleCat = (c) => set("categories", d.categories.includes(c) ? d.categories.filter((x) => x !== c) : [...d.categories, c]);
+  const save = async (then) => { setBusy(true); try { await api(`/admin/business/${b._id}`, { method: "PATCH", admin: true, body: d }); if (then) await then(); setEditing(false); await reload(); } catch (e) { alert(e.message); } finally { setBusy(false); } };
+  const openEdit = () => { setDraft(init()); setEditing(true); };
+
   return (
     <div className="er-card" style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ width: 44, height: 44, borderRadius: 11, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={18} /></span>
-        <div style={{ minWidth: 0, flex: 1 }}><p className="er-serif" style={{ margin: 0, fontSize: 17, fontWeight: 500 }}>{b.name}</p><p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>{(b.categories || []).join(", ")} · {b.online ? "Online" : b.city}</p></div>
+        <span style={{ width: 44, height: 44, borderRadius: 11, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0, overflow: "hidden" }}>{(b.photos || [])[0] ? <img src={b.photos[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={18} />}</span>
+        <div style={{ minWidth: 0, flex: 1 }}><p className="er-serif" style={{ margin: 0, fontSize: 17, fontWeight: 500 }}>{b.name}</p><p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>{(b.categories || []).join(", ") || "No category"} · {b.online ? "Online" : (b.city || "—")}</p></div>
         {!editing && <><span style={{ fontSize: 12, fontWeight: 700, padding: "5px 9px", borderRadius: 8, background: C.accentSoft, color: C.accentD, whiteSpace: "nowrap" }}>{commissionLabel(b)}</span>{b.discount > 0 && <span style={{ fontSize: 12, fontWeight: 700, padding: "5px 9px", borderRadius: 8, background: C.panel, color: C.ink }}>{b.discount}% off</span>}</>}
       </div>
-      {editing ? <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", gap: 6 }}>{[["percent", "%"], ["flat", "$"], ["both", "Both"]].map(([t, lbl]) => { const on = type === t;
-          return <button key={t} onClick={() => setType(t)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "8px 6px", borderRadius: 8, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{lbl}</button>; })}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          {(type === "percent" || type === "both") && <label style={{ fontSize: 12.5, color: C.muted }}>Percent <input type="number" value={pct} onChange={(e) => setPct(+e.target.value)} className="er-input" style={{ width: 66, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} />%</label>}
-          {(type === "flat" || type === "both") && <label style={{ fontSize: 12.5, color: C.muted }}>Flat $<input type="number" value={flat} onChange={(e) => setFlat(+e.target.value)} className="er-input" style={{ width: 70, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} /></label>}
-          <label style={{ fontSize: 12.5, color: C.muted }}>Discount <input type="number" value={d} onChange={(e) => setD(+e.target.value)} className="er-input" style={{ width: 66, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} />%</label>
-          <button className="er-btn er-btn-primary er-btn-sm" onClick={() => act(async () => { await api(`/admin/business/${b._id}`, { method: "PATCH", admin: true, body: { commissionType: type, commissionPct: pct, commissionFlat: flat, discount: d } }); setEditing(false); })}><Check size={14} /> Save</button>
+
+      {editing && <div style={{ display: "flex", flexDirection: "column", gap: 14, borderTop: `1px solid ${C.line}`, paddingTop: 14 }}>
+        <Field label="Name"><input className="er-input" value={d.name} onChange={(e) => set("name", e.target.value)} /></Field>
+        <Field label="Description"><textarea className="er-input" value={d.blurb} onChange={(e) => set("blurb", e.target.value)} /></Field>
+        <Field label="Categories">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {CAT_LIST.map((c) => { const on = d.categories.includes(c); const x = CATS[c];
+              return <button key={c} type="button" onClick={() => toggleCat(c)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "7px 12px", borderRadius: 999, border: `1px solid ${on ? x.color : C.line}`, background: on ? x.bg : "#fff", color: on ? x.color : C.inkSoft }}>{c}</button>; })}
+          </div>
+        </Field>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <Field label="City"><input className="er-input" style={{ width: 150 }} value={d.city} onChange={(e) => set("city", e.target.value)} /></Field>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600 }}>
+            <button type="button" onClick={() => set("online", !d.online)} style={{ position: "relative", width: 44, height: 26, borderRadius: 99, border: "none", cursor: "pointer", background: d.online ? C.accent : "#CFC8BA" }}><span style={{ position: "absolute", top: 3, left: d.online ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff" }} /></button> Online
+          </label>
         </div>
-      </div> : <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", gap: 6 }}>{[["percent", "%"], ["flat", "$"], ["both", "Both"]].map(([t, lbl]) => { const on = d.commissionType === t;
+          return <button key={t} onClick={() => set("commissionType", t)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "8px 6px", borderRadius: 8, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{lbl}</button>; })}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          {(d.commissionType === "percent" || d.commissionType === "both") && <label style={{ fontSize: 12.5, color: C.muted }}>Percent <input type="number" value={d.commissionPct} onChange={(e) => set("commissionPct", +e.target.value)} className="er-input" style={{ width: 66, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} />%</label>}
+          {(d.commissionType === "flat" || d.commissionType === "both") && <label style={{ fontSize: 12.5, color: C.muted }}>Flat $<input type="number" value={d.commissionFlat} onChange={(e) => set("commissionFlat", +e.target.value)} className="er-input" style={{ width: 70, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} /></label>}
+          <label style={{ fontSize: 12.5, color: C.muted }}>Discount <input type="number" value={d.discount} onChange={(e) => set("discount", +e.target.value)} className="er-input" style={{ width: 66, display: "inline-block", padding: "6px 8px", marginLeft: 4 }} />%</label>
+        </div>
+        <Field label="Photos">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            {d.photos.map((src, i) => <div key={i} style={{ position: "relative", width: 60, height: 60, borderRadius: 10, overflow: "hidden", border: `1px solid ${C.line}` }}><img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /><button type="button" onClick={() => set("photos", d.photos.filter((_, j) => j !== i))} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,.3)", cursor: "pointer", display: "grid", placeItems: "center", color: C.muted }}><Close size={10} /></button></div>)}
+            {d.photos.length < 6 && <label style={{ width: 60, height: 60, borderRadius: 10, border: `2px dashed ${C.line}`, display: "grid", placeItems: "center", cursor: "pointer", color: C.muted }}><Plus size={16} /><input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={onPhotos} /></label>}
+          </div>
+        </Field>
+        <div style={{ background: C.panel, borderRadius: 12, padding: "6px 14px" }}>
+          <p style={{ margin: "8px 0 2px", fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.inkSoft }}>Show on public listing</p>
+          <VisToggle label="Website" sub={b.website || "none on file"} value={!d.hideWebsite} onChange={(v) => set("hideWebsite", !v)} />
+          <VisToggle label="Email" sub={b.email || "none on file"} value={!d.hideEmail} onChange={(v) => set("hideEmail", !v)} />
+          <VisToggle label="Phone" sub={b.phone || "none on file"} value={!d.hidePhone} onChange={(v) => set("hidePhone", !v)} />
+        </div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setEditing(false)} disabled={busy}>Cancel</button>
+          <button className="er-btn er-btn-primary er-btn-sm" onClick={() => save()} disabled={busy}><Check size={14} /> {busy ? "Saving…" : "Save changes"}</button>
+        </div>
+      </div>}
+
+      {!editing && <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <button className="er-btn er-btn-ghost er-btn-sm" onClick={openEdit}><Edit size={14} /> Review &amp; edit</button>
         {b.status === "pending" ? <>
           <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => act(() => api(`/admin/business/${b._id}/reject`, { method: "POST", admin: true }))}><Close size={14} /> Reject</button>
           <button className="er-btn er-btn-accent er-btn-sm" onClick={() => act(() => api(`/admin/business/${b._id}/approve`, { method: "POST", admin: true }))}><Check size={14} /> Approve</button>
-        </> : <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setEditing(true)}><Edit size={14} /> Edit terms</button>}
+        </> : <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => act(() => api(`/admin/business/${b._id}`, { method: "PATCH", admin: true, body: { status: "pending" } }))}>Unpublish</button>}
       </div>}
     </div>
   );
@@ -950,9 +1068,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
             <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Every business is reviewed before it's listed.</p>
           </div>
           <div style={{ position: "relative" }}>
-            <div className="er-card" style={{ position: "absolute", inset: 0, transform: "rotate(-3.5deg) translateY(12px)", background: C.panel }} />
-            <RecCard style={{ position: "relative" }} name="Mia Chen" handle="miaglow" category="Beauty" quote="My skin has never looked better — the vitamin C serum is unreal. I send everyone here." brand="Lumière Skincare" stars={5} />
-            <div className="er-card" style={{ position: "absolute", right: -8, bottom: -20, padding: "9px 13px", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 12px 26px rgba(28,26,23,.14)" }}><Stars value={5} size={13} /><span style={{ fontSize: 12.5, fontWeight: 600 }}>vouched, not ads</span></div>
+            <SwipeStack />
           </div>
         </div>
       </section>
@@ -1008,7 +1124,10 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         <div className="er-wrap" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", padding: "26px 22px", marginTop: 22, borderTop: `1px solid ${C.line}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 17, fontWeight: 600 }}>Easy Recommend</span></div>
           <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} · Recommendations worth passing on</p>
-          <button className="er-link" style={{ color: C.muted, fontWeight: 500 }} onClick={onAdmin}>Admin</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <a href="mailto:support@easyrecommend.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>support@easyrecommend.co</a>
+            <button className="er-link" style={{ color: C.muted, fontWeight: 500 }} onClick={onAdmin}>Admin</button>
+          </div>
         </div>
       </footer>
     </div>
