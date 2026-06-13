@@ -42,11 +42,11 @@ const CATS = {
 };
 const CAT_LIST = Object.keys(CATS);
 const catOf = (b) => CATS[(b.categories || [])[0]] || CATS.Beauty;
+// Stable-but-varied light tint per brand (used when there's no cover photo).
+function hashStr(s) { let h = 0; const str = String(s || ""); for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; return h; }
+function tintFor(seed) { const h = hashStr(seed) % 360; return { bg: `hsl(${h}, 64%, 93%)`, color: `hsl(${h}, 42%, 52%)` }; }
 const slugify = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const commissionLabel = (b) => b.commissionType === "flat" ? `$${b.commissionFlat}` : b.commissionType === "both" ? `${b.commissionPct}% + $${b.commissionFlat}` : `${b.commissionPct}%`;
-
-const INVITE_CODE = "EASY2025";
-const DEMO_OTP = "123123";
 
 // Downscale an uploaded image to a small JPEG data URL (keeps payloads light).
 function fileToDataURL(file, max = 1000, quality = 0.82) {
@@ -97,6 +97,7 @@ const ChevL = (p) => <Svg {...p}><path d="M15 6l-6 6 6 6" /></Svg>;
 const ChevR = (p) => <Svg {...p}><path d="M9 6l6 6-6 6" /></Svg>;
 const Plus = (p) => <Svg {...p}><path d="M12 5v14M5 12h14" /></Svg>;
 const Pin = (p) => <Svg {...p}><path d="M20 10c0 5.5-8 12-8 12s-8-6.5-8-12a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.6" /></Svg>;
+const Search = (p) => <Svg {...p}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></Svg>;
 const Globe = (p) => <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3c2.4 2.5 2.4 15.5 0 18M12 3c-2.4 2.5-2.4 15.5 0 18" /></Svg>;
 const Copy = (p) => <Svg {...p}><rect x="9" y="9" width="11" height="11" rx="2.2" /><path d="M5 15V6.2A1.2 1.2 0 0 1 6.2 5H15" /></Svg>;
 const Edit = (p) => <Svg {...p}><path d="M12 20h9" /><path d="M16.4 3.6a2 2 0 0 1 2.9 2.8L7.6 18.1 3.5 19.2l1.1-4.1z" /></Svg>;
@@ -161,14 +162,14 @@ function RecCard({ name, handle, image, category, quote, brand, stars = 5, style
 /* ---------- Business card ---------- */
 function BusinessCard({ b, onOpen }) {
   const cat = catOf(b); const backers = b.backers || []; const count = b.backerCount || 0;
-  const photo = (b.photos || [])[0];
+  const photo = (b.photos || [])[0]; const tint = tintFor(b.id || b.name);
   return (
     <div className="er-card er-card-h" role="button" tabIndex={0} onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       style={{ display: "flex", flexDirection: "column", overflow: "hidden", cursor: "pointer", textAlign: "left" }}>
-      <div style={{ position: "relative", height: 128, background: cat.bg, display: "grid", placeItems: "center" }}>
+      <div style={{ position: "relative", height: 128, background: photo ? cat.bg : tint.bg, display: "grid", placeItems: "center" }}>
         {photo ? <img src={photo} alt={b.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-          : <span style={{ color: cat.color, opacity: .55 }}><Store size={30} /></span>}
+          : <span style={{ color: tint.color, opacity: .7 }}><Store size={30} /></span>}
         <span style={{ position: "absolute", left: 12, top: 12, fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 999, background: "rgba(255,255,255,.92)", color: cat.color }}>{b.categories[0]}</span>
         <span style={{ position: "absolute", right: 12, top: 12, background: "#fff", borderRadius: 999, display: "flex", padding: 1 }}><Seal size={18} /></span>
       </div>
@@ -202,6 +203,7 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
   useEffect(() => { if (handle) api(`/business/${id}/reward?username=${encodeURIComponent(handle)}`).then((r) => setReward(r.earns)).catch(() => {}); }, [id, handle]);
   const cc = b ? catOf(b) : CATS.Beauty;
   const photo = b && (b.photos || [])[0];
+  const tint = b ? tintFor(b.id || b.name) : cc;
   return (
     <Modal onClose={onClose} wide>
       {!b ? (
@@ -210,8 +212,8 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
         {photo ? (
           <div style={{ height: 200, background: cc.bg }}><img src={photo} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /></div>
         ) : (
-          <div style={{ height: 120, background: cc.bg, display: "grid", placeItems: "center" }}>
-            <span style={{ width: 56, height: 56, borderRadius: 15, display: "grid", placeItems: "center", background: "#fff", color: cc.color, boxShadow: "0 4px 14px rgba(0,0,0,.07)" }}><Store size={24} /></span>
+          <div style={{ height: 120, background: tint.bg, display: "grid", placeItems: "center" }}>
+            <span style={{ width: 56, height: 56, borderRadius: 15, display: "grid", placeItems: "center", background: "#fff", color: tint.color, boxShadow: "0 4px 14px rgba(0,0,0,.07)" }}><Store size={24} /></span>
           </div>
         )}
         <div style={{ padding: "22px 28px 28px" }}>
@@ -375,8 +377,8 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
             </Field>
           </>}
           {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone || "your phone"}</b> — or use the demo code.</div>
-            <Field label="Verification code" hint={`Demo code: ${DEMO_OTP}`}>
+            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone || "your phone"}</b>.</div>
+            <Field label="Verification code">
               <input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
             <button className="er-link" onClick={sendCode} style={{ alignSelf: "flex-start" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={14} /> Text a code to my phone</span></button>
             <ErrBox msg={err} />
@@ -448,7 +450,7 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
 
         {mode === "creator" && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Field label="Username"><input className="er-input" placeholder="miaglow" value={cName} onChange={(e) => setCName(e.target.value)} /></Field>
-          <Field label="Invite code" hint={`Demo code: ${INVITE_CODE}`}><input className="er-input" style={{ letterSpacing: ".15em", fontWeight: 700 }} placeholder="EASY2025" value={cCode} onChange={(e) => setCCode(e.target.value.toUpperCase())} /></Field>
+          <Field label="Invite code"><input className="er-input" style={{ letterSpacing: ".15em", fontWeight: 700 }} placeholder="Enter your invite code" value={cCode} onChange={(e) => setCCode(e.target.value.toUpperCase())} /></Field>
           <ErrBox msg={err} />
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <button className="er-btn er-btn-ghost" onClick={() => setMode(null)}><ChevL size={16} /> Back</button>
@@ -465,7 +467,7 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
             <Field label="Phone number" hint="We'll text a code to the number you signed up with."><input className="er-input" placeholder="+1 555 010 2030" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
             {!sent ? <button className="er-btn er-btn-primary er-btn-block" disabled={!phone} onClick={sendCode}><Send size={16} /> Send code</button>
               : <>
-                <Field label="Verification code" hint={`Demo code: ${DEMO_OTP}`}><input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
+                <Field label="Verification code"><input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
                 <button className="er-btn er-btn-primary er-btn-block" disabled={otp.length < 6 || busy} onClick={brandLogin}>{busy ? "…" : "Log in"}</button>
               </>}
           </> : <>
@@ -569,11 +571,18 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const [step, setStep] = useState(loggedIn ? 1 : 0);
   const [code, setCode] = useState(""); const [username, setUsername] = useState(loggedIn ? sess.username : ""); const [image, setImage] = useState("");
   const [token, setToken] = useState(loggedIn ? sess.token : "");
-  const [pickedId, setPickedId] = useState(initialBusinessId || null); const [stars, setStars] = useState(0); const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [result, setResult] = useState(null);
-  const approved = businesses; const picked = approved.find((b) => b.id === pickedId);
+  const [picked, setPicked] = useState(initialBusinessId ? [initialBusinessId] : []);
+  const [reviews, setReviews] = useState({});
+  const [query, setQuery] = useState("");
+  const approved = businesses;
+  const initialCat = initialBusinessId ? ((approved.find((b) => b.id === initialBusinessId)?.categories || [])[0] || null) : null;
+  const [openCat, setOpenCat] = useState(initialCat);
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [results, setResults] = useState(null);
   const handle = loggedIn ? sess.username : slugify(username);
+  const RATING = ["", "Poor", "Fair", "Good", "Great", "Exceptional"];
 
+  const toggle = (id) => setPicked((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+  const setReview = (id, patch) => setReviews((prev) => ({ ...prev, [id]: { stars: 0, text: "", ...prev[id], ...patch } }));
   const onPhoto = async (e) => { const file = e.target.files && e.target.files[0]; if (!file) return; try { setImage(await fileToDataURL(file, 400, 0.85)); } catch (x) {} };
   const join = async () => {
     setBusy(true); setErr("");
@@ -582,14 +591,26 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       setToken(r.token); onLogin({ role: "creator", token: r.token, username: r.username }); setStep(1);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
-  const finish = async (withReview) => {
+  const finish = async () => {
     setBusy(true); setErr("");
     try {
-      const body = { token, businessId: pickedId };
-      if (withReview && stars > 0) { body.stars = stars; body.text = text; }
-      const r = await api("/creator/link", { method: "POST", body }); setResult(r); setStep(3); onRefresh();
+      const out = [];
+      for (const id of picked) {
+        const r = reviews[id] || {}; const body = { token, businessId: id };
+        if (r.stars > 0) { body.stars = r.stars; body.text = r.text || ""; }
+        const res = await api("/creator/link", { method: "POST", body });
+        const b = approved.find((x) => x.id === id);
+        out.push({ ...res, name: b ? b.name : "" });
+      }
+      setResults(out); setStep(3); onRefresh();
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
+
+  const q = query.trim().toLowerCase();
+  const match = (b) => !q || b.name.toLowerCase().includes(q);
+  const byCat = {}; approved.forEach((b) => { const c = (b.categories || [])[0] || "Other"; (byCat[c] = byCat[c] || []).push(b); });
+  const cats = [...CAT_LIST.filter((c) => byCat[c]), ...Object.keys(byCat).filter((c) => !CAT_LIST.includes(c))];
+  const noMatches = q && cats.every((c) => !byCat[c].filter(match).length);
 
   return (
     <Modal onClose={onClose} wide>
@@ -597,7 +618,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
         {step < 3 && <><span className="er-eyebrow">For creators</span><div style={{ marginTop: 12 }}><Stepper step={step} total={3} /></div></>}
         {step === 0 && <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Set up your profile</h2><p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Invite-only. A photo and a username — that's the whole profile.</p></div>
-          <Field label="Invite code" hint={`Demo code: ${INVITE_CODE}`}><input className="er-input" style={{ letterSpacing: ".15em", fontWeight: 700 }} placeholder="EASY2025" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} /></Field>
+          <Field label="Invite code" hint="Invite-only — ask your inviter for the code."><input className="er-input" style={{ letterSpacing: ".15em", fontWeight: 700 }} placeholder="Enter your invite code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} /></Field>
           <Field label="Profile photo">
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               {image ? <img src={image} alt="" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }} /> : <span style={{ width: 64, height: 64, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: C.paper }}><Spark size={24} /></span>}
@@ -606,42 +627,78 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
           <Field label="Username" hint="This becomes your public profile link.">
             <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "11px 14px" }}>
               <span style={{ fontSize: 14.5, color: C.muted }}>easyrecommend.co/@</span>
-              <input style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 14.5, fontFamily: "inherit", color: C.ink }} placeholder="miaglow" value={username} onChange={(e) => setUsername(e.target.value)} /></div></Field>
+              <input style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 14.5, fontFamily: "inherit", color: C.ink }} placeholder="yourname" value={username} onChange={(e) => setUsername(e.target.value)} /></div></Field>
           <button className="er-btn er-btn-primary er-btn-block" disabled={!code || !handle || busy} onClick={join}>{busy ? "Checking…" : <>Continue <Arrow size={16} /></>}</button>
           <ErrBox msg={err} />
         </div>}
+
         {step === 1 && <div style={{ marginTop: 22 }}>
-          <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Pick a business to back</h2>
-          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>We generate a tracked link so you earn on every sale.</p>
-          <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1fr", gap: 8, maxHeight: 300, overflowY: "auto" }}>
-            {approved.map((b) => { const on = pickedId === b.id; const cc = catOf(b);
-              return <button key={b.id} onClick={() => setPickedId(b.id)} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: 12, borderRadius: 12, cursor: "pointer", border: `1.5px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff" }}>
-                <span style={{ width: 40, height: 40, borderRadius: 10, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={18} /></span>
-                <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "block", fontWeight: 600, fontSize: 14.5, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span><span style={{ display: "block", fontSize: 12.5, color: C.muted }}>{b.categories[0]} · {b.online ? "Online" : b.city}</span></span>
-                {on && <Check size={18} color={C.accent} />}</button>; })}
+          <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Pick businesses to back</h2>
+          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Choose as many as you like — we generate a tracked link for each, so you earn on every sale.</p>
+          <div style={{ marginTop: 16, position: "relative" }}>
+            <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: C.muted, display: "flex" }}><Search size={16} /></span>
+            <input className="er-input" style={{ paddingLeft: 38 }} placeholder="Search brands" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          <div style={{ marginTop: 22, display: "flex", justifyContent: "space-between" }}>
+          {picked.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+            {picked.map((id) => { const b = approved.find((x) => x.id === id); if (!b) return null;
+              return <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.ink, color: C.paper, borderRadius: 999, padding: "5px 6px 5px 12px", fontSize: 13, fontWeight: 600 }}>{b.name}<button onClick={() => toggle(id)} style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.22)", color: C.paper, cursor: "pointer" }}><Close size={11} /></button></span>; })}
+          </div>}
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflowY: "auto" }}>
+            {cats.map((c) => { const list = byCat[c].filter(match); if (q && !list.length) return null; const open = q ? true : openCat === c; const x = CATS[c] || CATS.Beauty; const selCount = list.filter((b) => picked.includes(b.id)).length;
+              return <div key={c} style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden" }}>
+                <button onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", background: "#fff", border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: x.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontWeight: 600, fontSize: 15, color: C.ink }}>{c}</span>
+                  {selCount > 0 && <span style={{ fontSize: 11.5, fontWeight: 700, color: x.color, background: x.bg, borderRadius: 999, padding: "2px 9px" }}>{selCount} picked</span>}
+                  <span style={{ fontSize: 12.5, color: C.muted }}>{list.length}</span>
+                  <span style={{ color: C.muted, display: "flex", transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}><ChevR size={16} /></span>
+                </button>
+                {open && <div>
+                  {list.map((b) => { const on = picked.includes(b.id);
+                    return <button key={b.id} onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: "11px 14px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : "#fff", cursor: "pointer" }}>
+                      <span style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center", border: `1.5px solid ${on ? C.accent : "#CFC8BA"}`, background: on ? C.accent : "#fff", color: "#fff" }}>{on && <Check size={14} />}</span>
+                      <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "block", fontWeight: 600, fontSize: 14.5, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span><span style={{ display: "block", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : b.city}</span></span>
+                    </button>; })}
+                </div>}
+              </div>; })}
+            {noMatches && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "20px 0" }}>No brands match &ldquo;{query}&rdquo;.</p>}
+          </div>
+          <div style={{ marginTop: 22, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             {loggedIn ? <span /> : <button className="er-btn er-btn-ghost" onClick={() => setStep(0)}><ChevL size={16} /> Back</button>}
-            <button className="er-btn er-btn-primary" disabled={!pickedId} onClick={() => setStep(2)}>Continue <ChevR size={16} /></button></div>
+            <button className="er-btn er-btn-primary" disabled={!picked.length} onClick={() => setStep(2)}>Continue{picked.length ? ` · ${picked.length}` : ""} <ChevR size={16} /></button></div>
         </div>}
+
         {step === 2 && <div style={{ marginTop: 22 }}>
-          <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Leave a review</h2>
-          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Your honest take on <b style={{ color: C.ink }}>{picked?.name}</b> shows on your profile. Optional, but it's what builds trust.</p>
-          <div style={{ marginTop: 18, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: C.panel, borderRadius: 16, padding: "20px 0" }}>
-            <StarPicker value={stars} onChange={setStars} /><span style={{ fontSize: 12.5, fontWeight: 600, color: C.muted }}>{["Tap to rate", "Poor", "Fair", "Good", "Great", "Exceptional"][stars]}</span></div>
-          <textarea className="er-input" style={{ marginTop: 14 }} placeholder="What did you love about them?" value={text} onChange={(e) => setText(e.target.value)} />
+          <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Add your reviews</h2>
+          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>A rating and a note for each brand show on your profile. All optional — but it's what builds trust.</p>
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 380, overflowY: "auto" }}>
+            {picked.map((id) => { const b = approved.find((x) => x.id === id); if (!b) return null; const r = reviews[id] || { stars: 0, text: "" }; const cc = catOf(b);
+              return <div key={id} style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ width: 36, height: 36, borderRadius: 9, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={16} /></span>
+                  <span style={{ fontWeight: 600, fontSize: 15.5, color: C.ink, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: r.stars ? C.accent : C.muted }}>{r.stars ? RATING[r.stars] : "Optional"}</span>
+                </div>
+                <div style={{ marginTop: 10 }}><StarPicker value={r.stars} onChange={(v) => setReview(id, { stars: v })} /></div>
+                {r.stars > 0 && <textarea className="er-input" style={{ marginTop: 10 }} placeholder={`What did you love about ${b.name}?`} value={r.text} onChange={(e) => setReview(id, { text: e.target.value })} />}
+              </div>; })}
+          </div>
           <ErrBox msg={err} />
           <div style={{ marginTop: 18, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <button className="er-link" onClick={() => finish(false)} style={{ color: C.muted }} disabled={busy}>Skip for now</button>
-            <button className="er-btn er-btn-primary" onClick={() => finish(true)} disabled={busy}><Spark size={16} /> {busy ? "Generating…" : "Generate my link"}</button></div>
+            <button className="er-btn er-btn-ghost" onClick={() => setStep(1)} disabled={busy}><ChevL size={16} /> Back</button>
+            <button className="er-btn er-btn-primary" onClick={finish} disabled={busy}><Spark size={16} /> {busy ? "Generating…" : `Generate ${picked.length > 1 ? `${picked.length} links` : "my link"}`}</button></div>
         </div>}
-        {step === 3 && result && <div style={{ textAlign: "center", paddingTop: 6 }}>
-          <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={50} /></div>
-          <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 24, fontWeight: 500 }}>Your link is live</h2>
-          <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Share the referral link to earn {result.earns} per sale, and drop your profile in your bio.</p>
-          <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }}>
-            <CopyRow label="Referral link" value={result.referralUrl} />
-            <CopyRow label="Your profile · add to bio" value={result.profileUrl} /></div>
+
+        {step === 3 && results && <div style={{ paddingTop: 6 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={50} /></div>
+            <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 24, fontWeight: 500 }}>{results.length > 1 ? `You're backing ${results.length} brands` : "Your link is live"}</h2>
+            <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Share each referral link to earn, and drop your profile in your bio.</p>
+          </div>
+          <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 14, textAlign: "left", maxHeight: 300, overflowY: "auto" }}>
+            {results.map((r, i) => <CopyRow key={i} label={`${r.name} · earn ${r.earns}`} value={r.referralUrl} />)}
+            <CopyRow label="Your profile · add to bio" value={results[0].profileUrl} />
+          </div>
           <div style={{ marginTop: 22, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
             <button className="er-btn er-btn-ghost" onClick={onClose}>Close</button>
             <button className="er-btn er-btn-primary" onClick={() => { onViewProfile(handle); onClose(); }}>View my profile <Arrow size={16} /></button></div>
@@ -864,7 +921,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
     <div>
       <header style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(253,252,250,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
-          <button onClick={top} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer" }}><Seal size={20} /><span className="er-serif er-hide-xs" style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-.01em", color: C.ink }}>Easy Recommend</span></button>
+          <button onClick={top} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}><Seal size={20} /><span className="er-serif" style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-.01em", color: C.ink, whiteSpace: "nowrap" }}>Easy Recommend</span></button>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {session ? <>
               {session.role === "creator"
@@ -909,9 +966,9 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
                 return <button key={c} onClick={() => setActiveCat(c)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "9px 16px", borderRadius: 999, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : "#fff", color: on ? C.paper : C.inkSoft }}>{c}</button>; })}
             </div>
           </div>
-          {error && <p style={{ marginTop: 24, background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 14, padding: "16px 18px", fontSize: 14, color: "#9B3024" }}>Couldn't reach the backend ({error}). API base: {API_BASE} — make sure it's running, then reload. New install? Open Admin → "Load demo data".</p>}
+          {error && <p style={{ marginTop: 24, background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 14, padding: "16px 18px", fontSize: 14, color: "#9B3024" }}>Something went wrong loading businesses. Please reload in a moment.</p>}
           <div className="er-cards" style={{ marginTop: 28 }}>{visible.map((b) => <BusinessCard key={b.id} b={b} onOpen={() => onOpenBusiness(b.id)} />)}</div>
-          {!error && !loading && visible.length === 0 && <p style={{ marginTop: 28, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: "44px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No live businesses in {activeCat} yet. {businesses.length === 0 ? <>Open Admin → “Load demo data”.</> : null}</p>}
+          {!error && !loading && visible.length === 0 && <p style={{ marginTop: 28, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: "44px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No businesses in {activeCat} yet — check back soon.</p>}
           {loading && <p style={{ marginTop: 28, textAlign: "center", color: C.muted }}>Loading…</p>}
         </div>
       </section>
