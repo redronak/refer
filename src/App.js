@@ -941,7 +941,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         <div className="er-hero">
           <div>
             <span className="er-eyebrow">Invite-only · creator network</span>
-            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Send people somewhere good. Get paid when they go.</h1>
+            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Make recommendations and get paid for them.</h1>
             <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>A small network of creators sharing the businesses they actually trust — earning on every customer who follows the link.</p>
             <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button className="er-btn er-btn-primary" onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
@@ -973,23 +973,6 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         </div>
       </section>
 
-      <section className="er-wrap" style={{ padding: "72px 22px" }}>
-        <span className="er-eyebrow">The contributors</span>
-        <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(28px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em" }}>The people doing the recommending</h2>
-        <p style={{ margin: "8px 0 0", fontSize: 15, color: C.muted }}>Tap a profile to see the brands they back and what they had to say.</p>
-        {creators.length === 0 ? <p style={{ marginTop: 24, color: C.muted }}>No creators yet.</p> : (
-          <div className="er-creators" style={{ marginTop: 28 }}>
-            {creators.map((c) => (
-              <button key={c.username} onClick={() => onProfile(c.username)} className="er-card er-card-h" style={{ display: "flex", alignItems: "center", gap: 16, textAlign: "left", padding: 16, cursor: "pointer" }}>
-                <Avatar name={c.username} image={c.image} size={48} />
-                <div style={{ flex: 1 }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><span className="er-serif" style={{ fontSize: 18, fontWeight: 500 }}>@{c.username}</span><Seal size={15} /></div><p style={{ margin: "1px 0 0", fontSize: 13, color: C.muted }}>{c.bio || "Curating brands worth trusting"} · {c.count} rec{c.count !== 1 ? "s" : ""}</p></div>
-                <ChevR size={18} color={C.muted} />
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
-
       <section className="er-wrap" style={{ padding: "0 22px 72px" }}>
         <div className="er-stepwork">
           {steps.map((s, i) => (
@@ -1013,7 +996,16 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
       </section>
 
       <footer style={{ borderTop: `1px solid ${C.line}` }}>
-        <div className="er-wrap" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", padding: "26px 22px" }}>
+        <div className="er-wrap" style={{ padding: "34px 22px 6px" }}>
+          <span className="er-eyebrow">How tracking works</span>
+          <div style={{ marginTop: 14, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", maxWidth: 900 }}>
+            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>A link for every recommendation.</b> When a creator backs a business, we mint a unique tracked link for that pairing — so each recommendation is measured on its own.</p>
+            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>Clicks are attributed.</b> Tapping a creator's link records the click and tags the visit to that creator, then sends the customer to the business.</p>
+            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>Sales close the loop.</b> When a tagged visit becomes a purchase, the business confirms it and the creator earns the agreed commission — visible on their account.</p>
+          </div>
+          <p style={{ margin: "16px 0 0", fontSize: 12, color: C.muted, maxWidth: 900 }}>Commission terms are set by each business and may run through their own affiliate program. Attribution windows and payout timing can vary by business.</p>
+        </div>
+        <div className="er-wrap" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", padding: "26px 22px", marginTop: 22, borderTop: `1px solid ${C.line}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 17, fontWeight: 600 }}>Easy Recommend</span></div>
           <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} · Recommendations worth passing on</p>
           <button className="er-link" style={{ color: C.muted, fontWeight: 500 }} onClick={onAdmin}>Admin</button>
