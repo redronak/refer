@@ -1059,7 +1059,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         <div className="er-hero">
           <div>
             <span className="er-eyebrow">Invite-only · creator network</span>
-            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Make recommendations and get paid for them.</h1>
+            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Earn money by recommending products and services.</h1>
             <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>A small network of creators sharing the businesses they actually trust — earning on every customer who follows the link.</p>
             <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button className="er-btn er-btn-primary" onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
@@ -1124,10 +1124,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         <div className="er-wrap" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", padding: "26px 22px", marginTop: 22, borderTop: `1px solid ${C.line}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 17, fontWeight: 600 }}>Easy Recommend</span></div>
           <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} · Recommendations worth passing on</p>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <a href="mailto:support@easyrecommend.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>support@easyrecommend.co</a>
-            <button className="er-link" style={{ color: C.muted, fontWeight: 500 }} onClick={onAdmin}>Admin</button>
-          </div>
+          <a href="mailto:support@easyrecommend.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>support@easyrecommend.co</a>
         </div>
       </footer>
     </div>
