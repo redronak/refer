@@ -1060,7 +1060,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           <div>
             <span className="er-eyebrow">Invite-only · creator network</span>
             <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Earn money by recommending products and services.</h1>
-            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>A small network of creators sharing the businesses they actually trust — earning on every customer who follows the link.</p>
+            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>A small network of creators sharing the businesses they actually trust </p>
             <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button className="er-btn er-btn-primary" onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
               <button className="er-btn er-btn-ghost" onClick={onList}>List your business</button>
