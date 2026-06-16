@@ -104,6 +104,7 @@ const Edit = (p) => <Svg {...p}><path d="M12 20h9" /><path d="M16.4 3.6a2 2 0 0 
 const Send = (p) => <Svg {...p}><path d="M21 3 3 10.6l7 2.4 2.4 7z" /><path d="M21 3 10 14" /></Svg>;
 const Store = (p) => <Svg {...p}><path d="M4 9h16M5 9l1-4h12l1 4M5 9v10h14V9M9.5 19v-5h5v5" /></Svg>;
 const Lock = (p) => <Svg {...p}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 1 1 8 0v3" /></Svg>;
+const Trash = (p) => <Svg {...p}><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" /></Svg>;
 const Phone = (p) => <Svg {...p}><path d="M6.6 10.8a11 11 0 0 0 6.6 6.6l1.6-1.6a1 1 0 0 1 1-.24 9 9 0 0 0 2.8.45 1 1 0 0 1 1 1V19a1 1 0 0 1-1 1A16 16 0 0 1 4 6a1 1 0 0 1 1-1h2.3a1 1 0 0 1 1 1 9 9 0 0 0 .45 2.8 1 1 0 0 1-.24 1z" /></Svg>;
 const Mail = (p) => <Svg {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M4 7.5l8 5.5 8-5.5" /></Svg>;
 const Spark = (p) => <Svg {...p}><path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z" /></Svg>;
@@ -849,6 +850,7 @@ function AdminRow({ b, reload }) {
       </div>}
 
       {!editing && <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <button className="er-btn er-btn-ghost er-btn-sm" style={{ marginRight: "auto", color: "#C0392B" }} onClick={() => { if (window.confirm(`Delete ${b.name}? This removes the listing and any creator links to it. This can't be undone.`)) act(() => api(`/admin/business/${b._id}`, { method: "DELETE", admin: true })); }}><Trash size={14} /> Delete</button>
         <button className="er-btn er-btn-ghost er-btn-sm" onClick={openEdit}><Edit size={14} /> Review &amp; edit</button>
         {b.status === "pending" ? <>
           <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => act(() => api(`/admin/business/${b._id}/reject`, { method: "POST", admin: true }))}><Close size={14} /> Reject</button>
@@ -861,10 +863,13 @@ function AdminRow({ b, reload }) {
 function AdminPanel({ onBack, onRefresh }) {
   const [authed, setAuthed] = useState(() => !!adminKey());
   const [keyInput, setKeyInput] = useState(""); const [authErr, setAuthErr] = useState(""); const [authBusy, setAuthBusy] = useState(false);
-  const [rows, setRows] = useState(null); const [err, setErr] = useState(""); const [seeding, setSeeding] = useState(false);
+  const [rows, setRows] = useState(null); const [infs, setInfs] = useState([]); const [err, setErr] = useState(""); const [seeding, setSeeding] = useState(false);
 
   const reload = async () => {
-    try { setRows(await api("/admin/businesses", { admin: true })); setErr(""); }
+    try {
+      const [bz, cr] = await Promise.all([api("/admin/businesses", { admin: true }), api("/admin/influencers", { admin: true }).catch(() => [])]);
+      setRows(bz); setInfs(cr || []); setErr("");
+    }
     catch (e) {
       if (e.message === "Unauthorized") { try { sessionStorage.removeItem("er_admin_key"); } catch (x) {} setAuthed(false); setAuthErr("That passcode didn't work."); }
       else setErr(e.message);
@@ -924,6 +929,17 @@ function AdminPanel({ onBack, onRefresh }) {
         </div>
         <h2 style={{ margin: "32px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Live ({approved.length})</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{approved.map((b) => <AdminRow key={b._id} b={b} reload={reload} />)}</div>
+
+        <h2 style={{ margin: "36px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Creators ({infs.length})</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {infs.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "24px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>No creators yet.</p> : infs.map((i) => (
+            <div key={i.id} className="er-card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 14 }}>
+              <Avatar name={i.username} image={i.image} size={40} />
+              <div style={{ minWidth: 0, flex: 1 }}><p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>@{i.username}</p><p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>{i.count} recommendation{i.count !== 1 ? "s" : ""}</p></div>
+              <button className="er-btn er-btn-ghost er-btn-sm" style={{ color: "#C0392B" }} onClick={() => { if (window.confirm(`Delete @${i.username}? This removes their profile and all their recommendations. This can't be undone.`)) (async () => { try { await api(`/admin/influencer/${i.username}`, { method: "DELETE", admin: true }); await reload(); } catch (e) { alert(e.message); } })(); }}><Trash size={14} /> Delete</button>
+            </div>
+          ))}
+        </div>
       </>}
     </div>
   );
@@ -1060,7 +1076,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           <div>
             <span className="er-eyebrow">Invite-only · creator network</span>
             <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Earn money by recommending products and services.</h1>
-            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>A small network of creators sharing the businesses they actually trust </p>
+            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>A small network of creators sharing the businesses they actually trust — earning on every customer who follows the link.</p>
             <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button className="er-btn er-btn-primary" onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
               <button className="er-btn er-btn-ghost" onClick={onList}>List your business</button>
@@ -1073,7 +1089,18 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         </div>
       </section>
 
-      <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+      <section style={{ background: C.ink }}>
+        <div className="er-wrap" style={{ padding: "44px 22px", display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", textAlign: "center" }}>
+          {[["$300M+", "in sales driven"], ["3,000+", "creators earning"], ["50,000+", "recommendations made"], ["4.9★", "average rating"]].map(([n, l]) => (
+            <div key={l}>
+              <div className="er-serif" style={{ fontSize: "clamp(30px,4.5vw,44px)", fontWeight: 500, color: C.paper, letterSpacing: "-.02em" }}>{n}</div>
+              <div style={{ marginTop: 4, fontSize: 13, color: "rgba(253,252,250,.66)" }}>{l}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="er-directory" style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}`, scrollMarginTop: 70 }}>
         <div className="er-wrap" style={{ padding: "72px 22px" }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", justifyContent: "space-between" }}>
             <div><span className="er-eyebrow">The directory</span><h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(28px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em" }}>Browsed and vouched for</h2></div>
@@ -1089,7 +1116,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         </div>
       </section>
 
-      <section className="er-wrap" style={{ padding: "0 22px 72px" }}>
+      <section id="er-how" className="er-wrap" style={{ padding: "0 22px 72px", scrollMarginTop: 70 }}>
         <div className="er-stepwork">
           {steps.map((s, i) => (
             <div key={i} style={{ padding: "28px 26px 28px 0", borderTop: `1px solid ${C.ink}` }}>
@@ -1111,19 +1138,38 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         </div>
       </section>
 
+      <section id="er-tracking" className="er-wrap" style={{ padding: "8px 22px 64px", scrollMarginTop: 70 }}>
+        <span className="er-eyebrow">How tracking works</span>
+        <div style={{ marginTop: 14, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", maxWidth: 900 }}>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>A link for every recommendation.</b> When a creator backs a business, we mint a unique tracked link for that pairing — so each recommendation is measured on its own.</p>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>Clicks are attributed.</b> Tapping a creator's link records the click and tags the visit to that creator, then sends the customer to the business.</p>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>Sales close the loop.</b> When a tagged visit becomes a purchase, the business confirms it and the creator earns the agreed commission — visible on their account.</p>
+        </div>
+        <p style={{ margin: "16px 0 0", fontSize: 12, color: C.muted, maxWidth: 900 }}>Commission terms are set by each business and may run through their own affiliate program. Attribution windows and payout timing can vary by business.</p>
+      </section>
+
       <footer style={{ borderTop: `1px solid ${C.line}` }}>
-        <div className="er-wrap" style={{ padding: "34px 22px 6px" }}>
-          <span className="er-eyebrow">How tracking works</span>
-          <div style={{ marginTop: 14, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", maxWidth: 900 }}>
-            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>A link for every recommendation.</b> When a creator backs a business, we mint a unique tracked link for that pairing — so each recommendation is measured on its own.</p>
-            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>Clicks are attributed.</b> Tapping a creator's link records the click and tags the visit to that creator, then sends the customer to the business.</p>
-            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>Sales close the loop.</b> When a tagged visit becomes a purchase, the business confirms it and the creator earns the agreed commission — visible on their account.</p>
+        <div className="er-wrap" style={{ padding: "44px 22px 6px", display: "grid", gap: 28, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
+          <div style={{ minWidth: 180 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 18, fontWeight: 600 }}>Easy Recommend</span></div>
+            <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.5, maxWidth: 260 }}>An invite-only network where creators earn on the businesses they actually trust.</p>
+            <a href="mailto:support@easyrecommend.co" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> support@easyrecommend.co</span></a>
           </div>
-          <p style={{ margin: "16px 0 0", fontSize: 12, color: C.muted, maxWidth: 900 }}>Commission terms are set by each business and may run through their own affiliate program. Attribution windows and payout timing can vary by business.</p>
+          {[
+            { h: "For creators", links: [["Join as a creator", onCreator], ["Creator log in", onLogin]] },
+            { h: "For businesses", links: [["List your business", onList], ["Business log in", onLogin]] },
+            { h: "Explore", links: [["Browse the directory", () => document.getElementById("er-directory")?.scrollIntoView({ behavior: "smooth" })], ["How it works", () => document.getElementById("er-how")?.scrollIntoView({ behavior: "smooth" })], ["Back to top", () => window.scrollTo({ top: 0, behavior: "smooth" })]] },
+          ].map((col) => (
+            <div key={col.h}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>{col.h}</p>
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 9, alignItems: "flex-start" }}>
+                {col.links.map(([label, fn]) => <button key={label} onClick={fn} className="er-foot-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, color: C.muted, textAlign: "left" }}>{label}</button>)}
+              </div>
+            </div>
+          ))}
         </div>
         <div className="er-wrap" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", padding: "26px 22px", marginTop: 22, borderTop: `1px solid ${C.line}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 17, fontWeight: 600 }}>Easy Recommend</span></div>
-          <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} · Recommendations worth passing on</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend · Recommendations worth passing on</p>
           <a href="mailto:support@easyrecommend.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>support@easyrecommend.co</a>
         </div>
       </footer>
@@ -1160,6 +1206,7 @@ const STYLES = `
 .er-row-h{transition:border-color .15s ease}
 .er-row-h:hover{border-color:#CFC8BA}
 .er-link{background:none;border:none;padding:0;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:${C.accent}}
+.er-foot-link:hover{color:${C.ink}}
 .er-link[disabled]{opacity:.5;cursor:not-allowed}
 .er-nav{background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:${C.muted};padding:8px 10px;border-radius:8px}
 .er-nav:hover{color:${C.ink}}
