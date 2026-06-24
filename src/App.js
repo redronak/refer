@@ -1294,7 +1294,7 @@ const RB_AGENTS = [
     line: "Commission-based influence, fully automated.",
     body: "Recruits the right creators, hands each a tracked link, and pays only when a referral converts. No flat fees, no agencies — performance only.",
     points: ["Finds + vets creators by niche", "Tracked links, per-sale attribution", "Pays on conversion, not posts"],
-    link: "/Commision", cta: "See Influencer" },
+    link: "/Commision", cta: "See Influencers" },
   { key: "messaging", tag: "Lifecycle", name: "Messaging Agent", color: "#2D5B8E", bg: "#E7EDF6", icon: Chat,
     line: "Extremely personalized SMS & email.",
     body: "Writes and sends one-to-one messages that read like a human wrote them for that customer — timed to behavior, not a blast calendar.",
