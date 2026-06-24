@@ -1146,11 +1146,12 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           <div className="er-videos-grid">
             {ER_VIDEOS.map((v, i) => (
               <div key={v.src || v.title || i} className="er-vid-tile" style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden" }}>
-                <div style={{ position: "relative", aspectRatio: "16 / 9", background: C.ink }}>
+                <div style={{ position: "relative", aspectRatio: "9 / 16", background: C.ink }}>
                   {v.src ? (
                     <>
                       <video
-                        src={v.src} muted loop playsInline preload="metadata"
+                        src={v.src} muted loop playsInline preload="none"
+                        poster={v.poster || (v.src.endsWith(".mp4") ? v.src.slice(0, -4) + ".jpg" : undefined)}
                         onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}); }}
                         onMouseLeave={(e) => { const el = e.currentTarget; el.pause(); el.currentTime = 0; }}
                         onClick={(e) => { const el = e.currentTarget; if (el.paused) el.play().catch(() => {}); else el.pause(); }}
@@ -1262,7 +1263,7 @@ const STYLES = `
 .er-cards{display:grid;grid-template-columns:1fr;gap:18px}
 .er-creators{display:grid;grid-template-columns:1fr;gap:14px}
 .er-stepwork{display:grid;grid-template-columns:1fr;gap:0}
-.er-videos-grid{display:grid;grid-template-columns:1fr;gap:18px}
+.er-videos-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:760px}
 .er-vid-play{opacity:1;transition:opacity .15s ease}
 .er-vid-tile:hover .er-vid-play{opacity:0}
 @media(min-width:560px){.er-modal-overlay{align-items:center;padding:18px}.er-modal{border-radius:22px}}
@@ -1294,7 +1295,7 @@ const RB_AGENTS = [
     line: "Commission-based influence, fully automated.",
     body: "Recruits the right creators, hands each a tracked link, and pays only when a referral converts. No flat fees, no agencies — performance only.",
     points: ["Finds + vets creators by niche", "Tracked links, per-sale attribution", "Pays on conversion, not posts"],
-    link: "/Commision", cta: "See Influencers" },
+    link: "/Commision", cta: "See Influencer" },
   { key: "messaging", tag: "Lifecycle", name: "Messaging Agent", color: "#2D5B8E", bg: "#E7EDF6", icon: Chat,
     line: "Extremely personalized SMS & email.",
     body: "Writes and sends one-to-one messages that read like a human wrote them for that customer — timed to behavior, not a blast calendar.",
@@ -1326,18 +1327,14 @@ const RB_VIDEOS = [
   { title: "Featured on ChatGPT", sub: "Answer-engine wins", yt: "", src: "" },
   { title: "AI-driven referrals", sub: "Advocates on autopilot", yt: "", src: "" },
 ];
-// Videos for the /Commision influencer landing. Files live in public/ as /video1.mp4 … /video9.mp4.
-// Plays on hover (desktop) / tap (mobile). You can also set `yt` (YouTube ID) instead; empty = placeholder.
+// Videos for the /Commision influencer landing. Files in public/: /video1.mp4 … /video5.mp4,
+// with posters /image1.jpeg … /image5.jpeg. Plays on hover (desktop) / tap (mobile).
 const ER_VIDEOS = [
-  { src: "/video1.mp4", title: "" },
-  { src: "/video2.mp4", title: "" },
-  { src: "/video3.mp4", title: "" },
-  { src: "/video4.mp4", title: "" },
-  { src: "/video5.mp4", title: "" },
-  { src: "/video6.mp4", title: "" },
-  { src: "/video7.mp4", title: "" },
-  { src: "/video8.mp4", title: "" },
-  { src: "/video9.mp4", title: "" },
+  { src: "/video1.mp4", poster: "/image1.jpeg", title: "" },
+  { src: "/video2.mp4", poster: "/image2.jpeg", title: "" },
+  { src: "/video3.mp4", poster: "/image3.jpeg", title: "" },
+  { src: "/video4.mp4", poster: "/image4.jpeg", title: "" },
+  { src: "/video5.mp4", poster: "/image5.jpeg", title: "" },
 ];
 
 function RBtn({ children, kind = "primary", as = "button", href, onClick, style }) {
