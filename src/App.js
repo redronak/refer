@@ -1145,14 +1145,21 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           <p style={{ margin: "10px 0 28px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short walkthroughs of how creators earn and how businesses get vouched-for customers.</p>
           <div className="er-videos-grid">
             {ER_VIDEOS.map((v, i) => (
-              <div key={v.gif || v.title || i} style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden" }}>
+              <div key={v.src || v.title || i} className="er-vid-tile" style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden" }}>
                 <div style={{ position: "relative", aspectRatio: "16 / 9", background: C.ink }}>
-                  {v.gif ? (
-                    <img src={v.gif} alt={v.title || `Video ${i + 1}`} loading="lazy" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", background: "#000" }} />
+                  {v.src ? (
+                    <>
+                      <video
+                        src={v.src} muted loop playsInline preload="metadata"
+                        onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}); }}
+                        onMouseLeave={(e) => { const el = e.currentTarget; el.pause(); el.currentTime = 0; }}
+                        onClick={(e) => { const el = e.currentTarget; if (el.paused) el.play().catch(() => {}); else el.pause(); }}
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", background: "#000", cursor: "pointer" }}
+                      />
+                      <span className="er-vid-play" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 52, height: 52, borderRadius: "50%", display: "grid", placeItems: "center", background: "rgba(0,0,0,.45)", color: "#fff", pointerEvents: "none" }}><Play size={20} /></span>
+                    </>
                   ) : v.yt ? (
                     <iframe title={v.title} src={`https://www.youtube.com/embed/${v.yt}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
-                  ) : v.src ? (
-                    <video controls preload="metadata" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", background: "#000" }}><source src={v.src} /></video>
                   ) : (
                     <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
                       <div style={{ textAlign: "center" }}>
@@ -1256,6 +1263,8 @@ const STYLES = `
 .er-creators{display:grid;grid-template-columns:1fr;gap:14px}
 .er-stepwork{display:grid;grid-template-columns:1fr;gap:0}
 .er-videos-grid{display:grid;grid-template-columns:1fr;gap:18px}
+.er-vid-play{opacity:1;transition:opacity .15s ease}
+.er-vid-tile:hover .er-vid-play{opacity:0}
 @media(min-width:560px){.er-modal-overlay{align-items:center;padding:18px}.er-modal{border-radius:22px}}
 @media(max-width:559px){.er-nav{display:none}.er-hide-sm{display:none}}
 @media(max-width:400px){.er-hide-xs{display:none}}
@@ -1317,18 +1326,18 @@ const RB_VIDEOS = [
   { title: "Featured on ChatGPT", sub: "Answer-engine wins", yt: "", src: "" },
   { title: "AI-driven referrals", sub: "Advocates on autopilot", yt: "", src: "" },
 ];
-// Videos for the /Commision influencer landing. GIFs live in public/ as /video1.gif … /video9.gif.
-// You can also set `yt` (YouTube ID) or `src` (mp4 URL) instead; leave all empty for a placeholder.
+// Videos for the /Commision influencer landing. Files live in public/ as /video1.mp4 … /video9.mp4.
+// Plays on hover (desktop) / tap (mobile). You can also set `yt` (YouTube ID) instead; empty = placeholder.
 const ER_VIDEOS = [
-  { gif: "/video1.gif", title: "" },
-  { gif: "/video1.gif", title: "" },
-  { gif: "/video1.gif", title: "" },
-  { gif: "/video1.gif", title: "" },
-  { gif: "/video1.gif", title: "" },
-  { gif: "/video1.gif", title: "" },
-  { gif: "/video1.gif", title: "" },
-  { gif: "/video1.gif", title: "" },
-  { gif: "/video1.gif", title: "" },
+  { src: "/video1.mp4", title: "" },
+  { src: "/video2.mp4", title: "" },
+  { src: "/video3.mp4", title: "" },
+  { src: "/video4.mp4", title: "" },
+  { src: "/video5.mp4", title: "" },
+  { src: "/video6.mp4", title: "" },
+  { src: "/video7.mp4", title: "" },
+  { src: "/video8.mp4", title: "" },
+  { src: "/video9.mp4", title: "" },
 ];
 
 function RBtn({ children, kind = "primary", as = "button", href, onClick, style }) {
