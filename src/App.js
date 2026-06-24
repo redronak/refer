@@ -1321,14 +1321,14 @@ const RB_VIDEOS = [
 // You can also set `yt` (YouTube ID) or `src` (mp4 URL) instead; leave all empty for a placeholder.
 const ER_VIDEOS = [
   { gif: "/video1.gif", title: "" },
-  { gif: "/video2.gif", title: "" },
-  { gif: "/video3.gif", title: "" },
-  { gif: "/video4.gif", title: "" },
-  { gif: "/video5.gif", title: "" },
-  { gif: "/video6.gif", title: "" },
-  { gif: "/video7.gif", title: "" },
-  { gif: "/video8.gif", title: "" },
-  { gif: "/video9.gif", title: "" },
+  { gif: "/video1.gif", title: "" },
+  { gif: "/video1.gif", title: "" },
+  { gif: "/video1.gif", title: "" },
+  { gif: "/video1.gif", title: "" },
+  { gif: "/video1.gif", title: "" },
+  { gif: "/video1.gif", title: "" },
+  { gif: "/video1.gif", title: "" },
+  { gif: "/video1.gif", title: "" },
 ];
 
 function RBtn({ children, kind = "primary", as = "button", href, onClick, style }) {
