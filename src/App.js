@@ -1182,6 +1182,8 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         </div>
       </section>
 
+      <AgentStack />
+
       <section id="er-tracking" className="er-wrap" style={{ padding: "8px 22px 64px", scrollMarginTop: 70 }}>
         <span className="er-eyebrow">How tracking works</span>
         <div style={{ marginTop: 14, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", maxWidth: 900 }}>
@@ -1283,7 +1285,7 @@ const STYLES = `
    API_BASE defined above. The EasyRecommend influencer app (EasyApp, below)
    is served at "/Commision".
    =========================================================================== */
-const SUPPORT = "hello@retentionbase.com";
+const SITE_URL = "https://easyrecommend.co";
 const Users = (p) => <Svg {...p}><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0" /><path d="M16 5.2a3.2 3.2 0 0 1 0 6.1M17.5 19a5.5 5.5 0 0 0-3-4.9" /></Svg>;
 const Chat = (p) => <Svg {...p}><path d="M4 5h16v11H8l-4 4V5Z" /><path d="M8 9.5h8M8 12.5h5" /></Svg>;
 const Pulse = (p) => <Svg {...p}><path d="M3 12h4l2.5-6 4 13 2.5-7H21" /></Svg>;
@@ -1296,7 +1298,7 @@ const RB_AGENTS = [
     line: "Commission-based influence, fully automated.",
     body: "Recruits the right creators, hands each a tracked link, and pays only when a referral converts. No flat fees, no agencies — performance only.",
     points: ["Finds + vets creators by niche", "Tracked links, per-sale attribution", "Pays on conversion, not posts"],
-    link: "/Commision", cta: "See Influencer" },
+    link: SITE_URL + "/Commision", cta: "See Influencer" },
   { key: "messaging", tag: "Lifecycle", name: "Messaging Agent", color: "#2D5B8E", bg: "#E7EDF6", icon: Chat,
     line: "Extremely personalized SMS & email.",
     body: "Writes and sends one-to-one messages that read like a human wrote them for that customer — timed to behavior, not a blast calendar.",
@@ -1313,20 +1315,6 @@ const RB_AGENTS = [
     line: "AI-driven referrals on autopilot.",
     body: "Spots your happiest customers, picks the perfect moment, and invites them to refer with an offer tuned to each person — then closes the loop.",
     points: ["Finds advocates automatically", "Personalized invites + offers", "Reward only on success"] },
-];
-const RB_STATS = [["5", "agents, one stack"], ["24/7", "always-on retention"], ["−30%", "typical churn cut*"], ["+3.4×", "referral lift*"]];
-const RB_STEPS = [
-  { t: "Connect your stack", d: "Plug in your store, billing, CRM, and inbox in minutes. The agents read your data — they don't need a new system of record." },
-  { t: "Agents go to work", d: "Each agent runs continuously: recruiting advocates, messaging customers, watching for churn, and shaping how AI describes you." },
-  { t: "You watch retention climb", d: "One dashboard, one source of truth. Approve plays, set guardrails, and let the stack compound week over week." },
-];
-const RB_VIDEOS = [
-  { title: "Meet the agent stack", sub: "60-second overview", yt: "", src: "" },
-  { title: "Influencer Agent in action", sub: "Commission-based advocacy", yt: "", src: "" },
-  { title: "Personalized SMS & email", sub: "Lifecycle messaging", yt: "", src: "" },
-  { title: "Catching churn early", sub: "Listening for risk", yt: "", src: "" },
-  { title: "Featured on ChatGPT", sub: "Answer-engine wins", yt: "", src: "" },
-  { title: "AI-driven referrals", sub: "Advocates on autopilot", yt: "", src: "" },
 ];
 // Videos for the /Commision influencer landing. Files in public/: /video1.mp4 … /video5.mp4,
 // with posters /image1.jpeg … /image5.jpeg. Plays on hover (desktop) / tap (mobile).
@@ -1367,30 +1355,6 @@ function AgentCard({ a }) {
     </div>
   );
 }
-function VideoCard({ v }) {
-  return (
-    <div className="rb-card" style={{ padding: 0, overflow: "hidden" }}>
-      <div style={{ position: "relative", aspectRatio: "16 / 9", background: C.ink }}>
-        {v.yt ? (
-          <iframe title={v.title} src={`https://www.youtube.com/embed/${v.yt}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
-        ) : v.src ? (
-          <video controls preload="metadata" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", background: "#000" }}><source src={v.src} /></video>
-        ) : (
-          <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "rgba(251,250,248,.9)" }}>
-            <div style={{ textAlign: "center" }}>
-              <span style={{ width: 54, height: 54, borderRadius: "50%", display: "grid", placeItems: "center", background: "rgba(255,255,255,.14)", margin: "0 auto" }}><Play size={22} /></span>
-              <p style={{ margin: "10px 0 0", fontSize: 12, color: "rgba(251,250,248,.6)" }}>Video coming soon</p>
-            </div>
-          </div>
-        )}
-      </div>
-      <div style={{ padding: "14px 16px" }}>
-        <p style={{ margin: 0, fontWeight: 600, fontSize: 15, color: C.ink }}>{v.title}</p>
-        {v.sub && <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{v.sub}</p>}
-      </div>
-    </div>
-  );
-}
 function RBDemoModal({ onClose }) {
   const [name, setName] = useState(""); const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [done, setDone] = useState(false);
@@ -1400,7 +1364,7 @@ function RBDemoModal({ onClose }) {
     if (!valid) { setErr("Please enter your name and a valid email."); return; }
     setBusy(true); setErr("");
     try {
-      const r = await fetch(`${API_BASE}/demo`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, source: "RetentionBase" }) });
+      const r = await fetch(`${API_BASE}/demo`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, source: "Easy Recommend" }) });
       if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || "Something went wrong — please try again."); }
       setDone(true);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
@@ -1433,120 +1397,60 @@ function RBDemoModal({ onClose }) {
     </div>
   );
 }
-function RetentionPage() {
+function AgentStack() {
   const [demoOpen, setDemoOpen] = useState(false);
-  const openDemo = () => setDemoOpen(true);
   return (
-    <div className="rb-root">
+    <section id="er-agents" style={{ background: C.paper, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
       {demoOpen && <RBDemoModal onClose={() => setDemoOpen(false)} />}
-      <header style={{ position: "sticky", top: 0, zIndex: 40, background: "rgba(251,250,248,.86)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
-        <div className="rb-wrap" style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>
-            <Seal size={21} /><span className="rb-serif" style={{ fontSize: 19.5, fontWeight: 600, letterSpacing: "-.01em", color: C.ink, whiteSpace: "nowrap" }}>RetentionBase</span>
-          </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button className="rb-nav rb-hide-sm" onClick={() => document.getElementById("rb-agents")?.scrollIntoView({ behavior: "smooth" })}>The agents</button>
-            <button className="rb-nav rb-hide-sm" onClick={() => document.getElementById("rb-how")?.scrollIntoView({ behavior: "smooth" })}>How it works</button>
-            <RBtn kind="primary" onClick={openDemo} style={{ padding: "10px 16px", fontSize: 14 }}>Book a demo</RBtn>
-          </div>
-        </div>
-      </header>
-
-      <section className="rb-wrap" style={{ padding: "72px 22px 56px" }}>
-        <div style={{ maxWidth: 880 }}>
-          <span className="rb-eyebrow">One platform · five AI agents</span>
-          <h1 className="rb-serif" style={{ margin: "16px 0 0", fontSize: "clamp(40px,6.4vw,68px)", lineHeight: 1.02, fontWeight: 500, letterSpacing: "-.02em", color: C.ink }}>The complete stack of AI agents for retention &amp; growth.</h1>
-          <p style={{ margin: "22px 0 0", fontSize: "clamp(17px,2.2vw,20px)", lineHeight: 1.5, color: C.inkSoft, maxWidth: 620 }}>RetentionBase runs the agents that find your advocates, message every customer like a human would, catch churn before it happens, and get you recommended where buyers now search — ChatGPT included.</p>
-          <div style={{ marginTop: 30, display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <RBtn kind="primary" onClick={openDemo}>Get started <Arrow size={17} /></RBtn>
-            <RBtn kind="ghost" onClick={() => document.getElementById("rb-agents")?.scrollIntoView({ behavior: "smooth" })}>See the agents</RBtn>
-          </div>
-          <div style={{ marginTop: 26, display: "flex", alignItems: "center", gap: 9, fontSize: 13.5, color: C.muted }}><Seal size={17} /> Works on top of the stack you already run.</div>
-        </div>
-        <div style={{ marginTop: 44, display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {RB_AGENTS.map((a) => { const Icon = a.icon;
-            return <div key={a.key} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "9px 14px 9px 10px", borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff" }}>
-              <span style={{ width: 26, height: 26, borderRadius: 8, display: "grid", placeItems: "center", background: a.bg, color: a.color }}><Icon size={15} /></span>
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: C.ink }}>{a.name}</span>
-            </div>; })}
-        </div>
-      </section>
-
-      <section style={{ background: C.ink }}>
-        <div className="rb-wrap" style={{ padding: "44px 22px", display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", textAlign: "center" }}>
-          {RB_STATS.map(([n, l]) => (
-            <div key={l}>
-              <div className="rb-serif" style={{ fontSize: "clamp(30px,4.5vw,44px)", fontWeight: 500, color: C.paper, letterSpacing: "-.02em" }}>{n}</div>
-              <div style={{ marginTop: 4, fontSize: 13, color: "rgba(251,250,248,.66)" }}>{l}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="rb-agents" className="rb-wrap" style={{ padding: "72px 22px", scrollMarginTop: 70 }}>
-        <span className="rb-eyebrow">The stack</span>
-        <h2 className="rb-serif" style={{ margin: "10px 0 0", fontSize: "clamp(28px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>Five agents. One job: keep customers, and bring more.</h2>
-        <p style={{ margin: "10px 0 0", fontSize: 16, color: C.muted, maxWidth: 620 }}>Each agent is useful alone and compounding together — they share the same customer graph, so a churn signal can trigger a save, and a happy customer can trigger a referral.</p>
+      <div className="er-wrap" style={{ padding: "72px 22px" }}>
+        <h2 className="rb-serif" style={{ margin: 0, fontSize: "clamp(28px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>Five agents. One job: keep customers, and bring more.</h2>
+        <p style={{ margin: "10px 0 0", fontSize: 16, color: C.muted, maxWidth: 640 }}>Each agent is useful alone and compounding together — they share the same customer graph, so a churn signal can trigger a save, and a happy customer can trigger a referral.</p>
         <div className="rb-agents-grid" style={{ marginTop: 32 }}>
           {RB_AGENTS.map((a) => <AgentCard key={a.key} a={a} />)}
           <div className="rb-card" style={{ display: "flex", flexDirection: "column", justifyContent: "center", background: C.ink, color: C.paper }}>
             <span style={{ width: 46, height: 46, borderRadius: 13, display: "grid", placeItems: "center", background: "rgba(255,255,255,.1)", color: C.paper }}><Bolt size={22} /></span>
             <h3 className="rb-serif" style={{ margin: "16px 0 0", fontSize: 21, fontWeight: 500 }}>One brain behind them all</h3>
             <p style={{ margin: "8px 0 0", fontSize: 14.5, lineHeight: 1.55, color: "rgba(251,250,248,.74)" }}>Every agent reads from — and writes to — the same shared customer graph. Insights from one become actions in another, automatically.</p>
-            <div style={{ marginTop: 18 }}><RBtn kind="light" onClick={openDemo}>Book a demo <Arrow size={16} /></RBtn></div>
+            <div style={{ marginTop: 18 }}><RBtn kind="light" onClick={() => setDemoOpen(true)}>Book a demo <Arrow size={16} /></RBtn></div>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+function RetentionPage() {
+  const influencer = RB_AGENTS[0];
+  return (
+    <div className="rb-root">
+      <header style={{ position: "sticky", top: 0, zIndex: 40, background: "rgba(251,250,248,.86)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
+        <div className="rb-wrap" style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <a href={SITE_URL} style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flexShrink: 0 }}>
+            <Seal size={21} /><span className="rb-serif" style={{ fontSize: 19.5, fontWeight: 600, letterSpacing: "-.01em", color: C.ink, whiteSpace: "nowrap" }}>Easy Recommend</span>
+          </a>
+          <RBtn kind="primary" as="a" href={SITE_URL} style={{ padding: "10px 16px", fontSize: 14 }}>Go to easyrecommend.co</RBtn>
+        </div>
+      </header>
+
+      <section className="rb-wrap" style={{ padding: "84px 22px 56px", textAlign: "center" }}>
+        <span className="rb-eyebrow">We've changed our name</span>
+        <h1 className="rb-serif" style={{ margin: "16px auto 0", maxWidth: 760, fontSize: "clamp(38px,6vw,64px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em", color: C.ink }}>RetentionBase is now Easy&nbsp;Recommend.</h1>
+        <p style={{ margin: "20px auto 0", maxWidth: 560, fontSize: "clamp(16px,2.2vw,19px)", lineHeight: 1.5, color: C.inkSoft }}>Same team, same product — new name and a new home. You can now find us at <b style={{ color: C.ink }}>easyrecommend.co</b>.</p>
+        <div style={{ marginTop: 30, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <RBtn kind="primary" as="a" href={SITE_URL}>Visit easyrecommend.co <Arrow size={17} /></RBtn>
         </div>
       </section>
 
-      <section id="rb-how" style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}`, scrollMarginTop: 70 }}>
-        <div className="rb-wrap" style={{ padding: "72px 22px" }}>
-          <span className="rb-eyebrow">How it works</span>
-          <h2 className="rb-serif" style={{ margin: "10px 0 28px", fontSize: "clamp(28px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>Live in a day. Compounding from there.</h2>
-          <div className="rb-steps">
-            {RB_STEPS.map((s, i) => (
-              <div key={i} style={{ padding: "26px 24px 26px 0", borderTop: `1px solid ${C.ink}` }}>
-                <span className="rb-eyebrow">0{i + 1}</span>
-                <h3 className="rb-serif" style={{ margin: "12px 0 6px", fontSize: 22, fontWeight: 500, color: C.ink }}>{s.t}</h3>
-                <p style={{ margin: 0, fontSize: 14.5, color: C.muted, lineHeight: 1.55 }}>{s.d}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="rb-wrap" style={{ padding: "72px 22px 80px" }}>
-        <div style={{ background: C.ink, borderRadius: 24, padding: "60px 32px", textAlign: "center" }}>
-          <h2 className="rb-serif" style={{ margin: 0, color: C.paper, fontSize: "clamp(28px,4.5vw,46px)", fontWeight: 500, letterSpacing: "-.01em" }}>Put your retention on autopilot.</h2>
-          <p style={{ margin: "14px auto 0", maxWidth: 460, color: "rgba(251,250,248,.74)", fontSize: 16.5 }}>Spin up the full agent stack and let it work the moment your data is connected.</p>
-          <div style={{ marginTop: 26, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <RBtn kind="light" onClick={openDemo}>Get started <Arrow size={16} /></RBtn>
-            <RBtn kind="outline" onClick={openDemo}>Talk to us</RBtn>
-          </div>
+      <section className="rb-wrap" style={{ padding: "8px 22px 84px" }}>
+        <div style={{ maxWidth: 420, margin: "0 auto" }}>
+          <AgentCard a={influencer} />
         </div>
       </section>
 
       <footer style={{ borderTop: `1px solid ${C.line}` }}>
-        <div className="rb-wrap" style={{ padding: "44px 22px 6px", display: "grid", gap: 28, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
-          <div style={{ minWidth: 200 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={19} /><span className="rb-serif" style={{ fontSize: 18, fontWeight: 600 }}>RetentionBase</span></div>
-            <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.5, maxWidth: 260 }}>The complete stack of AI agents for retention and growth.</p>
-            <a href={`mailto:${SUPPORT}`} className="rb-foot-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><Chat size={14} /> {SUPPORT}</a>
-          </div>
-          {[
-            { h: "Agents", links: RB_AGENTS.map((a) => [a.name, () => document.getElementById("rb-agents")?.scrollIntoView({ behavior: "smooth" })]) },
-            { h: "Company", links: [["How it works", () => document.getElementById("rb-how")?.scrollIntoView({ behavior: "smooth" })], ["Book a demo", openDemo], ["Influencer landing", () => { window.location.href = "/Commision"; }], ["Back to top", () => window.scrollTo({ top: 0, behavior: "smooth" })]] },
-          ].map((col) => (
-            <div key={col.h}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>{col.h}</p>
-              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 9, alignItems: "flex-start" }}>
-                {col.links.map(([label, fn]) => <button key={label} onClick={fn} className="rb-foot-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, color: C.muted, textAlign: "left" }}>{label}</button>)}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="rb-wrap" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", padding: "26px 22px", marginTop: 22, borderTop: `1px solid ${C.line}` }}>
-          <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} RetentionBase · Keep more of the customers you earn</p>
-          <p style={{ margin: 0, fontSize: 11.5, color: C.muted }}>*Illustrative figures.</p>
+        <div className="rb-wrap" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", padding: "26px 22px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="rb-serif" style={{ fontSize: 16, fontWeight: 600 }}>Easy Recommend</span></div>
+          <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend · formerly RetentionBase</p>
+          <a href={SITE_URL} className="rb-foot-link" style={{ fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}>easyrecommend.co</a>
         </div>
       </footer>
     </div>
@@ -1617,14 +1521,18 @@ function EasyApp() {
   const [detailId, setDetailId] = useState(null);
 
   const login = (s) => { saveSession(s); setSessionState(s); };
-  const logout = () => { clearSession(); setSessionState(null); setView("home"); nav("/Commision"); };
+  const logout = () => { clearSession(); setSessionState(null); setView("home"); nav("/"); };
 
   useEffect(() => {
     const f = document.createElement("link"); f.rel = "stylesheet";
     f.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap";
     document.head.appendChild(f);
     const s = document.createElement("style"); s.textContent = STYLES; document.head.appendChild(s);
-    return () => { document.head.removeChild(f); document.head.removeChild(s); };
+    let rb = null;
+    if (!document.getElementById("rb-styles")) {
+      rb = document.createElement("style"); rb.id = "rb-styles"; rb.textContent = RB_STYLES; document.head.appendChild(rb);
+    }
+    return () => { document.head.removeChild(f); document.head.removeChild(s); if (rb) document.head.removeChild(rb); };
   }, []);
 
   const refresh = async () => {
@@ -1639,7 +1547,7 @@ function EasyApp() {
 
   const nav = (path) => { try { window.history.pushState({}, "", path); } catch (e) {} window.scrollTo(0, 0); };
   const goProfile = (h) => { setProfileHandle(h); setView("profile"); nav(`/@${h}`); };
-  const goHome = () => { setView("home"); nav("/Commision"); };
+  const goHome = () => { setView("home"); nav("/"); };
   const goAdmin = () => { setView("admin"); nav("/admin"); };
 
   useEffect(() => {
@@ -1668,19 +1576,15 @@ function EasyApp() {
 }
 
 /* ===========================================================================
-   Top-level router — RetentionBase at "/", the EasyRecommend influencer
-   landing at "/Commision" (plus its sub-routes: /@handle, /admin, /my-business).
+   Top-level router — Easy Recommend is the main site (the influencer landing).
+   Visitors arriving on the old retentionbase.com domain see the rename notice.
+   Preview the rename page anywhere with ?renamed=1.
    =========================================================================== */
-function routeIsEasy() {
-  const p = window.location.pathname || "/";
-  return /^\/(commision|admin|my-business|@)/i.test(p) || window.location.hash === "#admin";
+function showRenameNotice() {
+  const host = (window.location.hostname || "").toLowerCase();
+  return host.includes("retentionbase") || /[?&]renamed=1/.test(window.location.search);
 }
 export default function App() {
-  const [easy, setEasy] = useState(routeIsEasy());
-  useEffect(() => {
-    const h = () => setEasy(routeIsEasy());
-    window.addEventListener("popstate", h);
-    return () => window.removeEventListener("popstate", h);
-  }, []);
-  return easy ? <EasyApp /> : <RetentionApp />;
+  const [renamed] = useState(showRenameNotice());
+  return renamed ? <RetentionApp /> : <EasyApp />;
 }
