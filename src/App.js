@@ -1139,10 +1139,10 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
       </section>
 
       <section id="er-videos" style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
-        <div className="er-wrap" style={{ padding: "64px 22px" }}>
+        <div className="er-wrap" style={{ padding: "64px 22px", textAlign: "center" }}>
           <span className="er-eyebrow">Watch it work</span>
           <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>See how it works</h2>
-          <p style={{ margin: "10px 0 28px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short walkthroughs of how creators earn and how businesses get vouched-for customers.</p>
+          <p style={{ margin: "10px auto 28px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short walkthroughs of how creators earn and how businesses get vouched-for customers.</p>
           <div className="er-videos-grid">
             {ER_VIDEOS.map((v, i) => (
               <div key={v.src || v.title || i} className="er-vid-tile" style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden" }}>
@@ -1263,7 +1263,8 @@ const STYLES = `
 .er-cards{display:grid;grid-template-columns:1fr;gap:18px}
 .er-creators{display:grid;grid-template-columns:1fr;gap:14px}
 .er-stepwork{display:grid;grid-template-columns:1fr;gap:0}
-.er-videos-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:760px}
+.er-videos-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;max-width:800px;margin:0 auto}
+.er-vid-tile{flex:0 0 calc(50% - 7px);max-width:240px;text-align:left}
 .er-vid-play{opacity:1;transition:opacity .15s ease}
 .er-vid-tile:hover .er-vid-play{opacity:0}
 @media(min-width:560px){.er-modal-overlay{align-items:center;padding:18px}.er-modal{border-radius:22px}}
