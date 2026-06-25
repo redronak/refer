@@ -307,8 +307,8 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
           </div>
           {(b.phone || b.email) && (
             <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {b.phone && <a href={`tel:${b.phone}`} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Phone size={14} /> {b.phone}</a>}
-              {b.email && <a href={`mailto:${b.email}`} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Mail size={14} /> Email</a>}
+              {b.phone && <a href={`tel:${b.phone}`} onClick={() => trackClick(handle, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Phone size={14} /> {b.phone}</a>}
+              {b.email && <a href={`mailto:${b.email}`} onClick={() => trackClick(handle, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Mail size={14} /> Email</a>}
             </div>
           )}
           <div style={{ height: 1, background: C.line, margin: "24px 0 18px" }} />
@@ -343,9 +343,10 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
 /* ---------- Brand onboarding ---------- */
 function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: "", phone: "", email: "", password: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: [] });
+  const [f, setF] = useState({ name: "", phone: "", email: "", password: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: [], contacts: ["email"] });
   const [otp, setOtp] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+  const toggleContact = (m) => setF((p) => ({ ...p, contacts: p.contacts.includes(m) ? p.contacts.filter((x) => x !== m) : [...p.contacts, m] }));
   const onPhotos = async (e) => {
     const files = [...(e.target.files || [])]; if (!files.length) return;
     const urls = [];
@@ -355,7 +356,11 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   };
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
-  const valid = [f.name && f.email && f.password.length >= 6, f.categories.length > 0 && (f.online || f.city), commValid, otp.length >= 6];
+  const contactsFilled = f.contacts.length > 0
+    && (!f.contacts.includes("website") || !!f.website.trim())
+    && (!f.contacts.includes("phone") || !!f.phone.trim())
+    && (!f.contacts.includes("email") || !!f.email.trim());
+  const valid = [f.name && f.email && f.password.length >= 6 && contactsFilled, f.categories.length > 0 && (f.online || f.city), commValid, otp.length >= 6];
   const hasPhone = !!(f.phone && f.phone.trim());
   const titles = ["About your business", "Where to find you", "Your terms", "Confirm & submit"];
 
@@ -363,7 +368,8 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const submit = async (via = "phone") => {
     setBusy(true); setErr("");
     try {
-      const body = via === "email" ? { ...f, via: "email" } : { ...f, otp };
+      const vis = { hideWebsite: !f.contacts.includes("website"), hideEmail: !f.contacts.includes("email"), hidePhone: !f.contacts.includes("phone") };
+      const body = via === "email" ? { ...f, ...vis, via: "email" } : { ...f, ...vis, otp };
       const r = await api("/business", { method: "POST", body });
       if (r && r.token) onLogin({ role: "brand", token: r.token, phone: f.phone, email: f.email });
       onRefresh(); onDone(f.name);
@@ -380,10 +386,16 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
         <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           {step === 0 && <>
             <Field label="Brand name"><input className="er-input" placeholder="Lumière Skincare" value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
-            <Field label="Phone number" hint="Optional — add it to verify by text and show it on your listing."><input className="er-input" placeholder="+1 555 010 2030" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
-            <Field label="Email" hint="Shown on your listing."><input className="er-input" placeholder="hello@brand.com" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
-            <Field label="Password" hint="You'll use this with your email to log in and manage your listing."><input type="password" className="er-input" placeholder="At least 6 characters" value={f.password} onChange={(e) => set("password", e.target.value)} /></Field>
-            <Field label="Website" hint="Optional — the link customers visit."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>
+            <Field label="Email" hint="You'll sign in with this — it's your account email."><input className="er-input" type="email" placeholder="hello@brand.com" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
+            <Field label="Password" hint="At least 6 characters. Use it with your email to log in."><input type="password" className="er-input" placeholder="At least 6 characters" value={f.password} onChange={(e) => set("password", e.target.value)} /></Field>
+            <Field label="Point of contact" hint="How should customers reach you? We'll show what you pick on your public page.">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {[["website", "Website"], ["email", "Email"], ["phone", "Phone"]].map(([m, lbl]) => { const on = f.contacts.includes(m);
+                  return <button key={m} type="button" onClick={() => toggleContact(m)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "9px 15px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{on && "✓ "}{lbl}</button>; })}
+              </div>
+            </Field>
+            {f.contacts.includes("website") && <Field label="Website" hint="The link customers visit."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>}
+            {f.contacts.includes("phone") && <Field label="Phone number" hint="Shown on your listing. We can also text a code to verify it."><input className="er-input" placeholder="+1 555 010 2030" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>}
           </>}
           {step === 1 && <>
             <Field label="Categories" hint="Pick all that apply.">
@@ -473,14 +485,14 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
   const [mode, setMode] = useState(null); // null | creator | brand
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   // creator
-  const [cName, setCName] = useState(""); const [cCode, setCCode] = useState("");
+  const [cName, setCName] = useState("");
   // brand
   const [bmethod, setBmethod] = useState("email");
   const [phone, setPhone] = useState(""); const [email, setEmail] = useState(""); const [pw, setPw] = useState(""); const [otp, setOtp] = useState(""); const [sent, setSent] = useState(false);
 
   const creatorLogin = async () => {
     setBusy(true); setErr("");
-    try { const r = await api("/creator/login", { method: "POST", body: { username: cName, inviteCode: cCode } }); onLogin({ role: "creator", token: r.token, username: r.username }); onAfterCreator(r.username); }
+    try { const r = await api("/creator/login", { method: "POST", body: { username: cName } }); onLogin({ role: "creator", token: r.token, username: r.username }); onAfterCreator(r.username); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   const sendCode = async () => { setErr(""); try { await api("/otp/send", { method: "POST", body: { phone } }); setSent(true); } catch (e) { setErr(e.message); } };
@@ -514,11 +526,10 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
 
         {mode === "creator" && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Field label="Username"><input className="er-input" placeholder="miaglow" value={cName} onChange={(e) => setCName(e.target.value)} /></Field>
-          <Field label="Invite code"><input className="er-input" style={{ letterSpacing: ".15em", fontWeight: 700 }} placeholder="Enter your invite code" value={cCode} onChange={(e) => setCCode(e.target.value.toUpperCase())} /></Field>
           <ErrBox msg={err} />
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <button className="er-btn er-btn-ghost" onClick={() => setMode(null)}><ChevL size={16} /> Back</button>
-            <button className="er-btn er-btn-primary" disabled={!cName || !cCode || busy} onClick={creatorLogin}>{busy ? "…" : "Log in"} <Arrow size={16} /></button>
+            <button className="er-btn er-btn-primary" disabled={!cName || busy} onClick={creatorLogin}>{busy ? "…" : "Log in"} <Arrow size={16} /></button>
           </div>
         </div>}
 
@@ -605,19 +616,87 @@ function BizEditCard({ b, token, reload }) {
     </div>
   );
 }
-function MyBusiness({ session, onBack, onRefresh }) {
-  const [rows, setRows] = useState(null); const [err, setErr] = useState("");
-  const reload = async () => { try { setRows(await api(`/business/me?token=${encodeURIComponent(session.token)}`)); setErr(""); } catch (e) { setErr(e.message); } onRefresh(); };
-  useEffect(() => { reload(); }, []);
+function ReqDecision({ r, onDecide }) {
+  const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
+  const decided = r.status !== "pending";
+  const act = async (status) => { setBusy(true); try { await onDecide(r.id, status, msg); } catch (e) { alert(e.message); } finally { setBusy(false); } };
+  const badge = r.status === "approved" ? { t: "Approved", c: C.accent, bg: C.accentSoft } : { t: "Rejected", c: "#9B3024", bg: "#FBE9E7" };
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "40px 22px 80px" }}>
+    <div className="er-card" style={{ padding: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Avatar name={r.influencer} image={r.image} size={38} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>@{r.influencer}</div>
+          <div style={{ fontSize: 12.5, color: C.muted }}>{r.businessName}</div>
+        </div>
+        {decided && <span style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: badge.bg, color: badge.c }}>{badge.t}</span>}
+      </div>
+      <div style={{ marginTop: 12, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, padding: "10px 12px" }}>
+        <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>Requested commission</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 2 }}>{r.requested}</div>
+        {r.note && <p style={{ margin: "8px 0 0", fontSize: 13.5, color: C.inkSoft, lineHeight: 1.4 }}>&ldquo;{r.note}&rdquo;</p>}
+      </div>
+      {decided ? (r.brandMessage ? <p style={{ margin: "10px 0 0", fontSize: 13, color: C.muted }}>Your reply: &ldquo;{r.brandMessage}&rdquo;</p> : null)
+        : <>
+          <textarea className="er-input" style={{ marginTop: 10 }} placeholder="Optional message back to the creator…" value={msg} onChange={(e) => setMsg(e.target.value)} />
+          <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
+            <button className="er-btn er-btn-primary er-btn-sm" disabled={busy} onClick={() => act("approved")}><Check size={14} /> Approve</button>
+            <button className="er-btn er-btn-ghost er-btn-sm" disabled={busy} onClick={() => act("rejected")}><Close size={14} /> Reject</button>
+          </div>
+        </>}
+    </div>
+  );
+}
+function MyBusiness({ session, onBack, onRefresh }) {
+  const [tab, setTab] = useState("info");
+  const [rows, setRows] = useState(null); const [err, setErr] = useState("");
+  const [infs, setInfs] = useState(null); const [reqs, setReqs] = useState(null);
+  const t = encodeURIComponent(session.token);
+  const reload = async () => { try { setRows(await api(`/business/me?token=${t}`)); setErr(""); } catch (e) { setErr(e.message); } onRefresh(); };
+  const reloadInfs = async () => { try { setInfs(await api(`/business/me/influencers?token=${t}`)); } catch (e) { setInfs([]); } };
+  const reloadReqs = async () => { try { setReqs(await api(`/business/me/requests?token=${t}`)); } catch (e) { setReqs([]); } };
+  useEffect(() => { reload(); reloadInfs(); reloadReqs(); }, []);
+  const decide = async (id, status, message) => { await api(`/business/request/${id}`, { method: "PATCH", body: { token: session.token, status, message } }); await reloadReqs(); };
+  const pending = (reqs || []).filter((r) => r.status === "pending").length;
+  const tabs = [["info", "My information"], ["influencers", "Influencers"], ["requests", `Requests${pending ? ` · ${pending}` : ""}`]];
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 22px 80px" }}>
       <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>My business</h1>
-      <p style={{ margin: "6px 0 24px", fontSize: 14.5, color: C.muted }}>Edit your listing, perk, and creator reward anytime.</p>
+      <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>Manage your listing, see who's backing you, and handle commission requests.</p>
+      <div style={{ display: "flex", gap: 18, borderBottom: `1px solid ${C.line}`, marginBottom: 22, flexWrap: "wrap" }}>
+        {tabs.map(([k, lbl]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "10px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1 }}>{lbl}</button>)}
+      </div>
       {err && <p style={{ background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>{err}</p>}
-      {rows === null && !err && <p style={{ color: C.muted }}>Loading…</p>}
-      {rows && rows.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No business found on this account.</p>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(rows || []).map((b) => <BizEditCard key={b.id} b={b} token={session.token} reload={reload} />)}</div>
+
+      {tab === "info" && <>
+        {rows === null && !err && <p style={{ color: C.muted }}>Loading…</p>}
+        {rows && rows.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No business found on this account.</p>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(rows || []).map((b) => <BizEditCard key={b.id} b={b} token={session.token} reload={reload} />)}</div>
+      </>}
+
+      {tab === "influencers" && <>
+        {infs === null && <p style={{ color: C.muted }}>Loading…</p>}
+        {infs && infs.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No creators have added you yet.</p>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {(infs || []).map((i, idx) => <div key={idx} className="er-card" style={{ padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
+            <Avatar name={i.influencer} image={i.image} size={42} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>@{i.influencer}</div>
+              <div style={{ fontSize: 12.5, color: C.muted }}>Backs {i.businessName} · {i.clicks} clicks · {i.sales} sales</div>
+            </div>
+            <a href={i.profileUrl} target="_blank" rel="noreferrer" className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none", flexShrink: 0 }}>View</a>
+          </div>)}
+        </div>
+      </>}
+
+      {tab === "requests" && <>
+        {reqs === null && <p style={{ color: C.muted }}>Loading…</p>}
+        {reqs && reqs.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No commission requests yet. When a creator asks for a higher rate, it shows up here.</p>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {(reqs || []).map((r) => <ReqDecision key={r.id} r={r} onDecide={decide} />)}
+        </div>
+      </>}
     </div>
   );
 }
@@ -634,7 +713,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const sess = getSession();
   const loggedIn = sess && sess.role === "creator";
   const [step, setStep] = useState(loggedIn ? 1 : 0);
-  const [code, setCode] = useState(""); const [username, setUsername] = useState(loggedIn ? sess.username : ""); const [image, setImage] = useState("");
+  const [username, setUsername] = useState(loggedIn ? sess.username : ""); const [image, setImage] = useState("");
   const [token, setToken] = useState(loggedIn ? sess.token : "");
   const [picked, setPicked] = useState(initialBusinessId ? [initialBusinessId] : []);
   const [reviews, setReviews] = useState({});
@@ -643,6 +722,12 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const initialCat = initialBusinessId ? ((approved.find((b) => b.id === initialBusinessId)?.categories || [])[0] || null) : null;
   const [openCat, setOpenCat] = useState(initialCat);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [results, setResults] = useState(null);
+  const [genId, setGenId] = useState(null);
+  const aiReview = async (id, name, stars) => {
+    setGenId(id); setErr("");
+    try { const r = await api("/review/generate", { method: "POST", body: { businessName: name, stars: stars || 5, token } }); if (r && r.text) setReview(id, { text: r.text }); }
+    catch (e) { setErr(e.message); } finally { setGenId(null); }
+  };
   const handle = loggedIn ? sess.username : slugify(username);
   const RATING = ["", "Poor", "Fair", "Good", "Great", "Exceptional"];
 
@@ -652,7 +737,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const join = async () => {
     setBusy(true); setErr("");
     try {
-      const r = await api("/influencer", { method: "POST", body: { inviteCode: code, username: handle, image } });
+      const r = await api("/influencer", { method: "POST", body: { username: handle, image } });
       setToken(r.token); onLogin({ role: "creator", token: r.token, username: r.username }); setStep(1);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -682,8 +767,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       <div style={{ padding: "30px 28px" }}>
         {step < 3 && <><span className="er-eyebrow">For creators</span><div style={{ marginTop: 12 }}><Stepper step={step} total={3} /></div></>}
         {step === 0 && <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Set up your profile</h2><p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Invite-only. A photo and a username — that's the whole profile.</p></div>
-          <Field label="Invite code" hint="Invite-only — ask your inviter for the code."><input className="er-input" style={{ letterSpacing: ".15em", fontWeight: 700 }} placeholder="Enter your invite code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} /></Field>
+          <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Set up your profile</h2><p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>A photo and a username — that's the whole profile.</p></div>
           <Field label="Profile photo">
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               {image ? <img src={image} alt="" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }} /> : <span style={{ width: 64, height: 64, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: C.paper }}><Spark size={24} /></span>}
@@ -693,7 +777,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "11px 14px" }}>
               <span style={{ fontSize: 14.5, color: C.muted }}>easyrecommend.co/@</span>
               <input style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 14.5, fontFamily: "inherit", color: C.ink }} placeholder="yourname" value={username} onChange={(e) => setUsername(e.target.value)} /></div></Field>
-          <button className="er-btn er-btn-primary er-btn-block" disabled={!code || !handle || busy} onClick={join}>{busy ? "Checking…" : <>Continue <Arrow size={16} /></>}</button>
+          <button className="er-btn er-btn-primary er-btn-block" disabled={!handle || busy} onClick={join}>{busy ? "Checking…" : <>Continue <Arrow size={16} /></>}</button>
           <ErrBox msg={err} />
         </div>}
 
@@ -708,22 +792,22 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             {picked.map((id) => { const b = approved.find((x) => x.id === id); if (!b) return null;
               return <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.ink, color: C.paper, borderRadius: 999, padding: "5px 6px 5px 12px", fontSize: 13, fontWeight: 600 }}>{b.name}<button onClick={() => toggle(id)} style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.22)", color: C.paper, cursor: "pointer" }}><Close size={11} /></button></span>; })}
           </div>}
-          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10, maxHeight: 340, overflowY: "auto", paddingRight: 2 }}>
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
             {cats.map((c) => { const all = byCat[c]; const list = all.filter(match); if (q && !list.length) return null; const open = q ? true : openCat === c; const x = CATS[c] || CATS.Beauty; const selCount = all.filter((b) => picked.includes(b.id)).length;
               return <div key={c} style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff" }}>
-                <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "14px 15px", background: open ? x.bg : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
-                  <span style={{ width: 11, height: 11, borderRadius: "50%", background: x.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5, color: C.ink }}>{c}</span>
-                  {selCount > 0 && <span style={{ fontSize: 11.5, fontWeight: 700, color: "#fff", background: x.color, borderRadius: 999, padding: "3px 10px" }}>{selCount} picked</span>}
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: C.muted }}>{list.length}</span>
-                  <span style={{ color: C.muted, display: "flex", transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}><ChevR size={16} /></span>
+                <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 58, padding: "0 16px", background: open ? x.bg : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left", lineHeight: 1 }}>
+                  <span style={{ width: 13, height: 13, borderRadius: "50%", background: x.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontWeight: 700, fontSize: 16.5, lineHeight: 1.1, color: C.ink }}>{c}</span>
+                  {selCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: x.color, borderRadius: 999, padding: "4px 11px", flexShrink: 0 }}>{selCount} picked</span>}
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: C.muted, flexShrink: 0 }}>{list.length}</span>
+                  <span style={{ color: C.muted, display: "flex", flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}><ChevR size={17} /></span>
                 </button>
                 {open && <div style={{ borderTop: `1px solid ${C.line}` }}>
                   {list.map((b) => { const on = picked.includes(b.id); const bt = tintFor(b.id || b.name); const photo = (b.photos || [])[0];
-                    return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: "11px 15px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : "#fff", cursor: "pointer" }}>
-                      <span style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center", border: `1.5px solid ${on ? C.accent : "#CFC8BA"}`, background: on ? C.accent : "#fff", color: "#fff" }}>{on && <Check size={14} />}</span>
-                      <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: "grid", placeItems: "center", background: bt.bg, color: bt.color, overflow: "hidden" }}>{photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={14} />}</span>
-                      <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "block", fontWeight: 600, fontSize: 14.5, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span><span style={{ display: "block", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : (b.city || "—")}</span></span>
+                    return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 13, textAlign: "left", padding: "14px 16px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : "#fff", cursor: "pointer" }}>
+                      <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center", border: `1.5px solid ${on ? C.accent : "#CFC8BA"}`, background: on ? C.accent : "#fff", color: "#fff" }}>{on && <Check size={15} />}</span>
+                      <span style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, display: "grid", placeItems: "center", background: bt.bg, color: bt.color, overflow: "hidden" }}>{photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={16} />}</span>
+                      <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "block", fontWeight: 600, fontSize: 15, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span><span style={{ display: "block", fontSize: 13, color: C.muted, marginTop: 1 }}>{b.online ? "Online" : (b.city || "—")}</span></span>
                     </button>; })}
                 </div>}
               </div>; })}
@@ -747,7 +831,10 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
                   <span style={{ fontSize: 12, fontWeight: 600, color: r.stars ? C.accent : C.muted }}>{r.stars ? RATING[r.stars] : "Optional"}</span>
                 </div>
                 <div style={{ marginTop: 10 }}><StarPicker value={r.stars} onChange={(v) => setReview(id, { stars: v })} /></div>
-                {r.stars > 0 && <textarea className="er-input" style={{ marginTop: 10 }} placeholder={`What did you love about ${b.name}?`} value={r.text} onChange={(e) => setReview(id, { text: e.target.value })} />}
+                {r.stars > 0 && <div style={{ marginTop: 10 }}>
+                  <textarea className="er-input" placeholder={`What did you love about ${b.name}?`} value={r.text} onChange={(e) => setReview(id, { text: e.target.value })} />
+                  <button type="button" onClick={() => aiReview(id, b.name, r.stars)} disabled={genId === id} style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: C.accentD, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 999, padding: "6px 12px", cursor: genId === id ? "default" : "pointer", opacity: genId === id ? 0.7 : 1 }}><Spark size={13} /> {genId === id ? "Writing…" : (r.text ? "Rewrite with AI" : "Write with AI")}</button>
+                </div>}
               </div>; })}
           </div>
           <ErrBox msg={err} />
@@ -972,13 +1059,46 @@ function EditProfileModal({ token, current, onClose, onSaved }) {
     </Modal>
   );
 }
+function CommissionRequest({ token, businessId, existing, onDone }) {
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState(existing ? existing.requested : "");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const submit = async () => {
+    if (!val.trim()) { setErr("Enter the commission you'd like."); return; }
+    setBusy(true); setErr("");
+    try { await api("/creator/commission-request", { method: "POST", body: { token, businessId, requested: val, note } }); setOpen(false); setNote(""); await onDone(); }
+    catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const badge = existing && (existing.status === "approved" ? { t: "Approved", c: C.accent, bg: C.accentSoft } : existing.status === "rejected" ? { t: "Rejected", c: "#9B3024", bg: "#FBE9E7" } : { t: "Pending", c: C.inkSoft, bg: C.panel });
+  return (
+    <div style={{ marginTop: 12, borderTop: `1px dashed ${C.line}`, paddingTop: 12 }}>
+      {existing && <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: open ? 10 : 0 }}>
+        <span style={{ fontSize: 12.5, color: C.muted }}>Requested <b style={{ color: C.ink }}>{existing.requested}</b></span>
+        <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: badge.bg, color: badge.c }}>{badge.t}</span>
+        {existing.status !== "pending" && existing.brandMessage && <span style={{ fontSize: 12, color: C.muted, width: "100%" }}>Brand: &ldquo;{existing.brandMessage}&rdquo;</span>}
+      </div>}
+      {open ? <div>
+        <input className="er-input" placeholder="e.g. 25% or $40 per sale" value={val} onChange={(e) => setVal(e.target.value)} />
+        <textarea className="er-input" style={{ marginTop: 8 }} placeholder="Why? (optional — e.g. a dedicated reel + story)" value={note} onChange={(e) => setNote(e.target.value)} />
+        {err && <p style={{ margin: "8px 0 0", fontSize: 12.5, color: "#9B3024" }}>{err}</p>}
+        <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+          <button className="er-btn er-btn-primary er-btn-sm" disabled={busy} onClick={submit}>{busy ? "Sending…" : "Send request"}</button>
+          <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setOpen(false)}>Cancel</button>
+        </div>
+      </div> : <button className="er-btn er-btn-light er-btn-sm" onClick={() => setOpen(true)}><Spark size={13} /> {existing ? "Update commission request" : "Request higher commission"}</button>}
+    </div>
+  );
+}
 function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh }) {
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false);
+  const [myReqs, setMyReqs] = useState({});
   const isOwner = session && session.role === "creator" && session.username === handle;
   const profileUrl = `${window.location.origin}/@${handle}`;
   const copyLink = async () => { try { await navigator.clipboard.writeText(profileUrl); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
   const load = () => api(`/creator/${handle}`).then(setData).catch((e) => setErr(e.message));
-  useEffect(() => { setData(null); setErr(""); load(); }, [handle, dataVersion]);
+  const loadReqs = async () => { if (!(session && session.role === "creator" && session.username === handle)) return; try { const list = await api(`/creator/requests?token=${encodeURIComponent(session.token)}`); const m = {}; list.forEach((r) => { m[String(r.businessId)] = r; }); setMyReqs(m); } catch (e) {} };
+  useEffect(() => { setData(null); setErr(""); load(); loadReqs(); }, [handle, dataVersion]);
   const removeBrand = async (businessId) => { try { await api("/creator/link", { method: "DELETE", body: { token: session.token, businessId } }); await load(); onRefresh(); } catch (e) { alert(e.message); } };
 
   if (err) return <div style={{ maxWidth: 560, margin: "0 auto", padding: "80px 22px", textAlign: "center" }}><p style={{ color: C.muted }}>Couldn't load @{handle}: {err}</p><button className="er-btn er-btn-primary" style={{ marginTop: 16 }} onClick={onBack}>Back home</button></div>;
@@ -1023,10 +1143,11 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                   </div>
                   {!isOwner && hasContact && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 13 }}>
                     {b.website && <button className="er-btn er-btn-primary er-btn-sm" onClick={() => { trackClick(data.username, b.id); openSite(b.website); }}><Globe size={14} /> {site}</button>}
-                    {b.email && <a href={`mailto:${b.email}`} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Mail size={14} /> {b.email}</a>}
-                    {b.phone && <a href={`tel:${b.phone}`} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Phone size={14} /> {b.phone}</a>}
+                    {b.email && <a href={`mailto:${b.email}`} onClick={() => trackClick(data.username, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Mail size={14} /> {b.email}</a>}
+                    {b.phone && <a href={`tel:${b.phone}`} onClick={() => trackClick(data.username, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Phone size={14} /> {b.phone}</a>}
                   </div>}
                   {!isOwner && !hasContact && <p style={{ margin: "12px 0 0", fontSize: 12.5, color: C.muted }}>Contact details coming soon.</p>}
+                  {isOwner && <CommissionRequest token={session.token} businessId={b.id} existing={myReqs[String(b.id)]} onDone={loadReqs} />}
                 </div>
                 {b.review && <div style={{ borderTop: `1px solid ${C.line}`, background: C.panel, padding: "13px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}><Stars value={b.review.stars} /><span style={{ fontSize: 12, fontWeight: 600, color: C.inkSoft }}>@{data.username}'s review</span></div>
@@ -1048,7 +1169,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
   const visible = businesses.filter((b) => (b.categories || []).includes(activeCat));
   const steps = [
     { t: "Businesses apply", d: "They add their details and a customer perk. We review every one before it's listed." },
-    { t: "Creators curate", d: "With an invite, a creator backs the businesses they trust and gets a tracked link." },
+    { t: "Creators curate", d: "A creator backs the businesses they trust and gets a tracked link." },
     { t: "Everyone wins", d: "Customers save, creators earn their cut, and businesses only pay on real results." },
   ];
   return (
@@ -1074,7 +1195,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
       <section className="er-wrap" style={{ padding: "70px 22px 60px" }}>
         <div className="er-hero">
           <div>
-            <span className="er-eyebrow">Invite-only · creator network</span>
+            <span className="er-eyebrow">Creator network</span>
             <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Earn money by recommending products and services.</h1>
             <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>A small network of creators sharing the businesses they actually trust — earning on every customer who follows the link.</p>
             <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -1130,7 +1251,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
       <section className="er-wrap" style={{ padding: "0 22px 80px" }}>
         <div style={{ background: C.ink, borderRadius: 24, padding: "60px 32px", textAlign: "center" }}>
           <h2 className="er-serif" style={{ margin: 0, color: C.paper, fontSize: "clamp(28px,4.5vw,44px)", fontWeight: 500, letterSpacing: "-.01em" }}>Good taste, finally compensated.</h2>
-          <p style={{ margin: "14px auto 0", maxWidth: 440, color: "rgba(253,252,250,.72)", fontSize: 16.5 }}>Join with an invite and start earning on the places you'd recommend anyway.</p>
+          <p style={{ margin: "14px auto 0", maxWidth: 440, color: "rgba(253,252,250,.72)", fontSize: 16.5 }}>Join and start earning on the places you'd recommend anyway.</p>
           <div style={{ marginTop: 26, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <button className="er-btn" style={{ background: C.paper, color: C.ink }} onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" style={{ color: "#fff", borderColor: "rgba(255,255,255,.25)" }} onClick={onList}>List your business</button>
@@ -1198,7 +1319,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         <div className="er-wrap" style={{ padding: "44px 22px 6px", display: "grid", gap: 28, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
           <div style={{ minWidth: 180 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 18, fontWeight: 600 }}>Easy Recommend</span></div>
-            <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.5, maxWidth: 260 }}>An invite-only network where creators earn on the businesses they actually trust.</p>
+            <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.5, maxWidth: 260 }}>A network where creators earn on the businesses they actually trust.</p>
             <a href="mailto:support@easyrecommend.co" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> support@easyrecommend.co</span></a>
           </div>
           {[
@@ -1265,8 +1386,8 @@ const STYLES = `
 .er-cards{display:grid;grid-template-columns:1fr;gap:18px}
 .er-creators{display:grid;grid-template-columns:1fr;gap:14px}
 .er-stepwork{display:grid;grid-template-columns:1fr;gap:0}
-.er-videos-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;max-width:800px;margin:0 auto}
-.er-vid-tile{flex:0 0 calc(50% - 7px);max-width:240px;text-align:left}
+.er-videos-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;max-width:780px;margin:0 auto}
+.er-vid-tile{flex:0 0 calc(33.333% - 8px);max-width:240px;text-align:left}
 .er-vid-play{opacity:1;transition:opacity .15s ease}
 .er-vid-tile:hover .er-vid-play{opacity:0}
 @media(min-width:560px){.er-modal-overlay{align-items:center;padding:18px}.er-modal{border-radius:22px}}
@@ -1316,14 +1437,21 @@ const RB_AGENTS = [
     body: "Spots your happiest customers, picks the perfect moment, and invites them to refer with an offer tuned to each person — then closes the loop.",
     points: ["Finds advocates automatically", "Personalized invites + offers", "Reward only on success"] },
 ];
-// Videos for the /Commision influencer landing. Files in public/: /video1.mp4 … /video5.mp4,
-// with posters /image1.jpeg … /image5.jpeg. Plays on hover (desktop) / tap (mobile).
+// Videos for the homepage. Files in public/: /video1.mp4 … /video12.mp4, with
+// posters /image1.jpeg … /image12.jpeg. Plays on hover (desktop) / tap (mobile).
 const ER_VIDEOS = [
   { src: "/video1.mp4", poster: "/image1.jpeg", title: "" },
   { src: "/video2.mp4", poster: "/image2.jpeg", title: "" },
   { src: "/video3.mp4", poster: "/image3.jpeg", title: "" },
   { src: "/video4.mp4", poster: "/image4.jpeg", title: "" },
   { src: "/video5.mp4", poster: "/image5.jpeg", title: "" },
+  { src: "/video6.mp4", poster: "/image6.jpeg", title: "" },
+  { src: "/video7.mp4", poster: "/image7.jpeg", title: "" },
+  { src: "/video8.mp4", poster: "/image8.jpeg", title: "" },
+  { src: "/video9.mp4", poster: "/image9.jpeg", title: "" },
+  { src: "/video10.mp4", poster: "/image10.jpeg", title: "" },
+  { src: "/video11.mp4", poster: "/image11.jpeg", title: "" },
+  { src: "/video12.mp4", poster: "/image12.jpeg", title: "" },
 ];
 
 function RBtn({ children, kind = "primary", as = "button", href, onClick, style }) {
