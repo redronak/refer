@@ -1195,14 +1195,14 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
       <section className="er-wrap" style={{ padding: "70px 22px 60px" }}>
         <div className="er-hero">
           <div>
-            <span className="er-eyebrow">Creator network</span>
-            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Earn money by recommending products and services.</h1>
-            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>A small network of creators sharing the businesses they actually trust — earning on every customer who follows the link.</p>
+            <span className="er-eyebrow">Commission-based marketing</span>
+            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Only pay for marketing that sells.</h1>
+            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>Get your brand promoted by creators who actually use it, and pay commission only on sales. No retainers, no upfront ad spend, just performance you can track.</p>
             <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button className="er-btn er-btn-primary" onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
-              <button className="er-btn er-btn-ghost" onClick={onList}>List your business</button>
+              <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
+              <button className="er-btn er-btn-ghost" onClick={onCreator}>Join as a creator</button>
             </div>
-            <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Every business is reviewed before it's listed.</p>
+            <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> You only pay commission on tracked, real sales.</p>
           </div>
           <div style={{ position: "relative" }}>
             <SwipeStack />
@@ -1250,11 +1250,11 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
 
       <section className="er-wrap" style={{ padding: "0 22px 80px" }}>
         <div style={{ background: C.ink, borderRadius: 24, padding: "60px 32px", textAlign: "center" }}>
-          <h2 className="er-serif" style={{ margin: 0, color: C.paper, fontSize: "clamp(28px,4.5vw,44px)", fontWeight: 500, letterSpacing: "-.01em" }}>Good taste, finally compensated.</h2>
-          <p style={{ margin: "14px auto 0", maxWidth: 440, color: "rgba(253,252,250,.72)", fontSize: 16.5 }}>Join and start earning on the places you'd recommend anyway.</p>
+          <h2 className="er-serif" style={{ margin: 0, color: C.paper, fontSize: "clamp(28px,4.5vw,44px)", fontWeight: 500, letterSpacing: "-.01em" }}>Marketing that pays for itself.</h2>
+          <p style={{ margin: "14px auto 0", maxWidth: 460, color: "rgba(253,252,250,.72)", fontSize: 16.5 }}>List your brand, set your commission, and let trusted creators bring you customers. You only pay when it converts.</p>
           <div style={{ marginTop: 26, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button className="er-btn" style={{ background: C.paper, color: C.ink }} onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
-            <button className="er-btn er-btn-ghost" style={{ color: "#fff", borderColor: "rgba(255,255,255,.25)" }} onClick={onList}>List your business</button>
+            <button className="er-btn" style={{ background: C.paper, color: C.ink }} onClick={onList}>List your business <Arrow size={16} /></button>
+            <button className="er-btn er-btn-ghost" style={{ color: "#fff", borderColor: "rgba(255,255,255,.25)" }} onClick={onCreator}>Join as a creator</button>
           </div>
         </div>
       </section>
