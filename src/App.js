@@ -1221,6 +1221,17 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         </div>
       </section>
 
+      <section style={{ background: C.paper }}>
+        <div className="er-wrap" style={{ padding: "44px 22px", textAlign: "center" }}>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.muted }}>Built for brands like</p>
+          <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "20px 36px" }}>
+            {["Nike", "Adidas", "Sephora", "Lululemon", "Glossier", "Allbirds", "Gymshark", "Nespresso", "Spotify", "Airbnb"].map((b) => (
+              <span key={b} className="er-serif" style={{ fontSize: "clamp(18px,2.8vw,27px)", fontWeight: 600, color: C.inkSoft, opacity: 0.7, letterSpacing: "-.01em" }}>{b}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section id="er-directory" style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}`, scrollMarginTop: 70 }}>
         <div className="er-wrap" style={{ padding: "72px 22px" }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", justifyContent: "space-between" }}>
