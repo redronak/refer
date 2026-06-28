@@ -1201,7 +1201,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
 
       <section style={{ background: C.ink }}>
         <div className="er-wrap" style={{ padding: "44px 22px", display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", textAlign: "center" }}>
-          {[["$300M+", "in sales driven"], ["3,000+", "creators earning"], ["50,000+", "recommendations made"], ["4.9★", "average rating"]].map(([n, l]) => (
+          {[["$300M+", "in sales driven"], ["3,000+", "creators earning"], ["5000+", "recommendations made"], ["4.9★", "average rating"]].map(([n, l]) => (
             <div key={l}>
               <div className="er-serif" style={{ fontSize: "clamp(30px,4.5vw,44px)", fontWeight: 500, color: C.paper, letterSpacing: "-.02em" }}>{n}</div>
               <div style={{ marginTop: 4, fontSize: 13, color: "rgba(253,252,250,.66)" }}>{l}</div>
