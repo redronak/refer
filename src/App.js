@@ -132,6 +132,28 @@ function StarPicker({ value, onChange }) {
 function Field({ label, hint, children }) {
   return <label style={{ display: "block" }}><span style={{ display: "block", fontSize: 13.5, fontWeight: 600, marginBottom: 7, color: C.ink }}>{label}</span>{children}{hint && <span style={{ display: "block", fontSize: 12, color: C.muted, marginTop: 6 }}>{hint}</span>}</label>;
 }
+const COUNTRY_CODES = [
+  { c: "US", d: "+1", f: "🇺🇸" }, { c: "CA", d: "+1", f: "🇨🇦" }, { c: "GB", d: "+44", f: "🇬🇧" },
+  { c: "IN", d: "+91", f: "🇮🇳" }, { c: "AU", d: "+61", f: "🇦🇺" }, { c: "DE", d: "+49", f: "🇩🇪" },
+  { c: "FR", d: "+33", f: "🇫🇷" }, { c: "ES", d: "+34", f: "🇪🇸" }, { c: "IT", d: "+39", f: "🇮🇹" },
+  { c: "NL", d: "+31", f: "🇳🇱" }, { c: "AE", d: "+971", f: "🇦🇪" }, { c: "SG", d: "+65", f: "🇸🇬" },
+  { c: "BR", d: "+55", f: "🇧🇷" }, { c: "MX", d: "+52", f: "🇲🇽" }, { c: "JP", d: "+81", f: "🇯🇵" },
+  { c: "ZA", d: "+27", f: "🇿🇦" }, { c: "NG", d: "+234", f: "🇳🇬" }, { c: "IE", d: "+353", f: "🇮🇪" },
+];
+// Combines a country code + local number into an E.164-ish string for `onChange`.
+function PhoneInput({ value, onChange, autoFocus }) {
+  const [code, setCode] = useState("+1");
+  const [local, setLocal] = useState("");
+  const emit = (cd, lc) => { const digits = lc.replace(/\D/g, ""); onChange(digits ? cd + digits : ""); };
+  return (
+    <div style={{ display: "flex", gap: 8 }}>
+      <select className="er-input" style={{ flex: "0 0 auto", width: 104, padding: "0 8px" }} value={code} onChange={(e) => { setCode(e.target.value); emit(e.target.value, local); }}>
+        {COUNTRY_CODES.map((c, i) => <option key={c.c + i} value={c.d}>{c.f} {c.d}</option>)}
+      </select>
+      <input className="er-input" style={{ flex: 1 }} type="tel" autoFocus={autoFocus} placeholder="555 010 2030" value={local} onChange={(e) => { setLocal(e.target.value); emit(code, e.target.value); }} />
+    </div>
+  );
+}
 function Stepper({ step, total }) {
   return <div style={{ display: "flex", gap: 6 }}>{Array.from({ length: total }).map((_, i) => <span key={i} style={{ height: 5, flex: 1, borderRadius: 99, background: i <= step ? C.ink : C.line }} />)}</div>;
 }
@@ -343,7 +365,7 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
 /* ---------- Brand onboarding ---------- */
 function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: "", phone: "", email: "", password: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: [], contacts: ["email"] });
+  const [f, setF] = useState({ name: "", phone: "", email: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: [], contacts: ["phone"] });
   const [otp, setOtp] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleContact = (m) => setF((p) => ({ ...p, contacts: p.contacts.includes(m) ? p.contacts.filter((x) => x !== m) : [...p.contacts, m] }));
@@ -360,7 +382,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
     && (!f.contacts.includes("website") || !!f.website.trim())
     && (!f.contacts.includes("phone") || !!f.phone.trim())
     && (!f.contacts.includes("email") || !!f.email.trim());
-  const valid = [f.name && f.email && f.password.length >= 6 && f.phone.trim() && contactsFilled, f.categories.length > 0 && (f.online || f.city), commValid, otp.length >= 6];
+  const valid = [f.name && f.phone.trim() && contactsFilled, f.categories.length > 0 && (f.online || f.city), commValid, otp.length >= 6];
   const titles = ["About your business", "Where to find you", "Your terms", "Verify your number"];
 
   const sendCode = async () => { setErr(""); try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); } catch (e) { setErr(e.message); } };
@@ -384,9 +406,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
         <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           {step === 0 && <>
             <Field label="Brand name"><input className="er-input" placeholder="Lumière Skincare" value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
-            <Field label="Email" hint="You'll sign in with this — it's your account email."><input className="er-input" type="email" placeholder="hello@brand.com" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
-            <Field label="Password" hint="At least 6 characters. Use it with your email to log in."><input type="password" className="er-input" placeholder="At least 6 characters" value={f.password} onChange={(e) => set("password", e.target.value)} /></Field>
-            <Field label="Mobile number" hint="Required — we'll text you a 6-digit code to verify your account."><input className="er-input" type="tel" placeholder="+1 555 010 2030" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
+            <Field label="Mobile number" hint="We'll text a 6-digit code. You'll sign in with this number from now on."><PhoneInput value={f.phone} onChange={(v) => set("phone", v)} /></Field>
             <Field label="Point of contact" hint="How should customers reach you? We'll show what you pick on your public page.">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {[["website", "Website"], ["email", "Email"], ["phone", "Phone"]].map(([m, lbl]) => { const on = f.contacts.includes(m);
@@ -394,6 +414,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               </div>
             </Field>
             {f.contacts.includes("website") && <Field label="Website" hint="The link customers visit."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>}
+            {f.contacts.includes("email") && <Field label="Contact email" hint="Shown on your public page so customers can reach you."><input className="er-input" type="email" placeholder="hello@brand.com" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>}
           </>}
           {step === 1 && <>
             <Field label="Categories" hint="Pick all that apply.">
@@ -476,8 +497,7 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
   // creator
   const [cName, setCName] = useState("");
   // brand
-  const [bmethod, setBmethod] = useState("email");
-  const [phone, setPhone] = useState(""); const [email, setEmail] = useState(""); const [pw, setPw] = useState(""); const [otp, setOtp] = useState(""); const [sent, setSent] = useState(false);
+  const [phone, setPhone] = useState(""); const [otp, setOtp] = useState(""); const [sent, setSent] = useState(false);
 
   const creatorLogin = async () => {
     setBusy(true); setErr("");
@@ -488,11 +508,6 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
   const brandLogin = async () => {
     setBusy(true); setErr("");
     try { const r = await api("/business/login/verify", { method: "POST", body: { phone, otp } }); onLogin({ role: "brand", token: r.token, phone }); onAfterBrand(); }
-    catch (e) { setErr(e.message); } finally { setBusy(false); }
-  };
-  const emailLogin = async () => {
-    setBusy(true); setErr("");
-    try { const r = await api("/business/login/password", { method: "POST", body: { email, password: pw } }); onLogin({ role: "brand", token: r.token, email }); onAfterBrand(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
 
@@ -523,22 +538,12 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
         </div>}
 
         {mode === "brand" && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[["phone", "Phone"], ["email", "Email"]].map(([m, lbl]) => { const on = bmethod === m;
-              return <button key={m} type="button" onClick={() => { setBmethod(m); setErr(""); setSent(false); }} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, padding: "10px 8px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{lbl}</button>; })}
-          </div>
-          {bmethod === "phone" ? <>
-            <Field label="Phone number" hint="We'll text a code to the number you signed up with."><input className="er-input" placeholder="+1 555 010 2030" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
-            {!sent ? <button className="er-btn er-btn-primary er-btn-block" disabled={!phone} onClick={sendCode}><Send size={16} /> Send code</button>
-              : <>
-                <Field label="Verification code"><input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
-                <button className="er-btn er-btn-primary er-btn-block" disabled={otp.length < 6 || busy} onClick={brandLogin}>{busy ? "…" : "Log in"}</button>
-              </>}
-          </> : <>
-            <Field label="Email"><input className="er-input" placeholder="hello@brand.com" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-            <Field label="Password"><input type="password" className="er-input" placeholder="Your password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && email && pw) emailLogin(); }} /></Field>
-            <button className="er-btn er-btn-primary er-btn-block" disabled={!email || !pw || busy} onClick={emailLogin}>{busy ? "…" : "Log in"} <Arrow size={16} /></button>
-          </>}
+          <Field label="Mobile number" hint="We'll text a code to the number you signed up with."><PhoneInput value={phone} onChange={setPhone} /></Field>
+          {!sent ? <button className="er-btn er-btn-primary er-btn-block" disabled={!phone} onClick={sendCode}><Send size={16} /> Send code</button>
+            : <>
+              <Field label="Verification code"><input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
+              <button className="er-btn er-btn-primary er-btn-block" disabled={otp.length < 6 || busy} onClick={brandLogin}>{busy ? "…" : "Log in"}</button>
+            </>}
           <ErrBox msg={err} />
           <button className="er-btn er-btn-ghost" style={{ alignSelf: "flex-start" }} onClick={() => { setMode(null); setSent(false); }}><ChevL size={16} /> Back</button>
         </div>}
