@@ -374,13 +374,6 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [otp, setOtp] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleContact = (m) => setF((p) => ({ ...p, contacts: p.contacts.includes(m) ? p.contacts.filter((x) => x !== m) : [...p.contacts, m] }));
-  const onPhotos = async (e) => {
-    const files = [...(e.target.files || [])]; if (!files.length) return;
-    const urls = [];
-    for (const file of files) { try { urls.push(await fileToDataURL(file, 1000, 0.82)); } catch (x) {} }
-    setF((p) => ({ ...p, photos: [...p.photos, ...urls].slice(0, 6) }));
-    e.target.value = "";
-  };
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
   const contactsFilled = f.contacts.length > 0
@@ -455,19 +448,6 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <input type="range" min="0" max="40" value={f.discount} onChange={(e) => set("discount", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
                 <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.panel, color: C.ink }}>{f.discount}%</span></div></Field>
-            <Field label="Photos" hint="Upload a few so creators can showcase you.">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-                {f.photos.map((src, i) => (
-                  <div key={i} style={{ position: "relative", width: 76, height: 76, borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}>
-                    <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    <button type="button" onClick={() => set("photos", f.photos.filter((_, j) => j !== i))} style={{ position: "absolute", top: -7, right: -7, width: 20, height: 20, borderRadius: "50%", border: "none", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.25)", cursor: "pointer", color: C.muted, display: "grid", placeItems: "center" }}><Close size={11} /></button>
-                  </div>))}
-                {f.photos.length < 6 && (
-                  <label style={{ width: 76, height: 76, borderRadius: 12, border: `2px dashed ${C.line}`, display: "grid", placeItems: "center", cursor: "pointer", color: C.muted }}>
-                    <Plus size={20} /><input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={onPhotos} />
-                  </label>)}
-              </div>
-            </Field>
           </>}
           {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone}</b>.</div>
