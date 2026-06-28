@@ -360,17 +360,15 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
     && (!f.contacts.includes("website") || !!f.website.trim())
     && (!f.contacts.includes("phone") || !!f.phone.trim())
     && (!f.contacts.includes("email") || !!f.email.trim());
-  const valid = [f.name && f.email && f.password.length >= 6 && contactsFilled, f.categories.length > 0 && (f.online || f.city), commValid, otp.length >= 6];
-  const hasPhone = !!(f.phone && f.phone.trim());
-  const titles = ["About your business", "Where to find you", "Your terms", "Confirm & submit"];
+  const valid = [f.name && f.email && f.password.length >= 6 && f.phone.trim() && contactsFilled, f.categories.length > 0 && (f.online || f.city), commValid, otp.length >= 6];
+  const titles = ["About your business", "Where to find you", "Your terms", "Verify your number"];
 
   const sendCode = async () => { setErr(""); try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); } catch (e) { setErr(e.message); } };
-  const submit = async (via = "phone") => {
+  const submit = async () => {
     setBusy(true); setErr("");
     try {
       const vis = { hideWebsite: !f.contacts.includes("website"), hideEmail: !f.contacts.includes("email"), hidePhone: !f.contacts.includes("phone") };
-      const body = via === "email" ? { ...f, ...vis, via: "email" } : { ...f, ...vis, otp };
-      const r = await api("/business", { method: "POST", body });
+      const r = await api("/business", { method: "POST", body: { ...f, ...vis, otp } });
       if (r && r.token) onLogin({ role: "brand", token: r.token, phone: f.phone, email: f.email });
       onRefresh(); onDone(f.name);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
@@ -388,6 +386,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
             <Field label="Brand name"><input className="er-input" placeholder="Lumière Skincare" value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
             <Field label="Email" hint="You'll sign in with this — it's your account email."><input className="er-input" type="email" placeholder="hello@brand.com" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
             <Field label="Password" hint="At least 6 characters. Use it with your email to log in."><input type="password" className="er-input" placeholder="At least 6 characters" value={f.password} onChange={(e) => set("password", e.target.value)} /></Field>
+            <Field label="Mobile number" hint="Required — we'll text you a 6-digit code to verify your account."><input className="er-input" type="tel" placeholder="+1 555 010 2030" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
             <Field label="Point of contact" hint="How should customers reach you? We'll show what you pick on your public page.">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {[["website", "Website"], ["email", "Email"], ["phone", "Phone"]].map(([m, lbl]) => { const on = f.contacts.includes(m);
@@ -395,7 +394,6 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               </div>
             </Field>
             {f.contacts.includes("website") && <Field label="Website" hint="The link customers visit."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>}
-            {f.contacts.includes("phone") && <Field label="Phone number" hint="Shown on your listing. We can also text a code to verify it."><input className="er-input" placeholder="+1 555 010 2030" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>}
           </>}
           {step === 1 && <>
             <Field label="Categories" hint="Pick all that apply.">
@@ -446,27 +444,18 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
             </Field>
           </>}
           {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {hasPhone ? <>
-              <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone}</b>.</div>
-              <Field label="Verification code">
-                <input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
-              <button className="er-link" onClick={sendCode} style={{ alignSelf: "flex-start" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={14} /> Text a code to my phone</span></button>
-              <ErrBox msg={err} />
-              <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.muted, fontSize: 12.5 }}><div style={{ flex: 1, height: 1, background: C.line }} />or<div style={{ flex: 1, height: 1, background: C.line }} /></div>
-              <button className="er-btn er-btn-ghost er-btn-block" disabled={!f.email || busy} onClick={() => submit("email")}><Mail size={15} /> Continue with email — no code</button>
-            </> : <>
-              <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>You're all set — we'll use <b style={{ color: C.ink }}>{f.email}</b> for sign-in and to reach you. Submit and your listing goes to review.</div>
-              <ErrBox msg={err} />
-            </>}
+            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone}</b>.</div>
+            <Field label="Verification code">
+              <input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
+            <button className="er-link" onClick={sendCode} style={{ alignSelf: "flex-start" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={14} /> Text me a code</span></button>
+            <ErrBox msg={err} />
           </div>}
         </div>
         <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {step > 0 ? <button className="er-btn er-btn-ghost" onClick={() => setStep(step - 1)}><ChevL size={16} /> Back</button> : <span />}
           {step < 3
-            ? <button className="er-btn er-btn-primary" disabled={!valid[step]} onClick={() => setStep(step + 1)}>Continue <ChevR size={16} /></button>
-            : hasPhone
-              ? <button className="er-btn er-btn-primary" disabled={!valid[3] || busy} onClick={() => submit("phone")}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>
-              : <button className="er-btn er-btn-primary" disabled={!f.email || busy} onClick={() => submit("email")}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
+            ? <button className="er-btn er-btn-primary" disabled={!valid[step]} onClick={() => { const next = step + 1; setStep(next); if (next === 3) sendCode(); }}>Continue <ChevR size={16} /></button>
+            : <button className="er-btn er-btn-primary" disabled={!valid[3] || busy} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
         </div>
       </div>
     </Modal>
@@ -1223,9 +1212,9 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
 
       <section style={{ background: C.paper }}>
         <div className="er-wrap" style={{ padding: "44px 22px", textAlign: "center" }}>
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.muted }}>Used By </p>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.muted }}>Built for brands like</p>
           <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "20px 36px" }}>
-            {["", "", "", "Lululemon", "Glossier", "Allbirds", "Gymshark", "Nespresso", "Spotify", "Airbnb"].map((b) => (
+            {["Nike", "Adidas", "Sephora", "Lululemon", "Glossier", "Allbirds", "Gymshark", "Nespresso", "Spotify", "Airbnb"].map((b) => (
               <span key={b} className="er-serif" style={{ fontSize: "clamp(18px,2.8vw,27px)", fontWeight: 600, color: C.inkSoft, opacity: 0.7, letterSpacing: "-.01em" }}>{b}</span>
             ))}
           </div>
@@ -1494,53 +1483,9 @@ function AgentCard({ a }) {
     </div>
   );
 }
-function RBDemoModal({ onClose }) {
-  const [name, setName] = useState(""); const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [done, setDone] = useState(false);
-  useEffect(() => { const k = (e) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [onClose]);
-  const valid = name.trim() && /\S+@\S+\.\S+/.test(email);
-  const submit = async () => {
-    if (!valid) { setErr("Please enter your name and a valid email."); return; }
-    setBusy(true); setErr("");
-    try {
-      const r = await fetch(`${API_BASE}/demo`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, source: "Easy Recommend" }) });
-      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || "Something went wrong — please try again."); }
-      setDone(true);
-    } catch (e) { setErr(e.message); } finally { setBusy(false); }
-  };
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(22,24,29,.5)", backdropFilter: "blur(3px)", display: "grid", placeItems: "center", padding: 20 }}>
-      <div onClick={(e) => e.stopPropagation()} className="rb-card" style={{ width: "100%", maxWidth: 440, padding: 28, position: "relative" }}>
-        <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 16, right: 16, width: 34, height: 34, borderRadius: "50%", border: `1px solid ${C.line}`, background: "#fff", cursor: "pointer", display: "grid", placeItems: "center", color: C.muted }}><Close size={16} /></button>
-        {done ? (
-          <div style={{ textAlign: "center", padding: "10px 0" }}>
-            <div style={{ margin: "0 auto", width: 52, height: 52, display: "grid", placeItems: "center" }}><Seal size={48} /></div>
-            <h2 className="rb-serif" style={{ margin: "14px 0 0", fontSize: 24, fontWeight: 500 }}>You're on the list</h2>
-            <p style={{ margin: "8px 0 0", fontSize: 14.5, color: C.muted, lineHeight: 1.5 }}>Thanks, {name.split(" ")[0]} — we got your request and will reach out at <b style={{ color: C.ink }}>{email}</b> to set up your demo.</p>
-            <button className="rb-btn rb-btn-primary" style={{ marginTop: 22, width: "100%" }} onClick={onClose}>Done</button>
-          </div>
-        ) : (
-          <>
-            <span className="rb-eyebrow">Book a demo</span>
-            <h2 className="rb-serif" style={{ margin: "8px 0 4px", fontSize: 25, fontWeight: 500 }}>See the stack in action</h2>
-            <p style={{ margin: "0 0 18px", fontSize: 14, color: C.muted }}>Leave your details and we'll be in touch to walk you through the agents.</p>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: C.inkSoft, marginBottom: 6 }}>Name</label>
-            <input className="rb-input" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: C.inkSoft, margin: "14px 0 6px" }}>Work email</label>
-            <input className="rb-input" type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} />
-            {err && <p style={{ margin: "12px 0 0", fontSize: 13, color: "#9B3024", background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 10, padding: "10px 12px" }}>{err}</p>}
-            <button className="rb-btn rb-btn-primary" style={{ marginTop: 18, width: "100%" }} disabled={busy} onClick={submit}>{busy ? "Sending…" : <>Request a demo <Arrow size={16} /></>}</button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
 function AgentStack() {
-  const [demoOpen, setDemoOpen] = useState(false);
   return (
     <section id="er-agents" style={{ background: C.paper, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
-      {demoOpen && <RBDemoModal onClose={() => setDemoOpen(false)} />}
       <div className="er-wrap" style={{ padding: "72px 22px" }}>
         <h2 className="rb-serif" style={{ margin: 0, fontSize: "clamp(28px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>Five agents. One job: keep customers, and bring more.</h2>
         <p style={{ margin: "10px 0 0", fontSize: 16, color: C.muted, maxWidth: 640 }}>Each agent is useful alone and compounding together — they share the same customer graph, so a churn signal can trigger a save, and a happy customer can trigger a referral.</p>
@@ -1550,7 +1495,6 @@ function AgentStack() {
             <span style={{ width: 46, height: 46, borderRadius: 13, display: "grid", placeItems: "center", background: "rgba(255,255,255,.1)", color: C.paper }}><Bolt size={22} /></span>
             <h3 className="rb-serif" style={{ margin: "16px 0 0", fontSize: 21, fontWeight: 500 }}>One brain behind them all</h3>
             <p style={{ margin: "8px 0 0", fontSize: 14.5, lineHeight: 1.55, color: "rgba(251,250,248,.74)" }}>Every agent reads from — and writes to — the same shared customer graph. Insights from one become actions in another, automatically.</p>
-            <div style={{ marginTop: 18 }}><RBtn kind="light" onClick={() => setDemoOpen(true)}>Book a demo <Arrow size={16} /></RBtn></div>
           </div>
         </div>
       </div>
