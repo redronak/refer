@@ -39,6 +39,11 @@ const CATS = {
   Fitness: { color: "#B5572E", bg: "#F6E8DF" }, "Food & Drink": { color: "#A33B3B", bg: "#F6E5E3" },
   Home: { color: "#6B6242", bg: "#F0ECE0" }, Finance: { color: "#3D3A78", bg: "#ECEBF5" },
   Travel: { color: "#2D6E8E", bg: "#E5F0F4" }, Fashion: { color: "#7A3E6B", bg: "#F2E7EF" },
+  "Software & SaaS": { color: "#2F6F6A", bg: "#E2F0EE" }, Apps: { color: "#3E51A8", bg: "#EAEDF8" },
+  "AI Tools": { color: "#6C3FA0", bg: "#EFE8F6" }, "Online Courses": { color: "#1E7A8C", bg: "#E3F1F4" },
+  Gaming: { color: "#9A3B6E", bg: "#F5E7EF" }, Subscriptions: { color: "#7A6A2A", bg: "#F2EEDD" },
+  "Creator Tools": { color: "#A84A86", bg: "#F5E8F0" }, Marketplaces: { color: "#4F7A3D", bg: "#E9F1E2" },
+  Other: { color: "#6E675B", bg: "#EEEBE4" },
 };
 const CAT_LIST = Object.keys(CATS);
 const catOf = (b) => CATS[(b.categories || [])[0]] || CATS.Beauty;
@@ -405,7 +410,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
         <Stepper step={step} total={4} />
         <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           {step === 0 && <>
-            <Field label="Brand name"><input className="er-input" placeholder="Lumière Skincare" value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
+            <Field label="Brand, product, or app name"><input className="er-input" placeholder="Lumière Skincare, Focusly app, etc." value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
             <Field label="Mobile number" hint="We'll text a 6-digit code. You'll sign in with this number from now on."><PhoneInput value={f.phone} onChange={(v) => set("phone", v)} /></Field>
             <Field label="Point of contact" hint="How should customers reach you? We'll show what you pick on your public page.">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -1191,7 +1196,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           <div>
             <span className="er-eyebrow">Commission-based marketing</span>
             <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Only pay for marketing that sells.</h1>
-            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>Get your brand promoted by creators who actually use it, and pay commission only on sales. No retainers, no upfront ad spend, just performance you can track.</p>
+            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>Get your brand, product, or app promoted by creators who actually use it, and pay commission only on sales. No retainers, no upfront ad spend, just performance you can track.</p>
             <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
               <button className="er-btn er-btn-ghost" onClick={onCreator}>Join as a creator</button>
