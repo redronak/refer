@@ -856,7 +856,8 @@ function AdminRow({ b, reload }) {
     name: b.name || "", blurb: b.blurb || "", website: b.website || "", categories: b.categories || [],
     city: b.city || "", online: !!b.online, commissionType: b.commissionType || "percent",
     commissionPct: b.commissionPct || 0, commissionFlat: b.commissionFlat || 0, discount: b.discount || 0,
-    photos: b.photos || [], hidePhone: !!b.hidePhone, hideEmail: !!b.hideEmail, hideWebsite: !!b.hideWebsite,
+    photos: b.photos || [], phone: b.phone || "", email: b.email || "",
+    hidePhone: !!b.hidePhone, hideEmail: !!b.hideEmail, hideWebsite: !!b.hideWebsite,
   });
   const [d, setDraft] = useState(init);
   const set = (k, v) => setDraft((p) => ({ ...p, [k]: v }));
@@ -903,11 +904,16 @@ function AdminRow({ b, reload }) {
             {d.photos.length < 6 && <label style={{ width: 60, height: 60, borderRadius: 10, border: `2px dashed ${C.line}`, display: "grid", placeItems: "center", cursor: "pointer", color: C.muted }}><Plus size={16} /><input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={onPhotos} /></label>}
           </div>
         </Field>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <Field label="Mobile number (sign-in)" hint="Used for the business's OTP login. Set this to let a legacy account log in."><input className="er-input" style={{ width: 210 }} value={d.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+15550102030" /></Field>
+          <Field label="Contact email"><input className="er-input" style={{ width: 210 }} value={d.email} onChange={(e) => set("email", e.target.value)} placeholder="hello@brand.com" /></Field>
+        </div>
+        <Field label="Website"><input className="er-input" value={d.website} onChange={(e) => set("website", e.target.value)} placeholder="brand.com" /></Field>
         <div style={{ background: C.panel, borderRadius: 12, padding: "6px 14px" }}>
           <p style={{ margin: "8px 0 2px", fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.inkSoft }}>Show on public listing</p>
-          <VisToggle label="Website" sub={b.website || "none on file"} value={!d.hideWebsite} onChange={(v) => set("hideWebsite", !v)} />
-          <VisToggle label="Email" sub={b.email || "none on file"} value={!d.hideEmail} onChange={(v) => set("hideEmail", !v)} />
-          <VisToggle label="Phone" sub={b.phone || "none on file"} value={!d.hidePhone} onChange={(v) => set("hidePhone", !v)} />
+          <VisToggle label="Website" sub={d.website || "none on file"} value={!d.hideWebsite} onChange={(v) => set("hideWebsite", !v)} />
+          <VisToggle label="Email" sub={d.email || "none on file"} value={!d.hideEmail} onChange={(v) => set("hideEmail", !v)} />
+          <VisToggle label="Phone" sub={d.phone || "none on file"} value={!d.hidePhone} onChange={(v) => set("hidePhone", !v)} />
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setEditing(false)} disabled={busy}>Cancel</button>
