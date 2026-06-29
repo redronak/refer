@@ -737,8 +737,8 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
 
   const q = query.trim().toLowerCase();
   const match = (b) => !q || (b.name || "").toLowerCase().includes(q);
-  const byCat = {}; approved.forEach((b) => { if (!(b && b.name && b.name.trim())) return; const c = (b.categories || [])[0] || "Other"; (byCat[c] = byCat[c] || []).push(b); });
-  const cats = [...CAT_LIST.filter((c) => byCat[c]), ...Object.keys(byCat).filter((c) => !CAT_LIST.includes(c))];
+  const byCat = {}; approved.forEach((b) => { if (!(b && b.name && b.name.trim())) return; const c = ((b.categories || []).find((x) => CATS[x])) || "Other"; (byCat[c] = byCat[c] || []).push(b); });
+  const cats = CAT_LIST.filter((c) => byCat[c]);
   const noMatches = q && cats.every((c) => !byCat[c].filter(match).length);
 
   return (
@@ -773,10 +773,10 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
           </div>}
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
             {cats.map((c) => { const all = byCat[c]; const list = all.filter(match); if (q && !list.length) return null; const open = q ? true : openCat === c; const x = CATS[c] || CATS.Beauty; const selCount = all.filter((b) => picked.includes(b.id)).length;
-              return <div key={c} style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff" }}>
-                <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 58, padding: "0 16px", background: open ? x.bg : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left", lineHeight: 1 }}>
+              return <div key={c} style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
+                <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 64, padding: "16px", background: open ? x.bg : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
                   <span style={{ width: 13, height: 13, borderRadius: "50%", background: x.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontWeight: 700, fontSize: 16.5, lineHeight: 1.1, color: C.ink }}>{c}</span>
+                  <span style={{ flex: 1, fontWeight: 700, fontSize: 16.5, lineHeight: 1.2, color: C.ink }}>{c}</span>
                   {selCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: x.color, borderRadius: 999, padding: "4px 11px", flexShrink: 0 }}>{selCount} picked</span>}
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: C.muted, flexShrink: 0 }}>{list.length}</span>
                   <span style={{ color: C.muted, display: "flex", flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}><ChevR size={17} /></span>
