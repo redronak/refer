@@ -86,6 +86,7 @@ function parseRoute() {
   const p = decodeURIComponent(window.location.pathname || "/");
   if (p === "/admin" || window.location.hash === "#admin") return { view: "admin", handle: null };
   if (p === "/my-business") return { view: getSession() ? "mybiz" : "home", handle: null };
+  if (p === "/settings") return { view: getSession() ? "settings" : "home", handle: null };
   const m = p.match(/^\/@([A-Za-z0-9_]+)/);
   if (m) return { view: "profile", handle: m[1].toLowerCase() };
   return { view: "home", handle: null };
@@ -243,7 +244,7 @@ function SwipeStack() {
   );
 }
 function BusinessCard({ b, onOpen }) {
-  const cat = catOf(b); const backers = b.backers || []; const count = b.backerCount || 0;
+  const cat = catOf(b);
   const photo = (b.photos || [])[0]; const tint = tintFor(b.id || b.name);
   return (
     <div className="er-card er-card-h" role="button" tabIndex={0} onClick={onOpen}
@@ -265,11 +266,6 @@ function BusinessCard({ b, onOpen }) {
       </div>
       <div style={{ height: 1, background: C.line, margin: "16px 18px 0" }} />
       <div style={{ padding: "12px 18px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-        {count > 0 ? <>
-          <span style={{ display: "flex" }}>{backers.slice(0, 3).map((bk, i) => (
-            <span key={i} style={{ marginLeft: i ? -8 : 0, border: "2px solid #fff", borderRadius: "50%", display: "flex" }}><Avatar name={bk.username} image={bk.image} size={24} /></span>))}</span>
-          <span style={{ fontSize: 12.5, color: C.muted }}>Backed by {count} creator{count > 1 ? "s" : ""}</span>
-        </> : <span style={{ fontSize: 12.5, color: C.muted }}>Newly vetted</span>}
         <span style={{ marginLeft: "auto", color: C.ink }}><Arrow size={16} /></span>
       </div>
     </div>
@@ -358,9 +354,6 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
           <div style={{ height: 1, background: C.line, margin: "24px 0 18px" }} />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <h3 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>What creators say</h3>
-            {b.backers.length > 0 && <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ display: "flex" }}>{b.backers.slice(0, 4).map((bk, i) => <span key={i} style={{ marginLeft: i ? -8 : 0, border: "2px solid #fff", borderRadius: "50%", display: "flex" }}><Avatar name={bk.username} image={bk.image} size={24} /></span>)}</span>
-              <span style={{ fontSize: 12.5, color: C.muted }}>{b.backers.length} backing</span></span>}
           </div>
           {b.reviews.length === 0 ? (
             <p style={{ background: C.panel, borderRadius: 14, padding: "26px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>No reviews yet — be the first creator to recommend this.</p>
@@ -1352,7 +1345,7 @@ function VidTile({ v }) {
     </div>
   );
 }
-function Landing({ activeCat, setActiveCat, businesses, creators, loading, error, session, onList, onCreator, onAdmin, onProfile, onOpenBusiness, onLogin, onLogout, onMyProfile, onMyBiz }) {
+function Landing({ activeCat, setActiveCat, businesses, creators, loading, error, session, onList, onCreator, onAdmin, onProfile, onOpenBusiness, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal }) {
   const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
   const visible = businesses.filter((b) => (b.categories || []).includes(activeCat));
   const steps = [
@@ -1370,6 +1363,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
               {session.role === "creator"
                 ? <button className="er-btn er-btn-ghost er-btn-sm" onClick={onMyProfile}>My profile</button>
                 : <button className="er-btn er-btn-ghost er-btn-sm" onClick={onMyBiz}>My business</button>}
+              <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onSettings}>Settings</button>
               <button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogout}>Log out</button>
             </> : <>
               <button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogin}>Log in</button>
@@ -1505,7 +1499,10 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         </div>
         <div className="er-wrap" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", padding: "26px 22px", marginTop: 22, borderTop: `1px solid ${C.line}` }}>
           <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend · Recommendations worth passing on</p>
-          <a href="mailto:support@easyrecommend.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>support@easyrecommend.co</a>
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <button onClick={onLegal} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: C.muted, fontWeight: 500 }}>Privacy &amp; Cookies</button>
+            <a href="mailto:support@easyrecommend.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>support@easyrecommend.co</a>
+          </div>
         </div>
       </footer>
     </div>
@@ -1736,6 +1733,86 @@ function RetentionApp() {
   return <RetentionPage />;
 }
 
+function CookieBar({ onLearnMore }) {
+  const [show, setShow] = useState(false);
+  useEffect(() => { try { setShow(localStorage.getItem("er_cookie_ok") == null); } catch (e) { setShow(true); } }, []);
+  const decide = (v) => { try { localStorage.setItem("er_cookie_ok", v); } catch (e) {} setShow(false); };
+  if (!show) return null;
+  return (
+    <div style={{ position: "fixed", left: 16, right: 16, bottom: 16, zIndex: 60, maxWidth: 720, margin: "0 auto", background: C.ink, color: C.paper, borderRadius: 16, padding: "16px 18px", boxShadow: "0 12px 44px rgba(0,0,0,.28)", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+      <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, flex: 1, minWidth: 210, color: "rgba(253,252,250,.85)" }}>We use essential cookies to keep you signed in and improve Easy Recommend. See our <button onClick={onLearnMore} style={{ background: "none", border: "none", color: C.paper, textDecoration: "underline", cursor: "pointer", font: "inherit", padding: 0 }}>Privacy &amp; Cookie Policy</button>.</p>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="er-btn er-btn-ghost er-btn-sm" style={{ color: "#fff", borderColor: "rgba(255,255,255,.3)" }} onClick={() => decide("declined")}>Decline</button>
+        <button className="er-btn er-btn-sm" style={{ background: C.paper, color: C.ink }} onClick={() => decide("accepted")}>Accept</button>
+      </div>
+    </div>
+  );
+}
+function LegalModal({ onClose }) {
+  const sections = [
+    ["Who we are", "Easy Recommend (easyrecommend.co) connects brands with creators who promote them for commission. This policy explains what we collect and how we use it."],
+    ["What we collect", "Details you provide — business name, phone number, email, website, and listing content for businesses; username, profile photo, bio, and follower count for creators. We also record activity such as referral-link clicks and sales attribution, plus basic device and log data."],
+    ["How we use it", "To run your account, match creators with brands, generate and track referral links, process payments, send you service messages by SMS or email, and keep the platform secure."],
+    ["SMS & communications", "If you give us your phone number, you agree we may text you account and activity notifications (for example, when a creator requests a commission). Message and data rates may apply. Reply STOP to opt out of non-essential texts."],
+    ["Payments", "One-time plan payments are processed by Stripe. We do not store full card numbers; Stripe handles card data under its own terms."],
+    ["Cookies & local storage", "We use essential cookies and browser local storage to keep you signed in and remember preferences. We do not use them to sell your data, and declining non-essential cookies will not break core features. You can clear them in your browser at any time."],
+    ["Sharing", "We share information only as needed to run the service — for example, a brand sees the username, follower count, and request details of a creator who asks for commission. We do not sell personal data."],
+    ["Your choices", "You can edit or delete your account at any time from Account settings. Deleting removes your profile and associated links and requests."],
+    ["Contact", "Questions? Reach us at support@easyrecommend.co."],
+  ];
+  return (
+    <Modal onClose={onClose} wide>
+      <div style={{ padding: "30px 28px", maxHeight: "80vh", overflowY: "auto" }}>
+        <h2 className="er-serif" style={{ margin: "0 0 4px", fontSize: 26, fontWeight: 500 }}>Privacy &amp; Cookie Policy</h2>
+        <p style={{ margin: "0 0 20px", fontSize: 12.5, color: C.muted }}>Last updated {new Date().getFullYear()}</p>
+        {sections.map(([h, b]) => (
+          <div key={h} style={{ marginBottom: 16 }}>
+            <h3 style={{ margin: "0 0 5px", fontSize: 15, fontWeight: 700, color: C.ink }}>{h}</h3>
+            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.inkSoft }}>{b}</p>
+          </div>
+        ))}
+        <button className="er-btn er-btn-primary er-btn-sm" onClick={onClose}>Close</button>
+      </div>
+    </Modal>
+  );
+}
+function SettingRow({ label, value, action, danger }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 0", borderBottom: `1px solid ${C.line}` }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: 14.5, color: danger ? "#C0392B" : C.ink }}>{label}</div>
+        {value && <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{value}</div>}
+      </div>
+      {action}
+    </div>
+  );
+}
+function AccountSettings({ session, onBack, onLogout, onEditProfile, onMyBiz, onLegal, onDeleted }) {
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const isCreator = session.role === "creator";
+  const del = async () => {
+    if (!window.confirm("Delete your account permanently? This removes your profile and cannot be undone.")) return;
+    setBusy(true); setErr("");
+    try { await api(isCreator ? "/creator/me" : "/business/me", { method: "DELETE", body: { token: session.token } }); onDeleted(); }
+    catch (e) { setErr(e.message); setBusy(false); }
+  };
+  return (
+    <div style={{ maxWidth: 620, margin: "0 auto", padding: "40px 22px 80px" }}>
+      <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
+      <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>Account settings</h1>
+      <p style={{ margin: "6px 0 24px", fontSize: 14.5, color: C.muted }}>Manage your {isCreator ? "creator" : "business"} account.</p>
+      <SettingRow label="Account type" value={isCreator ? "Creator" : "Business"} />
+      <SettingRow label={isCreator ? "Username" : "Sign-in"} value={isCreator ? `@${session.username}` : (session.phone || session.email || "—")} />
+      {isCreator
+        ? <SettingRow label="Profile" value="Photo, bio, and follower count" action={<button className="er-btn er-btn-light er-btn-sm" onClick={onEditProfile}>Edit profile</button>} />
+        : <SettingRow label="Listing & products" value="Edit your business and products" action={<button className="er-btn er-btn-light er-btn-sm" onClick={onMyBiz}>Edit listing</button>} />}
+      <SettingRow label="Privacy & cookies" value="Read how we handle your data" action={<button className="er-btn er-btn-light er-btn-sm" onClick={onLegal}>View policy</button>} />
+      <SettingRow label="Sign out" value="Log out on this device" action={<button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogout}>Sign out</button>} />
+      <SettingRow label="Delete account" value="Permanently remove your account and data" danger action={<button className="er-btn er-btn-sm" style={{ background: "#C0392B", color: "#fff" }} disabled={busy} onClick={del}>{busy ? "Deleting…" : "Delete"}</button>} />
+      {err && <p style={{ marginTop: 14, fontSize: 13, color: "#C0392B" }}>{err}</p>}
+    </div>
+  );
+}
 function EasyApp() {
   const initial = parseRoute();
   const [view, setView] = useState(initial.view);
@@ -1756,6 +1833,8 @@ function EasyApp() {
 
   const login = (s) => { saveSession(s); setSessionState(s); };
   const logout = () => { clearSession(); setSessionState(null); setView("home"); nav("/"); };
+  const [legalOpen, setLegalOpen] = useState(false);
+  const goSettings = () => { setView("settings"); nav("/settings"); };
 
   useEffect(() => {
     const f = document.createElement("link"); f.rel = "stylesheet";
@@ -1795,10 +1874,15 @@ function EasyApp() {
     <div className="er-root">
       {view === "home" && <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} creators={creators} loading={loading} error={error} session={session}
         onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)}
-        onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} />}
+        onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} />}
       {view === "admin" && <AdminPanel onBack={goHome} onRefresh={refresh} />}
       {view === "mybiz" && session && <MyBusiness session={session} onBack={goHome} onRefresh={refresh} />}
+      {view === "settings" && session && <AccountSettings session={session} onBack={goHome} onLogout={logout} onEditProfile={() => goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onLegal={() => setLegalOpen(true)} onDeleted={() => { logout(); }} />}
+      {view === "settings" && !session && <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} creators={creators} loading={loading} error={error} session={session} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => {}} onMyBiz={() => {}} onSettings={goSettings} onLegal={() => setLegalOpen(true)} />}
       {view === "profile" && <InfluencerProfile handle={profileHandle} session={session} dataVersion={ver} onBack={goHome} onBrowse={goHome} onOpenBusiness={(id) => setDetailId(id)} onAddBrand={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onRefresh={refresh} />}
+
+      <CookieBar onLearnMore={() => setLegalOpen(true)} />
+      {legalOpen && <LegalModal onClose={() => setLegalOpen(false)} />}
 
       {detailId != null && <BusinessDetail id={detailId} onClose={() => setDetailId(null)} onProfile={(h) => { setDetailId(null); goProfile(h); }} onRecommend={(id) => { setDetailId(null); setCreatorPreselect(id); setCreatorOpen(true); }} />}
       {loginOpen && <LoginModal onClose={() => setLoginOpen(false)} onLogin={login} onAfterCreator={(u) => { setLoginOpen(false); goProfile(u); }} onAfterBrand={() => { setLoginOpen(false); setView("mybiz"); nav("/my-business"); }} />}
