@@ -338,6 +338,23 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
               {b.email && <a href={`mailto:${b.email}`} onClick={() => trackClick(handle, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Mail size={14} /> Email</a>}
             </div>
           )}
+          {(b.products || []).length > 0 && (
+            <div style={{ marginTop: 20 }}>
+              <h3 style={{ margin: "0 0 10px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Products</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {b.products.map((p, i) => (
+                  <div key={i} className="er-card" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ width: 34, height: 34, borderRadius: 9, display: "grid", placeItems: "center", background: C.panel, color: C.muted, flexShrink: 0 }}><Store size={15} /></span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{p.name}</div>
+                      {p.note && <div style={{ fontSize: 12.5, color: C.muted }}>{p.note}</div>}
+                    </div>
+                    {p.url && <button className="er-btn er-btn-light er-btn-sm" style={{ flexShrink: 0 }} onClick={() => { trackClick(handle, b.id); openSite(p.url); }}>View</button>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{ height: 1, background: C.line, margin: "24px 0 18px" }} />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <h3 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>What creators say</h3>
@@ -540,8 +557,11 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
 /* ---------- My business (brand self-service) ---------- */
 function BizEditCard({ b, token, reload }) {
   const [edit, setEdit] = useState(false); const [busy, setBusy] = useState(false);
-  const [d, setD] = useState({ name: b.name, blurb: b.blurb || "", city: b.city || "", online: !!b.online, website: b.website || "", discount: b.discount || 0, categories: b.categories || [], commissionType: b.commissionType || "percent", commissionPct: b.commissionPct || 0, commissionFlat: b.commissionFlat || 0, photos: b.photos || [] });
+  const [d, setD] = useState({ name: b.name, blurb: b.blurb || "", city: b.city || "", online: !!b.online, website: b.website || "", discount: b.discount || 0, categories: b.categories || [], commissionType: b.commissionType || "percent", commissionPct: b.commissionPct || 0, commissionFlat: b.commissionFlat || 0, photos: b.photos || [], products: b.products || [] });
   const set = (k, v) => setD((p) => ({ ...p, [k]: v }));
+  const addProduct = () => set("products", [...(d.products || []), { name: "", url: "", note: "" }]);
+  const setProduct = (i, k, v) => set("products", d.products.map((p, j) => (j === i ? { ...p, [k]: v } : p)));
+  const removeProduct = (i) => set("products", d.products.filter((_, j) => j !== i));
   const toggleCat = (c) => set("categories", d.categories.includes(c) ? d.categories.filter((x) => x !== c) : [...d.categories, c]);
   const onPhotos = async (e) => { const files = [...(e.target.files || [])]; if (!files.length) return; const urls = []; for (const file of files) { try { urls.push(await fileToDataURL(file, 1000, 0.82)); } catch (x) {} } set("photos", [...d.photos, ...urls].slice(0, 6)); e.target.value = ""; };
   const save = async () => { setBusy(true); try { await api(`/business/me/${b.id}`, { method: "PATCH", body: { token, ...d } }); setEdit(false); await reload(); } catch (e) { alert(e.message); } finally { setBusy(false); } };
@@ -558,6 +578,19 @@ function BizEditCard({ b, token, reload }) {
         <Field label="Name"><input className="er-input" value={d.name} onChange={(e) => set("name", e.target.value)} /></Field>
         <Field label="Description"><textarea className="er-input" value={d.blurb} onChange={(e) => set("blurb", e.target.value)} /></Field>
         <Field label="Website"><input className="er-input" placeholder="brand.com" value={d.website} onChange={(e) => set("website", e.target.value)} /></Field>
+        <Field label="Products" hint="List the products, apps, or services you want promoted — add as many as you like.">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {(d.products || []).map((p, i) => (
+              <div key={i} style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, paddingRight: 34, display: "flex", flexDirection: "column", gap: 8, position: "relative", background: C.panel }}>
+                <input className="er-input" placeholder="Product name" value={p.name || ""} onChange={(e) => setProduct(i, "name", e.target.value)} />
+                <input className="er-input" placeholder="Link (optional)" value={p.url || ""} onChange={(e) => setProduct(i, "url", e.target.value)} />
+                <input className="er-input" placeholder="Short note (optional)" value={p.note || ""} onChange={(e) => setProduct(i, "note", e.target.value)} />
+                <button type="button" onClick={() => removeProduct(i)} title="Remove" style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", cursor: "pointer", color: C.muted, display: "grid", placeItems: "center" }}><Close size={15} /></button>
+              </div>
+            ))}
+            <button type="button" className="er-btn er-btn-light er-btn-sm" style={{ alignSelf: "flex-start" }} onClick={addProduct}><Plus size={14} /> Add product</button>
+          </div>
+        </Field>
         <Field label="Categories">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {CAT_LIST.map((c) => { const on = d.categories.includes(c); const x = CATS[c];
@@ -1006,6 +1039,34 @@ function AdminRow({ b, reload }) {
     </div>
   );
 }
+function BulkSms() {
+  const [msg, setMsg] = useState(""); const [nums, setNums] = useState(""); const [aud, setAud] = useState("custom");
+  const [busy, setBusy] = useState(false); const [res, setRes] = useState(""); const [err, setErr] = useState("");
+  const send = async () => {
+    if (!msg.trim()) { setErr("Write a message first."); return; }
+    if (!window.confirm("Send this SMS now?")) return;
+    setBusy(true); setErr(""); setRes("");
+    try {
+      const r = await api("/admin/bulk-sms", { method: "POST", admin: true, body: { message: msg, numbers: aud === "businesses" ? "" : nums, audience: (aud === "businesses" || aud === "both") ? "businesses" : "" } });
+      setRes(`Sent to ${r.sent} of ${r.recipients} recipient(s).`);
+    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <div className="er-card" style={{ padding: 18, marginTop: 22 }}>
+      <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Bulk SMS</h2>
+      <p style={{ margin: "6px 0 14px", fontSize: 13.5, color: C.muted }}>Text a pasted list of numbers and/or every business on file.</p>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        {[["custom", "Pasted numbers"], ["businesses", "All businesses"], ["both", "Both"]].map(([k, l]) => { const on = aud === k;
+          return <button key={k} type="button" onClick={() => setAud(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "8px 13px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{l}</button>; })}
+      </div>
+      <textarea className="er-input" style={{ minHeight: 88 }} placeholder="Your message…" value={msg} onChange={(e) => setMsg(e.target.value)} />
+      {(aud === "custom" || aud === "both") && <textarea className="er-input" style={{ marginTop: 10, minHeight: 66 }} placeholder="Phone numbers — separate by commas, spaces, or new lines (e.g. +15550102030)" value={nums} onChange={(e) => setNums(e.target.value)} />}
+      {err && <p style={{ margin: "10px 0 0", fontSize: 13, color: "#C0392B" }}>{err}</p>}
+      {res && <p style={{ margin: "10px 0 0", fontSize: 13, color: C.accent, fontWeight: 600 }}>{res}</p>}
+      <button className="er-btn er-btn-primary er-btn-sm" style={{ marginTop: 12 }} disabled={busy} onClick={send}><Send size={14} /> {busy ? "Sending…" : "Send bulk SMS"}</button>
+    </div>
+  );
+}
 function AdminPanel({ onBack, onRefresh }) {
   const [authed, setAuthed] = useState(() => !!adminKey());
   const [keyInput, setKeyInput] = useState(""); const [authErr, setAuthErr] = useState(""); const [authBusy, setAuthBusy] = useState(false);
@@ -1066,6 +1127,7 @@ function AdminPanel({ onBack, onRefresh }) {
         <button className="er-btn er-btn-ghost er-btn-sm" onClick={seed} disabled={seeding}>{seeding ? "Loading…" : "Load demo data"}</button>
       </div>
       <p style={{ margin: "6px 0 0", fontSize: 14.5, color: C.muted }}>Approve businesses to list them under their category, or adjust their terms. Commission is admin-only.</p>
+      <BulkSms />
       {err && <p style={{ marginTop: 14, background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>Couldn't reach the backend ({err}). API base: {API_BASE}</p>}
       {rows === null && !err && <p style={{ color: C.muted, marginTop: 20 }}>Loading…</p>}
       {rows && <>
