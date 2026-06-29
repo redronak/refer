@@ -626,7 +626,7 @@ function ReqDecision({ r, onDecide }) {
     </div>
   );
 }
-const STRIPE_PK = "pk_live_REPLACE_WITH_YOUR_STRIPE_PUBLISHABLE_KEY"; // TODO: set your Stripe publishable key
+const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhzBFvPj1bCOJmYX5mpQDU3FXL2jB8zR1TphQkZ00sCZhaEsZ"; // TODO: set your Stripe publishable key
 const PLANS = [
   { key: "starter", amount: 70, title: "Starter", tag: "400+ influencers",
     points: ["Get your brand referred by 400+ influencers", "Full refund if at least 1 influencer doesn't promote your brand within a year"] },
