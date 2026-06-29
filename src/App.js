@@ -1345,7 +1345,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
 
       <section style={{ background: C.ink }}>
         <div className="er-wrap" style={{ padding: "44px 22px", display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", textAlign: "center" }}>
-          {[["$3M+", "in sales driven"], ["300+", "creators earning"], ["500+", "recommendations made"], ["4.9★", "average rating"]].map(([n, l]) => (
+          {[["$300,000", "in sales driven"], ["300+", "creators earning"], ["500+", "recommendations made"], ["4.9★", "average rating"]].map(([n, l]) => (
             <div key={l}>
               <div className="er-serif" style={{ fontSize: "clamp(30px,4.5vw,44px)", fontWeight: 500, color: C.paper, letterSpacing: "-.02em" }}>{n}</div>
               <div style={{ marginTop: 4, fontSize: 13, color: "rgba(253,252,250,.66)" }}>{l}</div>
@@ -1403,7 +1403,6 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         </div>
       </section>
 
-      <AgentStack />
 
       <section id="er-tracking" className="er-wrap" style={{ padding: "8px 22px 64px", scrollMarginTop: 70 }}>
         <span className="er-eyebrow">How tracking works</span>
@@ -1513,7 +1512,6 @@ const Users = (p) => <Svg {...p}><circle cx="9" cy="8" r="3.2" /><path d="M3.5 1
 const Chat = (p) => <Svg {...p}><path d="M4 5h16v11H8l-4 4V5Z" /><path d="M8 9.5h8M8 12.5h5" /></Svg>;
 const Pulse = (p) => <Svg {...p}><path d="M3 12h4l2.5-6 4 13 2.5-7H21" /></Svg>;
 const Share = (p) => <Svg {...p}><circle cx="6" cy="12" r="2.6" /><circle cx="17" cy="6" r="2.6" /><circle cx="17" cy="18" r="2.6" /><path d="M8.3 10.8l6.4-3.5M8.3 13.2l6.4 3.5" /></Svg>;
-const Bolt = (p) => <Svg {...p}><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8Z" /></Svg>;
 const Play = (p) => <Svg {...p}><path d="M8 5.5l11 6.5-11 6.5v-13Z" /></Svg>;
 
 const RB_AGENTS = [
@@ -1583,24 +1581,6 @@ function AgentCard({ a }) {
       </div>
       {a.link && <div style={{ marginTop: 18 }}><a className="rb-btn rb-btn-ghost rb-btn-sm" href={a.link} style={{ borderColor: a.color, color: a.color }}>{a.cta} <Arrow size={15} /></a></div>}
     </div>
-  );
-}
-function AgentStack() {
-  return (
-    <section id="er-agents" style={{ background: C.paper, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
-      <div className="er-wrap" style={{ padding: "72px 22px" }}>
-        <h2 className="rb-serif" style={{ margin: 0, fontSize: "clamp(28px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>Five agents. One job: keep customers, and bring more.</h2>
-        <p style={{ margin: "10px 0 0", fontSize: 16, color: C.muted, maxWidth: 640 }}>Each agent is useful alone and compounding together — they share the same customer graph, so a churn signal can trigger a save, and a happy customer can trigger a referral.</p>
-        <div className="rb-agents-grid" style={{ marginTop: 32 }}>
-          {RB_AGENTS.map((a) => <AgentCard key={a.key} a={a} />)}
-          <div className="rb-card" style={{ display: "flex", flexDirection: "column", justifyContent: "center", background: C.ink, color: C.paper }}>
-            <span style={{ width: 46, height: 46, borderRadius: 13, display: "grid", placeItems: "center", background: "rgba(255,255,255,.1)", color: C.paper }}><Bolt size={22} /></span>
-            <h3 className="rb-serif" style={{ margin: "16px 0 0", fontSize: 21, fontWeight: 500 }}>One brain behind them all</h3>
-            <p style={{ margin: "8px 0 0", fontSize: 14.5, lineHeight: 1.55, color: "rgba(251,250,248,.74)" }}>Every agent reads from — and writes to — the same shared customer graph. Insights from one become actions in another, automatically.</p>
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }
 function RetentionPage() {
