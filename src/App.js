@@ -626,79 +626,54 @@ function ReqDecision({ r, onDecide }) {
     </div>
   );
 }
-const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhzBFvPj1bCOJmYX5mpQDU3FXL2jB8zR1TphQkZ00sCZhaEsZ"; // TODO: set your Stripe publishable key
+const STRIPE_PK = "pk_live_REPLACE_WITH_YOUR_STRIPE_PUBLISHABLE_KEY"; // TODO: set your Stripe publishable key
 const PLANS = [
   { key: "starter", amount: 70, title: "Starter", tag: "400+ influencers",
     points: ["Get your brand referred by 400+ influencers", "Full refund if at least 1 influencer doesn't promote your brand within a year"] },
   { key: "growth", amount: 449, title: "Growth", tag: "900+ influencers & bloggers",
     points: ["Get your brand referred by 900+ influencers & bloggers", "Full refund if at least 10 influencers don't promote your brand within a year"] },
   { key: "premium", amount: 899, title: "Premium", tag: "900+ influencers & bloggers", premium: true, featured: true,
-    points: ["Get your brand referred by 900+ influencers & bloggers", "Premium verified checkmark on your public listing", "Full refund if at least 10 influencers don't promote your brand within a year"] },
+    points: ["Get your brand referred by 900+ influencers & bloggers", "Premium verified checkmark on your public listing", "Full refund if at least 50 influencers don't promote your brand within a year"] },
 ];
-function useStripe() {
-  const [stripe, setStripe] = useState(null);
-  useEffect(() => {
-    if (window.Stripe) { setStripe(() => window.Stripe(STRIPE_PK)); return; }
-    const s = document.createElement("script"); s.src = "https://js.stripe.com/v3/";
-    s.onload = () => setStripe(() => window.Stripe(STRIPE_PK)); document.body.appendChild(s);
-  }, []);
-  return stripe;
+function loadCheckout() {
+  return new Promise((resolve, reject) => {
+    if (window.StripeCheckout) return resolve(window.StripeCheckout);
+    const s = document.createElement("script");
+    s.src = "https://checkout.stripe.com/checkout.js";
+    s.onload = () => resolve(window.StripeCheckout);
+    s.onerror = () => reject(new Error("Couldn't load Stripe Checkout."));
+    document.body.appendChild(s);
+  });
 }
-function PayModal({ plan, business, sessionToken, onClose, onPaid }) {
-  const stripe = useStripe();
-  const cardRef = useRef(null); const cardEl = useRef(null);
-  const [name, setName] = useState(""); const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [ready, setReady] = useState(false);
-  useEffect(() => {
-    if (!stripe || cardEl.current || !cardRef.current) return;
-    const card = stripe.elements().create("card", { style: { base: { fontSize: "15px", color: "#1C1A17", "::placeholder": { color: "#9b9488" } } } });
-    card.mount(cardRef.current); cardEl.current = card; setReady(true);
-    return () => { try { card.destroy(); } catch (e) {} cardEl.current = null; };
-  }, [stripe]);
-  const pay = async () => {
-    if (!stripe || !cardEl.current) { setErr("Payment form still loading…"); return; }
-    if (!name.trim() || !email.trim()) { setErr("Add your name and email."); return; }
-    setBusy(true); setErr("");
-    try {
-      const { token, error } = await stripe.createToken(cardEl.current, { name });
-      if (error) throw new Error(error.message);
-      const res = await fetch("https://learntok-backend-2026-24c204fe508e.herokuapp.com/partyevents/paycharge", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: business.name, amount: plan.amount, token: token.id, email, customerName: name, phoneNumber: business.phone || "", streetAddress: "" }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || "Card was declined.");
-      await api("/business/pay", { method: "POST", body: { token: sessionToken, plan: plan.key, amount: plan.amount, chargeId: data.chargeId || "" } });
-      onPaid();
-    } catch (e) { setErr(e.message); } finally { setBusy(false); }
-  };
-  return (
-    <Modal onClose={onClose}>
-      <div style={{ padding: "30px 28px" }}>
-        <span className="er-eyebrow">{plan.title} · one-time</span>
-        <h2 className="er-serif" style={{ margin: "8px 0 4px", fontSize: 27, fontWeight: 500 }}>Pay ${plan.amount}</h2>
-        <p style={{ margin: "0 0 18px", fontSize: 14, color: C.muted }}>{plan.tag} · {business.name}</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Field label="Name on card"><input className="er-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" /></Field>
-          <Field label="Email"><input className="er-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@brand.com" /></Field>
-          <Field label="Card details">
-            <div ref={cardRef} className="er-input" style={{ padding: "14px", minHeight: 48 }} />
-            {!ready && <span style={{ display: "block", fontSize: 12, color: C.muted, marginTop: 6 }}>Loading secure card field…</span>}
-          </Field>
-          <p style={{ margin: 0, fontSize: 12, color: C.muted, display: "flex", alignItems: "center", gap: 6 }}><Lock size={13} /> Secured by Stripe. One-time charge, refundable per the plan terms.</p>
-          <ErrBox msg={err} />
-          <button className="er-btn er-btn-primary er-btn-block" disabled={busy || !ready} onClick={pay}>{busy ? "Processing…" : `Pay $${plan.amount}`}</button>
-        </div>
-      </div>
-    </Modal>
-  );
+async function payWithCheckout({ plan, business, sessionToken, onPaid, onErr }) {
+  try {
+    const StripeCheckout = await loadCheckout();
+    const handler = StripeCheckout.configure({
+      key: STRIPE_PK, locale: "auto", name: "Easy Recommend",
+      description: `${plan.title} — ${plan.tag}`, currency: "usd", amount: plan.amount * 100,
+      email: business.email || "", panelLabel: `Pay $${plan.amount}`,
+      token: async (token) => {
+        try {
+          const res = await fetch("https://learntok-backend-2026-24c204fe508e.herokuapp.com/partyevents/paycharge", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: business.name, amount: plan.amount, token: token.id, email: token.email || business.email || "", customerName: (token.card && token.card.name) || "", phoneNumber: business.phone || "", streetAddress: "" }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.ok) throw new Error(data.error || "Card was declined.");
+          await api("/business/pay", { method: "POST", body: { token: sessionToken, plan: plan.key, amount: plan.amount, chargeId: data.chargeId || "" } });
+          onPaid();
+        } catch (e) { onErr(e.message); }
+      },
+    });
+    handler.open();
+  } catch (e) { onErr(e.message); }
 }
 function Paywall({ business, sessionToken, onPaid }) {
-  const [plan, setPlan] = useState(null);
+  const [busy, setBusy] = useState(""); const [err, setErr] = useState("");
   const ghost = ["████ ██████ ███", "███████ ██ █████", "█████ ████████ ██", "██████ ███ ███████", "████████ █ ████"];
+  const choose = (p) => { setErr(""); setBusy(p.key); payWithCheckout({ plan: p, business, sessionToken, onPaid, onErr: (m) => { setErr(m); setBusy(""); } }); };
   return (
     <div>
-      {plan && <PayModal plan={plan} business={business} sessionToken={sessionToken} onClose={() => setPlan(null)} onPaid={onPaid} />}
       <div style={{ position: "relative", minHeight: 230 }}>
         <div aria-hidden style={{ filter: "blur(7px)", opacity: 0.5, userSelect: "none", pointerEvents: "none", display: "flex", flexDirection: "column", gap: 12 }}>
           {ghost.map((g, i) => <div key={i} className="er-card" style={{ padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
@@ -723,9 +698,10 @@ function Paywall({ business, sessionToken, onPaid }) {
           <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
             {p.points.map((pt, i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: C.inkSoft, lineHeight: 1.4 }}><span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Check size={15} /></span>{pt}</li>)}
           </ul>
-          <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: "auto" }} onClick={() => setPlan(p)}>Choose {p.title}</button>
+          <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: "auto" }} disabled={!!busy} onClick={() => choose(p)}>{busy === p.key ? "Opening…" : `Choose ${p.title}`}</button>
         </div>)}
       </div>
+      {err && <div style={{ marginTop: 14 }}><ErrBox msg={err} /></div>}
     </div>
   );
 }
@@ -744,7 +720,7 @@ function MyBusiness({ session, onBack, onRefresh }) {
   const decide = async (id, status, message) => { await api(`/business/request/${id}`, { method: "PATCH", body: { token: session.token, status, message } }); await reloadReqs(); };
   const pending = (reqs || []).filter((r) => r.status === "pending").length;
   const onPaid = async () => { await reload(); setTab("promo"); };
-  const tabs = [["info", "My information"], ["promo", paid ? `Requests${pending ? ` · ${pending}` : ""}` : "Get promoted"]];
+  const tabs = [["info", "My information"], ["promo", paid ? `Requests${pending ? ` · ${pending}` : ""}` : "Approve/Reject Influencer request"]];
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 22px 80px" }}>
       <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
@@ -1262,6 +1238,51 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
 }
 
 /* ---------- Landing ---------- */
+function VidTile({ v }) {
+  const ref = useRef(null);
+  const [loading, setLoading] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [prog, setProg] = useState(0);
+  const poster = v.poster || (v.src && v.src.endsWith(".mp4") ? v.src.slice(0, -4) + ".jpg" : undefined);
+  const start = () => { const el = ref.current; if (!el) return; setLoading(true); el.play().catch(() => {}); };
+  const stop = () => { const el = ref.current; if (!el) return; el.pause(); el.currentTime = 0; setPlaying(false); setLoading(false); };
+  const toggle = () => { const el = ref.current; if (!el) return; if (el.paused) start(); else { el.pause(); setPlaying(false); } };
+  const onProg = () => { const el = ref.current; if (!el || !el.duration) return; try { const end = el.buffered.length ? el.buffered.end(el.buffered.length - 1) : 0; setProg(Math.min(100, Math.round((end / el.duration) * 100))); } catch (e) {} };
+  return (
+    <div className="er-vid-tile" style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden" }}>
+      <div style={{ position: "relative", aspectRatio: "9 / 16", background: C.ink }}>
+        {v.src ? <>
+          <video ref={ref} src={v.src} muted loop playsInline preload="none" poster={poster}
+            onMouseEnter={start} onMouseLeave={stop} onClick={toggle}
+            onWaiting={() => setLoading(true)} onPlaying={() => { setLoading(false); setPlaying(true); }}
+            onCanPlay={() => setLoading(false)} onProgress={onProg} onPause={() => setPlaying(false)}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", background: poster ? "transparent" : "#000", cursor: "pointer" }} />
+          {loading && <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(28,26,23,.5)", pointerEvents: "none" }}>
+            <div style={{ textAlign: "center" }}>
+              <span className="er-spin" style={{ display: "inline-block", width: 34, height: 34, borderRadius: "50%", border: "3px solid rgba(255,255,255,.25)", borderTopColor: "#fff" }} />
+              <p style={{ margin: "10px 0 0", fontSize: 11.5, fontWeight: 600, color: "rgba(255,255,255,.85)" }}>Loading HD{prog ? ` · ${prog}%` : "…"}</p>
+            </div>
+          </div>}
+          {!playing && !loading && <span className="er-vid-play" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 52, height: 52, borderRadius: "50%", display: "grid", placeItems: "center", background: "rgba(0,0,0,.45)", color: "#fff", pointerEvents: "none" }}><Play size={20} /></span>}
+          {loading && prog > 0 && <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 4, background: "rgba(255,255,255,.22)" }}><div style={{ height: "100%", width: `${prog}%`, background: C.accent, transition: "width .25s" }} /></div>}
+        </> : v.yt ? (
+          <iframe title={v.title || "video"} src={`https://www.youtube.com/embed/${v.yt}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
+        ) : (
+          <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
+            <div style={{ textAlign: "center" }}>
+              <span style={{ width: 52, height: 52, borderRadius: "50%", display: "grid", placeItems: "center", background: "rgba(255,255,255,.14)", color: "#fff", margin: "0 auto" }}><Play size={20} /></span>
+              <p style={{ margin: "10px 0 0", fontSize: 12, color: "rgba(253,252,250,.6)" }}>Video coming soon</p>
+            </div>
+          </div>
+        )}
+      </div>
+      {(v.title || v.sub) && <div style={{ padding: "13px 15px" }}>
+        {v.title && <p style={{ margin: 0, fontWeight: 600, fontSize: 14.5, color: C.ink }}>{v.title}</p>}
+        {v.sub && <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{v.sub}</p>}
+      </div>}
+    </div>
+  );
+}
 function Landing({ activeCat, setActiveCat, businesses, creators, loading, error, session, onList, onCreator, onAdmin, onProfile, onOpenBusiness, onLogin, onLogout, onMyProfile, onMyBiz }) {
   const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
   const visible = businesses.filter((b) => (b.categories || []).includes(activeCat));
@@ -1304,6 +1325,20 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           </div>
           <div style={{ position: "relative" }}>
             <SwipeStack />
+          </div>
+        </div>
+      </section>
+
+      <section style={{ background: C.paper }}>
+        <div className="er-wrap" style={{ padding: "10px 22px 56px", textAlign: "center" }}>
+          <span className="er-eyebrow">Watch it work</span>
+          <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>See real creators in action</h2>
+          <p style={{ margin: "10px auto 14px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short clips of how creators promote brands and earn on every sale.</p>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "7px 15px", fontSize: 12.5, fontWeight: 600, color: C.inkSoft, marginBottom: 26 }}>
+            <Play size={13} /> Videos are high-definition, so they may take a few seconds to load.
+          </div>
+          <div className="er-videos-grid">
+            {ER_VIDEOS.map((v, i) => <VidTile key={v.src || v.title || i} v={v} />)}
           </div>
         </div>
       </section>
@@ -1364,50 +1399,6 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           <div style={{ marginTop: 26, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <button className="er-btn" style={{ background: C.paper, color: C.ink }} onClick={onList}>List your business <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" style={{ color: "#fff", borderColor: "rgba(255,255,255,.25)" }} onClick={onCreator}>Join as a creator</button>
-          </div>
-        </div>
-      </section>
-
-      <section id="er-videos" style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
-        <div className="er-wrap" style={{ padding: "64px 22px", textAlign: "center" }}>
-          <span className="er-eyebrow">Watch it work</span>
-          <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>See how it works</h2>
-          <p style={{ margin: "10px auto 28px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short walkthroughs of how creators earn and how businesses get vouched-for customers.</p>
-          <div className="er-videos-grid">
-            {ER_VIDEOS.map((v, i) => (
-              <div key={v.src || v.title || i} className="er-vid-tile" style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden" }}>
-                <div style={{ position: "relative", aspectRatio: "9 / 16", background: C.ink }}>
-                  {v.src ? (
-                    <>
-                      <video
-                        src={v.src} muted loop playsInline preload="none"
-                        poster={v.poster || (v.src.endsWith(".mp4") ? v.src.slice(0, -4) + ".jpg" : undefined)}
-                        onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}); }}
-                        onMouseLeave={(e) => { const el = e.currentTarget; el.pause(); el.currentTime = 0; }}
-                        onClick={(e) => { const el = e.currentTarget; if (el.paused) el.play().catch(() => {}); else el.pause(); }}
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", background: "#000", cursor: "pointer" }}
-                      />
-                      <span className="er-vid-play" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: 52, height: 52, borderRadius: "50%", display: "grid", placeItems: "center", background: "rgba(0,0,0,.45)", color: "#fff", pointerEvents: "none" }}><Play size={20} /></span>
-                    </>
-                  ) : v.yt ? (
-                    <iframe title={v.title} src={`https://www.youtube.com/embed/${v.yt}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
-                  ) : (
-                    <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
-                      <div style={{ textAlign: "center" }}>
-                        <span style={{ width: 52, height: 52, borderRadius: "50%", display: "grid", placeItems: "center", background: "rgba(255,255,255,.14)", color: "#fff", margin: "0 auto" }}><Play size={20} /></span>
-                        <p style={{ margin: "10px 0 0", fontSize: 12, color: "rgba(253,252,250,.6)" }}>Video coming soon</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {(v.title || v.sub) && (
-                  <div style={{ padding: "13px 15px" }}>
-                    {v.title && <p style={{ margin: 0, fontWeight: 600, fontSize: 14.5, color: C.ink }}>{v.title}</p>}
-                    {v.sub && <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{v.sub}</p>}
-                  </div>
-                )}
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -1499,6 +1490,8 @@ const STYLES = `
 .er-vid-tile{flex:0 0 calc(33.333% - 8px);max-width:240px;text-align:left}
 .er-vid-play{opacity:1;transition:opacity .15s ease}
 .er-vid-tile:hover .er-vid-play{opacity:0}
+@keyframes er-spin{to{transform:rotate(360deg)}}
+.er-spin{animation:er-spin .9s linear infinite}
 @media(min-width:560px){.er-modal-overlay{align-items:center;padding:18px}.er-modal{border-radius:22px}}
 @media(max-width:559px){.er-nav{display:none}.er-hide-sm{display:none}}
 @media(max-width:400px){.er-hide-xs{display:none}}
