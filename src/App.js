@@ -1377,11 +1377,11 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
       <section className="er-wrap" style={{ padding: "70px 22px 60px" }}>
         <div className="er-hero">
           <div>
-            <span className="er-eyebrow">Commission-based marketing</span>
-            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Only pay for marketing that sells.</h1>
-            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>Get your brand, product, or app promoted by creators who actually use it, and pay commission only on sales. No retainers, no upfront ad spend, just performance you can track.</p>
+            <span className="er-eyebrow">Commission-based marketing for apps &amp; SaaS</span>
+            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get users for your app. Pay only on results.</h1>
+            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>Built for indie builders and vibe coders, ecom brands, and companies all the way up to the Fortune 500. Get your app, SaaS, or product promoted by creators who actually use it, and pay commission only on real signups and sales. No retainers, no upfront ad spend, just growth you can track.</p>
             <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
+              <button className="er-btn er-btn-primary" onClick={onList}>List your app or brand <Arrow size={16} /></button>
               <button className="er-btn er-btn-ghost" onClick={onCreator}>Join as a creator</button>
             </div>
             <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> You only pay commission on tracked, real sales.</p>
@@ -1396,7 +1396,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         <div className="er-wrap" style={{ padding: "10px 22px 56px", textAlign: "center" }}>
           <span className="er-eyebrow">Watch it work</span>
           <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>See real creators in action</h2>
-          <p style={{ margin: "10px auto 14px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short clips of how creators promote brands and earn on every sale.</p>
+          <p style={{ margin: "10px auto 14px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short clips of creators showing off apps, tools, and products — and earning on every signup.</p>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "7px 15px", fontSize: 12.5, fontWeight: 600, color: C.inkSoft, marginBottom: 26 }}>
             <Play size={13} /> Videos are high-definition, so they may take a few seconds to load.
           </div>
@@ -1419,9 +1419,9 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
 
       <section style={{ background: C.paper }}>
         <div className="er-wrap" style={{ padding: "44px 22px", textAlign: "center" }}>
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.muted }}>Built for brands like</p>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.muted }}>Built for apps, SaaS &amp; brands like</p>
           <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "20px 36px" }}>
-            {["Nike", "Adidas", "Sephora", "Lululemon", "Glossier", "Allbirds", "Gymshark", "Nespresso", "Spotify", "Airbnb"].map((b) => (
+            {["Notion", "Linear", "Figma", "Vercel", "Cursor", "Canva", "Framer", "Webflow", "Raycast", "Superhuman"].map((b) => (
               <span key={b} className="er-serif" style={{ fontSize: "clamp(18px,2.8vw,27px)", fontWeight: 600, color: C.inkSoft, opacity: 0.7, letterSpacing: "-.01em" }}>{b}</span>
             ))}
           </div>
@@ -1457,10 +1457,10 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
 
       <section className="er-wrap" style={{ padding: "0 22px 80px" }}>
         <div style={{ background: C.ink, borderRadius: 24, padding: "60px 32px", textAlign: "center" }}>
-          <h2 className="er-serif" style={{ margin: 0, color: C.paper, fontSize: "clamp(28px,4.5vw,44px)", fontWeight: 500, letterSpacing: "-.01em" }}>Marketing that pays for itself.</h2>
-          <p style={{ margin: "14px auto 0", maxWidth: 460, color: "rgba(253,252,250,.72)", fontSize: 16.5 }}>List your brand, set your commission, and let trusted creators bring you customers. You only pay when it converts.</p>
+          <h2 className="er-serif" style={{ margin: 0, color: C.paper, fontSize: "clamp(28px,4.5vw,44px)", fontWeight: 500, letterSpacing: "-.01em" }}>Growth that pays for itself.</h2>
+          <p style={{ margin: "14px auto 0", maxWidth: 460, color: "rgba(253,252,250,.72)", fontSize: 16.5 }}>List your app or product, set your commission, and let trusted creators bring you users. You only pay when it converts.</p>
           <div style={{ marginTop: 26, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button className="er-btn" style={{ background: C.paper, color: C.ink }} onClick={onList}>List your business <Arrow size={16} /></button>
+            <button className="er-btn" style={{ background: C.paper, color: C.ink }} onClick={onList}>List your app or brand <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" style={{ color: "#fff", borderColor: "rgba(255,255,255,.25)" }} onClick={onCreator}>Join as a creator</button>
           </div>
         </div>
@@ -1603,22 +1603,9 @@ const RB_AGENTS = [
     body: "Spots your happiest customers, picks the perfect moment, and invites them to refer with an offer tuned to each person — then closes the loop.",
     points: ["Finds advocates automatically", "Personalized invites + offers", "Reward only on success"] },
 ];
-// Videos for the homepage. Files in public/: /video1.mp4 … /video12.mp4, with
-// posters /image1.jpeg … /image12.jpeg. Plays on hover (desktop) / tap (mobile).
-const ER_VIDEOS = [
-  { src: "/video1.mp4", poster: "/image1.jpeg", title: "" },
-  { src: "/video2.mp4", poster: "/image2.jpeg", title: "" },
-  { src: "/video3.mp4", poster: "/image3.jpeg", title: "" },
-  { src: "/video4.mp4", poster: "/image4.jpeg", title: "" },
-  { src: "/video5.mp4", poster: "/image5.jpeg", title: "" },
-  { src: "/video6.mp4", poster: "/image6.jpeg", title: "" },
-  { src: "/video7.mp4", poster: "/image7.jpeg", title: "" },
-  { src: "/video8.mp4", poster: "/image8.jpeg", title: "" },
-  { src: "/video9.mp4", poster: "/image9.jpeg", title: "" },
-  { src: "/video10.mp4", poster: "/image10.jpeg", title: "" },
-  { src: "/video11.mp4", poster: "/image11.jpeg", title: "" },
-  { src: "/video12.mp4", poster: "/image12.jpeg", title: "" },
-];
+// Videos for the homepage. Files in public/: /video1.mp4 … /video18.mp4, with
+// posters /image1.jpeg … /image18.jpeg. Plays on hover (desktop) / tap (mobile).
+const ER_VIDEOS = Array.from({ length: 18 }, (_, i) => ({ src: `/video${i + 1}.mp4`, poster: `/image${i + 1}.jpeg`, title: "" }));
 
 function RBtn({ children, kind = "primary", as = "button", href, onClick, style }) {
   const cls = `rb-btn rb-btn-${kind}`;
