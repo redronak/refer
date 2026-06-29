@@ -736,8 +736,8 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   };
 
   const q = query.trim().toLowerCase();
-  const match = (b) => !q || b.name.toLowerCase().includes(q);
-  const byCat = {}; approved.forEach((b) => { const c = (b.categories || [])[0] || "Other"; (byCat[c] = byCat[c] || []).push(b); });
+  const match = (b) => !q || (b.name || "").toLowerCase().includes(q);
+  const byCat = {}; approved.forEach((b) => { if (!(b && b.name && b.name.trim())) return; const c = (b.categories || [])[0] || "Other"; (byCat[c] = byCat[c] || []).push(b); });
   const cats = [...CAT_LIST.filter((c) => byCat[c]), ...Object.keys(byCat).filter((c) => !CAT_LIST.includes(c))];
   const noMatches = q && cats.every((c) => !byCat[c].filter(match).length);
 
@@ -1077,12 +1077,12 @@ function CommissionRequest({ token, businessId, existing, onDone }) {
 }
 function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh }) {
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false);
-  const [myReqs, setMyReqs] = useState({});
+  const [myReqs, setMyReqs] = useState({}); const [reqList, setReqList] = useState([]);
   const isOwner = session && session.role === "creator" && session.username === handle;
   const profileUrl = `${window.location.origin}/@${handle}`;
   const copyLink = async () => { try { await navigator.clipboard.writeText(profileUrl); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
   const load = () => api(`/creator/${handle}`).then(setData).catch((e) => setErr(e.message));
-  const loadReqs = async () => { if (!(session && session.role === "creator" && session.username === handle)) return; try { const list = await api(`/creator/requests?token=${encodeURIComponent(session.token)}`); const m = {}; list.forEach((r) => { m[String(r.businessId)] = r; }); setMyReqs(m); } catch (e) {} };
+  const loadReqs = async () => { if (!(session && session.role === "creator" && session.username === handle)) return; try { const list = await api(`/creator/requests?token=${encodeURIComponent(session.token)}`); const m = {}; list.forEach((r) => { m[String(r.businessId)] = r; }); setMyReqs(m); setReqList(list); } catch (e) {} };
   useEffect(() => { setData(null); setErr(""); load(); loadReqs(); }, [handle, dataVersion]);
   const removeBrand = async (businessId) => { try { await api("/creator/link", { method: "DELETE", body: { token: session.token, businessId } }); await load(); onRefresh(); } catch (e) { alert(e.message); } };
 
@@ -1110,6 +1110,21 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
         </div>
       </div>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 22px 60px" }}>
+        {isOwner && reqList.length > 0 && <div style={{ marginBottom: 36 }}>
+          <h2 style={{ margin: "0 0 16px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>My commission requests</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {reqList.map((r) => { const badge = r.status === "approved" ? { t: "Approved", c: C.accent, bg: C.accentSoft } : r.status === "rejected" ? { t: "Rejected", c: "#9B3024", bg: "#FBE9E7" } : { t: "Pending", c: C.inkSoft, bg: C.panel };
+              return <div key={r.id} className="er-card" style={{ padding: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 600, fontSize: 15, flex: 1, minWidth: 0 }}>{r.businessName || "Brand"}</span>
+                  <span style={{ fontSize: 13, color: C.muted }}>Requested <b style={{ color: C.ink }}>{r.requested}</b></span>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: badge.bg, color: badge.c }}>{badge.t}</span>
+                </div>
+                {r.note && <p style={{ margin: "8px 0 0", fontSize: 13, color: C.inkSoft }}>You: &ldquo;{r.note}&rdquo;</p>}
+                {r.status !== "pending" && r.brandMessage && <p style={{ margin: "6px 0 0", fontSize: 13, color: C.muted }}>Brand: &ldquo;{r.brandMessage}&rdquo;</p>}
+              </div>; })}
+          </div>
+        </div>}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Brands I back</h2>
           {isOwner && <button className="er-btn er-btn-primary er-btn-sm" onClick={onAddBrand}><Plus size={14} /> Add a brand</button>}
@@ -1618,7 +1633,7 @@ function EasyApp() {
     setLoading(true);
     try {
       const [bz, cr] = await Promise.all([api("/businesses"), api("/creators")]);
-      setBusinesses(bz); setCreators(cr); setError(""); setVer((v) => v + 1);
+      setBusinesses((bz || []).filter((b) => b && b.name && b.name.trim())); setCreators(cr || []); setError(""); setVer((v) => v + 1);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   };
