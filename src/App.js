@@ -638,7 +638,7 @@ function ReqDecision({ r, onDecide }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <Avatar name={r.influencer} image={r.image} size={38} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 15 }}>@{r.influencer}</div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>@{r.influencer}{r.followers > 0 && <span style={{ fontWeight: 600, color: C.accent }}> · {r.followersLabel} followers</span>}</div>
           <div style={{ fontSize: 12.5, color: C.muted }}>{r.businessName}</div>
         </div>
         {decided && <span style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: badge.bg, color: badge.c }}>{badge.t}</span>}
@@ -799,7 +799,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const sess = getSession();
   const loggedIn = sess && sess.role === "creator";
   const [step, setStep] = useState(loggedIn ? 1 : 0);
-  const [username, setUsername] = useState(loggedIn ? sess.username : ""); const [image, setImage] = useState("");
+  const [username, setUsername] = useState(loggedIn ? sess.username : ""); const [image, setImage] = useState(""); const [followers, setFollowers] = useState("");
   const [token, setToken] = useState(loggedIn ? sess.token : "");
   const [picked, setPicked] = useState(initialBusinessId ? [initialBusinessId] : []);
   const [reviews, setReviews] = useState({});
@@ -823,7 +823,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const join = async () => {
     setBusy(true); setErr("");
     try {
-      const r = await api("/influencer", { method: "POST", body: { username: handle, image } });
+      const r = await api("/influencer", { method: "POST", body: { username: handle, image, followers: Number(followers) || 0 } });
       setToken(r.token); onLogin({ role: "creator", token: r.token, username: r.username }); setStep(1);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -853,7 +853,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       <div style={{ padding: "30px 28px" }}>
         {step < 3 && <><span className="er-eyebrow">For creators</span><div style={{ marginTop: 12 }}><Stepper step={step} total={3} /></div></>}
         {step === 0 && <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Set up your profile</h2><p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>A photo and a username — that's the whole profile.</p></div>
+          <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Set up your profile</h2><p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>A photo, a username, and your following — that's the whole profile.</p></div>
           <Field label="Profile photo">
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               {image ? <img src={image} alt="" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }} /> : <span style={{ width: 64, height: 64, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: C.paper }}><Spark size={24} /></span>}
@@ -863,6 +863,8 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "11px 14px" }}>
               <span style={{ fontSize: 14.5, color: C.muted }}>easyrecommend.co/@</span>
               <input style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 14.5, fontFamily: "inherit", color: C.ink }} placeholder="yourname" value={username} onChange={(e) => setUsername(e.target.value)} /></div></Field>
+          <Field label="Follower count" hint="Your total audience across platforms. Brands see this when you request commission.">
+            <input className="er-input" type="number" min="0" placeholder="e.g. 188000" value={followers} onChange={(e) => setFollowers(e.target.value)} /></Field>
           <button className="er-btn er-btn-primary er-btn-block" disabled={!handle || busy} onClick={join}>{busy ? "Checking…" : <>Continue <Arrow size={16} /></>}</button>
           <ErrBox msg={err} />
         </div>}
@@ -1155,10 +1157,10 @@ function AdminPanel({ onBack, onRefresh }) {
 
 /* ---------- Influencer profile (fetches /creator/:username) ---------- */
 function EditProfileModal({ token, current, onClose, onSaved }) {
-  const [image, setImage] = useState(current.image || ""); const [bio, setBio] = useState(current.bio || "");
+  const [image, setImage] = useState(current.image || ""); const [bio, setBio] = useState(current.bio || ""); const [followers, setFollowers] = useState(current.followers || "");
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const onPhoto = async (e) => { const file = e.target.files && e.target.files[0]; if (!file) return; try { setImage(await fileToDataURL(file, 400, 0.85)); } catch (x) {} };
-  const save = async () => { setBusy(true); setErr(""); try { await api("/creator/me", { method: "PATCH", body: { token, image, bio } }); onSaved(); } catch (e) { setErr(e.message); } finally { setBusy(false); } };
+  const save = async () => { setBusy(true); setErr(""); try { await api("/creator/me", { method: "PATCH", body: { token, image, bio, followers: Number(followers) || 0 } }); onSaved(); } catch (e) { setErr(e.message); } finally { setBusy(false); } };
   return (
     <Modal onClose={onClose}>
       <div style={{ padding: "30px 28px" }}>
@@ -1171,6 +1173,8 @@ function EditProfileModal({ token, current, onClose, onSaved }) {
         </Field>
         <div style={{ height: 14 }} />
         <Field label="Bio"><textarea className="er-input" placeholder="Curating brands worth trusting." value={bio} onChange={(e) => setBio(e.target.value)} /></Field>
+        <div style={{ height: 14 }} />
+        <Field label="Follower count" hint="Your total audience across platforms."><input className="er-input" type="number" min="0" placeholder="e.g. 188000" value={followers} onChange={(e) => setFollowers(e.target.value)} /></Field>
         <ErrBox msg={err} />
         <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button className="er-btn er-btn-ghost" onClick={onClose}>Cancel</button>
@@ -1236,7 +1240,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}><h1 className="er-serif" style={{ margin: 0, fontSize: 30, fontWeight: 500 }}>@{data.username}</h1><Seal size={20} /></div>
               <p style={{ margin: "2px 0 0", fontSize: 14.5, color: C.muted }}>{data.bio || "Curating businesses worth trusting."}</p>
-              <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
+              <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{data.followers > 0 ? `${data.followersLabel} followers · ` : ""}{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", flexShrink: 0 }}>
               <button className="er-btn er-btn-light er-btn-sm" onClick={copyLink} style={{ color: copied ? C.accent : C.ink }}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}</button>
