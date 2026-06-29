@@ -256,7 +256,7 @@ function BusinessCard({ b, onOpen }) {
         <span style={{ position: "absolute", right: 12, top: 12, background: "#fff", borderRadius: 999, display: "flex", padding: 1 }}><Seal size={18} /></span>
       </div>
       <div style={{ padding: "13px 18px 0", flex: 1 }}>
-        <h3 className="er-serif" style={{ margin: 0, fontSize: 21, fontWeight: 500, letterSpacing: "-.01em" }}>{b.name}</h3>
+        <h3 className="er-serif" style={{ margin: 0, fontSize: 21, fontWeight: 500, letterSpacing: "-.01em", display: "flex", alignItems: "center", gap: 6 }}>{b.name}{b.premium && <span title="Premium verified" style={{ color: C.accent, display: "inline-flex" }}><Seal size={16} /></span>}</h3>
         <p style={{ margin: "5px 0 0", fontSize: 14, color: C.muted, lineHeight: 1.45 }}>{b.blurb}</p>
       </div>
       <div style={{ padding: "14px 18px 0", display: "flex", alignItems: "center", gap: 14, fontSize: 13, color: C.inkSoft }}>
@@ -308,7 +308,7 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
             <span style={{ fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 999, background: cc.bg, color: cc.color }}>{b.categories[0]}</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: C.accent }}><Seal size={15} /> Verified</span>
           </div>
-          <h2 className="er-serif" style={{ margin: "12px 0 0", fontSize: 28, fontWeight: 500, letterSpacing: "-.01em" }}>{b.name}</h2>
+          <h2 className="er-serif" style={{ margin: "12px 0 0", fontSize: 28, fontWeight: 500, letterSpacing: "-.01em", display: "flex", alignItems: "center", gap: 8 }}>{b.name}{b.premium && <span title="Premium verified" style={{ color: C.accent, display: "inline-flex" }}><Seal size={20} /></span>}</h2>
           <p style={{ margin: "6px 0 0", fontSize: 15, color: C.inkSoft, lineHeight: 1.5 }}>{b.blurb}</p>
           <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 16, fontSize: 13.5, color: C.inkSoft }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{b.online ? <Globe size={15} color={C.muted} /> : <Pin size={15} color={C.muted} />}{b.online ? "Online" : b.city}</span>
@@ -626,25 +626,128 @@ function ReqDecision({ r, onDecide }) {
     </div>
   );
 }
+const STRIPE_PK = "pk_live_REPLACE_WITH_YOUR_STRIPE_PUBLISHABLE_KEY"; // TODO: set your Stripe publishable key
+const PLANS = [
+  { key: "starter", amount: 70, title: "Starter", tag: "400+ influencers",
+    points: ["Get your brand referred by 400+ influencers", "Full refund if at least 1 influencer doesn't promote your brand within a year"] },
+  { key: "growth", amount: 449, title: "Growth", tag: "900+ influencers & bloggers",
+    points: ["Get your brand referred by 900+ influencers & bloggers", "Full refund if at least 10 influencers don't promote your brand within a year"] },
+  { key: "premium", amount: 899, title: "Premium", tag: "900+ influencers & bloggers", premium: true, featured: true,
+    points: ["Get your brand referred by 900+ influencers & bloggers", "Premium verified checkmark on your public listing", "Full refund if at least 10 influencers don't promote your brand within a year"] },
+];
+function useStripe() {
+  const [stripe, setStripe] = useState(null);
+  useEffect(() => {
+    if (window.Stripe) { setStripe(() => window.Stripe(STRIPE_PK)); return; }
+    const s = document.createElement("script"); s.src = "https://js.stripe.com/v3/";
+    s.onload = () => setStripe(() => window.Stripe(STRIPE_PK)); document.body.appendChild(s);
+  }, []);
+  return stripe;
+}
+function PayModal({ plan, business, sessionToken, onClose, onPaid }) {
+  const stripe = useStripe();
+  const cardRef = useRef(null); const cardEl = useRef(null);
+  const [name, setName] = useState(""); const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!stripe || cardEl.current || !cardRef.current) return;
+    const card = stripe.elements().create("card", { style: { base: { fontSize: "15px", color: "#1C1A17", "::placeholder": { color: "#9b9488" } } } });
+    card.mount(cardRef.current); cardEl.current = card; setReady(true);
+  }, [stripe]);
+  const pay = async () => {
+    if (!stripe || !cardEl.current) { setErr("Payment form still loading…"); return; }
+    if (!name.trim() || !email.trim()) { setErr("Add your name and email."); return; }
+    setBusy(true); setErr("");
+    try {
+      const { token, error } = await stripe.createToken(cardEl.current, { name });
+      if (error) throw new Error(error.message);
+      const res = await fetch("https://learntok-backend-2026-24c204fe508e.herokuapp.com/partyevents/paycharge", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: business.name, amount: plan.amount, token: token.id, email, customerName: name, phoneNumber: business.phone || "", streetAddress: "" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "Card was declined.");
+      await api("/business/pay", { method: "POST", body: { token: sessionToken, plan: plan.key, amount: plan.amount, chargeId: data.chargeId || "" } });
+      onPaid();
+    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <Modal onClose={onClose}>
+      <div style={{ padding: "30px 28px" }}>
+        <span className="er-eyebrow">{plan.title} · one-time</span>
+        <h2 className="er-serif" style={{ margin: "8px 0 4px", fontSize: 27, fontWeight: 500 }}>Pay ${plan.amount}</h2>
+        <p style={{ margin: "0 0 18px", fontSize: 14, color: C.muted }}>{plan.tag} · {business.name}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <Field label="Name on card"><input className="er-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" /></Field>
+          <Field label="Email"><input className="er-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@brand.com" /></Field>
+          <Field label="Card details"><div ref={cardRef} className="er-input" style={{ padding: "14px" }}>{!ready && <span style={{ color: C.muted, fontSize: 14 }}>Loading secure card field…</span>}</div></Field>
+          <p style={{ margin: 0, fontSize: 12, color: C.muted, display: "flex", alignItems: "center", gap: 6 }}><Lock size={13} /> Secured by Stripe. One-time charge, refundable per the plan terms.</p>
+          <ErrBox msg={err} />
+          <button className="er-btn er-btn-primary er-btn-block" disabled={busy || !ready} onClick={pay}>{busy ? "Processing…" : `Pay $${plan.amount}`}</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+function Paywall({ business, sessionToken, onPaid }) {
+  const [plan, setPlan] = useState(null);
+  const ghost = ["████ ██████ ███", "███████ ██ █████", "█████ ████████ ██", "██████ ███ ███████", "████████ █ ████"];
+  return (
+    <div>
+      {plan && <PayModal plan={plan} business={business} sessionToken={sessionToken} onClose={() => setPlan(null)} onPaid={onPaid} />}
+      <div style={{ position: "relative", minHeight: 230 }}>
+        <div aria-hidden style={{ filter: "blur(7px)", opacity: 0.5, userSelect: "none", pointerEvents: "none", display: "flex", flexDirection: "column", gap: 12 }}>
+          {ghost.map((g, i) => <div key={i} className="er-card" style={{ padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 38, height: 38, borderRadius: "50%", background: C.line, flexShrink: 0 }} />
+            <div style={{ flex: 1 }}><div style={{ fontWeight: 600, color: C.ink }}>{g}</div><div style={{ fontSize: 12.5, color: C.muted }}>████████ ████</div></div>
+            <span style={{ width: 72, height: 26, borderRadius: 8, background: C.line, flexShrink: 0 }} />
+          </div>)}
+        </div>
+        <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", padding: 16 }}>
+          <div style={{ textAlign: "center" }}>
+            <span style={{ width: 48, height: 48, borderRadius: 14, display: "inline-grid", placeItems: "center", background: C.ink, color: C.paper }}><Lock size={22} /></span>
+            <p className="er-serif" style={{ margin: "12px 0 0", fontSize: 23, fontWeight: 500 }}>Unlock your promotion</p>
+            <p style={{ margin: "4px auto 0", fontSize: 14, color: C.muted, maxWidth: 380 }}>Get your brand referred by real creators, then see who's backing you and handle their requests. Pick a plan to unlock.</p>
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 30, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(212px,1fr))" }}>
+        {PLANS.map((p) => <div key={p.key} className="er-card" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12, border: p.featured ? `2px solid ${C.accent}` : `1px solid ${C.line}`, position: "relative" }}>
+          {p.featured && <span style={{ position: "absolute", top: -11, left: 18, background: C.accent, color: "#fff", fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em", padding: "3px 10px", borderRadius: 999 }}>MOST PROMOTION</span>}
+          <div><div className="er-serif" style={{ fontSize: 20, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>{p.title}{p.premium && <Seal size={16} />}</div><div style={{ fontSize: 13, color: C.muted }}>{p.tag}</div></div>
+          <div style={{ fontSize: 30, fontWeight: 700, color: C.ink }}>${p.amount}<span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}> one-time</span></div>
+          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+            {p.points.map((pt, i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: C.inkSoft, lineHeight: 1.4 }}><span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Check size={15} /></span>{pt}</li>)}
+          </ul>
+          <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: "auto" }} onClick={() => setPlan(p)}>Choose {p.title}</button>
+        </div>)}
+      </div>
+    </div>
+  );
+}
 function MyBusiness({ session, onBack, onRefresh }) {
   const [tab, setTab] = useState("info");
   const [rows, setRows] = useState(null); const [err, setErr] = useState("");
-  const [infs, setInfs] = useState(null); const [reqs, setReqs] = useState(null);
+  const [reqs, setReqs] = useState(null);
   const t = encodeURIComponent(session.token);
   const reload = async () => { try { setRows(await api(`/business/me?token=${t}`)); setErr(""); } catch (e) { setErr(e.message); } onRefresh(); };
-  const reloadInfs = async () => { try { setInfs(await api(`/business/me/influencers?token=${t}`)); } catch (e) { setInfs([]); } };
   const reloadReqs = async () => { try { setReqs(await api(`/business/me/requests?token=${t}`)); } catch (e) { setReqs([]); } };
-  useEffect(() => { reload(); reloadInfs(); reloadReqs(); }, []);
+  useEffect(() => { reload(); }, []);
+  const paid = (rows || []).some((b) => b.paid);
+  const premium = (rows || []).some((b) => b.premium);
+  const business = (rows || [])[0] || null;
+  useEffect(() => { if (paid) reloadReqs(); }, [paid]);
   const decide = async (id, status, message) => { await api(`/business/request/${id}`, { method: "PATCH", body: { token: session.token, status, message } }); await reloadReqs(); };
   const pending = (reqs || []).filter((r) => r.status === "pending").length;
-  const tabs = [["info", "My information"], ["influencers", "Influencers"], ["requests", `Requests${pending ? ` · ${pending}` : ""}`]];
+  const onPaid = async () => { await reload(); setTab("promo"); };
+  const tabs = [["info", "My information"], ["promo", paid ? `Requests${pending ? ` · ${pending}` : ""}` : "Get promoted"]];
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 22px 80px" }}>
       <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>My business</h1>
-      <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>Manage your listing, see who's backing you, and handle commission requests.</p>
+      <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>Edit your listing for free. Unlock creator promotion and requests with a one-time plan.</p>
       <div style={{ display: "flex", gap: 18, borderBottom: `1px solid ${C.line}`, marginBottom: 22, flexWrap: "wrap" }}>
-        {tabs.map(([k, lbl]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "10px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1 }}>{lbl}</button>)}
+        {tabs.map(([k, lbl]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "10px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, display: "inline-flex", alignItems: "center", gap: 6 }}>{lbl}{k === "promo" && !paid && <Lock size={13} />}</button>)}
       </div>
       {err && <p style={{ background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>{err}</p>}
 
@@ -654,28 +757,19 @@ function MyBusiness({ session, onBack, onRefresh }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(rows || []).map((b) => <BizEditCard key={b.id} b={b} token={session.token} reload={reload} />)}</div>
       </>}
 
-      {tab === "influencers" && <>
-        {infs === null && <p style={{ color: C.muted }}>Loading…</p>}
-        {infs && infs.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No creators have added you yet.</p>}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {(infs || []).map((i, idx) => <div key={idx} className="er-card" style={{ padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
-            <Avatar name={i.influencer} image={i.image} size={42} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 15 }}>@{i.influencer}</div>
-              <div style={{ fontSize: 12.5, color: C.muted }}>Backs {i.businessName} · {i.clicks} clicks · {i.sales} sales</div>
+      {tab === "promo" && (rows === null
+        ? <p style={{ color: C.muted }}>Loading…</p>
+        : paid
+          ? <>
+            <div style={{ background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 14, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ color: C.accentD, display: "flex" }}>{premium ? <Seal size={20} /> : <Check size={20} />}</span>
+              <div style={{ fontSize: 13.5, color: C.accentD }}><b>You're live for promotion{premium ? " · Premium" : ""}.</b> Creators are being matched to your brand. Their requests show up below.</div>
             </div>
-            <a href={i.profileUrl} target="_blank" rel="noreferrer" className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none", flexShrink: 0 }}>View</a>
-          </div>)}
-        </div>
-      </>}
-
-      {tab === "requests" && <>
-        {reqs === null && <p style={{ color: C.muted }}>Loading…</p>}
-        {reqs && reqs.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No commission requests yet. When a creator asks for a higher rate, it shows up here.</p>}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {(reqs || []).map((r) => <ReqDecision key={r.id} r={r} onDecide={decide} />)}
-        </div>
-      </>}
+            {reqs === null && <p style={{ color: C.muted }}>Loading…</p>}
+            {reqs && reqs.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No commission requests yet. When a creator asks for a higher rate, it shows up here.</p>}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(reqs || []).map((r) => <ReqDecision key={r.id} r={r} onDecide={decide} />)}</div>
+          </>
+          : business ? <Paywall business={business} sessionToken={session.token} onPaid={onPaid} /> : <p style={{ color: C.muted }}>No business found.</p>)}
     </div>
   );
 }
