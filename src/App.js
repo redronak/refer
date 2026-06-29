@@ -190,16 +190,16 @@ function RecCard({ name, handle, image, category, quote, brand, stars = 5, style
 
 /* ---------- Swipeable testimonial stack (hero) ---------- */
 const TESTIMONIALS = [
-  { handle: "miaglow", category: "Beauty", quote: "My skin has never looked better — the vitamin C serum is unreal. I send everyone here.", brand: "Lumière Skincare" },
-  { handle: "coachkay", category: "Fitness", quote: "Strongest I've felt in years, and the coaches actually remember your name.", brand: "Iron & Oak Studio" },
-  { handle: "forkfeed", category: "Food & Drink", quote: "I've sent half my followers here. The tasting menu is worth every penny.", brand: "Cedar & Salt" },
-  { handle: "roamwithjo", category: "Travel", quote: "Booked three trips through them now — zero stress, all magic.", brand: "Wanderwell" },
-  { handle: "calmwithana", category: "Wellness", quote: "Six weeks in and my sleep is a different story. Genuinely life-changing.", brand: "Stillwater" },
-  { handle: "nestednina", category: "Home", quote: "Every piece I've ordered has outlasted the hype. My place finally feels like me.", brand: "Maika Home" },
-  { handle: "moneymara", category: "Finance", quote: "Finally someone who explains money like a human. My savings thank them.", brand: "Northbank" },
-  { handle: "studywithsam", category: "Education", quote: "I passed because of these courses — the instructors genuinely care.", brand: "Brightpath" },
-  { handle: "thelegaledit", category: "Legal", quote: "They made something terrifying feel simple. Worth every minute.", brand: "Harbor Legal" },
-  { handle: "stylebyel", category: "Fashion", quote: "Three years of compliments on one jacket. Quality you can feel.", brand: "Vela Studio" },
+  { handle: "buildwithleo", category: "AI Tools", quote: "Shipped my whole MVP in a weekend with this. First AI tool that actually gets my codebase.", brand: "Forgewright" },
+  { handle: "saasandsuch", category: "Software & SaaS", quote: "Cut our churn in half. The onboarding analytics paid for themselves in week one.", brand: "Retainly" },
+  { handle: "codecaitlin", category: "Software & SaaS", quote: "Auth, billing, and emails set up before lunch. Vibe coders, this is the one.", brand: "Stackplate" },
+  { handle: "promptpriya", category: "AI Tools", quote: "Replaced three tools with this one. The automations are stupid good.", brand: "Flowmint" },
+  { handle: "indiehackerem", category: "Apps", quote: "Downloaded it on a whim, now I open it every morning. Genuinely changed my routine.", brand: "Momentum" },
+  { handle: "growthgrace", category: "Marketplaces", quote: "Found my first 100 users here. The attribution actually works.", brand: "Launchlist" },
+  { handle: "noco.nadia", category: "Apps", quote: "Built and launched without writing a line of code. My users have no idea.", brand: "Blokstack" },
+  { handle: "designdanny", category: "Creator Tools", quote: "I make a month of content in an afternoon. My audience thinks I hired a team.", brand: "Studio Loop" },
+  { handle: "learnwithliam", category: "Online Courses", quote: "Went from zero to shipping in six weeks. The lessons are pure signal.", brand: "Buildschool" },
+  { handle: "devdonovan", category: "Creator Tools", quote: "My demo videos look like a funded startup now. Took ten minutes.", brand: "Reelkit" },
 ];
 function SwipeStack() {
   const [idx, setIdx] = useState(0);
@@ -652,7 +652,7 @@ function ReqDecision({ r, onDecide }) {
     </div>
   );
 }
-const STRIPE_PK = "pk_live_REPLACE_WITH_YOUR_STRIPE_PUBLISHABLE_KEY"; // TODO: set your Stripe publishable key
+const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhzBFvPj1bCOJmYX5mpQDU3FXL2jB8zR1TphQkZ00sCZhaEsZ";
 const PLANS = [
   { key: "starter", amount: 70, title: "Starter", tag: "400+ influencers",
     points: ["Get your brand referred by 400+ influencers", "Full refund if at least 1 influencer doesn't promote your brand within a year"] },
@@ -691,6 +691,7 @@ async function payWithCheckout({ plan, business, sessionToken, onPaid, onErr }) 
         } catch (e) { onErr(e.message); }
       },
     });
+    api("/business/pay-start", { method: "POST", body: { token: sessionToken, plan: plan.key, amount: plan.amount } }).catch(() => {});
     handler.open();
   } catch (e) { onErr(e.message); }
 }
