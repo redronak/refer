@@ -1042,27 +1042,30 @@ function AdminRow({ b, reload }) {
   );
 }
 function BulkSms() {
-  const [msg, setMsg] = useState(""); const [nums, setNums] = useState(""); const [aud, setAud] = useState("custom");
+  const [msg, setMsg] = useState(""); const [nums, setNums] = useState(""); const [aud, setAud] = useState("approved");
   const [busy, setBusy] = useState(false); const [res, setRes] = useState(""); const [err, setErr] = useState("");
   const send = async () => {
     if (!msg.trim()) { setErr("Write a message first."); return; }
+    if (aud === "none" && !nums.trim()) { setErr("Pick a business group or paste some numbers."); return; }
     if (!window.confirm("Send this SMS now?")) return;
     setBusy(true); setErr(""); setRes("");
     try {
-      const r = await api("/admin/bulk-sms", { method: "POST", admin: true, body: { message: msg, numbers: aud === "businesses" ? "" : nums, audience: (aud === "businesses" || aud === "both") ? "businesses" : "" } });
+      const r = await api("/admin/bulk-sms", { method: "POST", admin: true, body: { message: msg, numbers: nums, audience: aud === "none" ? "" : aud } });
       setRes(`Sent to ${r.sent} of ${r.recipients} recipient(s).`);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   return (
     <div className="er-card" style={{ padding: 18, marginTop: 22 }}>
       <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Bulk SMS</h2>
-      <p style={{ margin: "6px 0 14px", fontSize: 13.5, color: C.muted }}>Text a pasted list of numbers and/or every business on file.</p>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        {[["custom", "Pasted numbers"], ["businesses", "All businesses"], ["both", "Both"]].map(([k, l]) => { const on = aud === k;
+      <p style={{ margin: "6px 0 14px", fontSize: 13.5, color: C.muted }}>Pick which businesses to text, and/or paste extra numbers below.</p>
+      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>Businesses on file</div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+        {[["approved", "Approved only"], ["pending", "Pending only"], ["all", "All businesses"], ["none", "None"]].map(([k, l]) => { const on = aud === k;
           return <button key={k} type="button" onClick={() => setAud(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "8px 13px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{l}</button>; })}
       </div>
       <textarea className="er-input" style={{ minHeight: 88 }} placeholder="Your message…" value={msg} onChange={(e) => setMsg(e.target.value)} />
-      {(aud === "custom" || aud === "both") && <textarea className="er-input" style={{ marginTop: 10, minHeight: 66 }} placeholder="Phone numbers — separate by commas, spaces, or new lines (e.g. +15550102030)" value={nums} onChange={(e) => setNums(e.target.value)} />}
+      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, margin: "14px 0 8px" }}>Extra numbers (optional)</div>
+      <textarea className="er-input" style={{ minHeight: 60 }} placeholder="Phone numbers — separate by commas, spaces, or new lines (e.g. +15550102030)" value={nums} onChange={(e) => setNums(e.target.value)} />
       {err && <p style={{ margin: "10px 0 0", fontSize: 13, color: "#C0392B" }}>{err}</p>}
       {res && <p style={{ margin: "10px 0 0", fontSize: 13, color: C.accent, fontWeight: 600 }}>{res}</p>}
       <button className="er-btn er-btn-primary er-btn-sm" style={{ marginTop: 12 }} disabled={busy} onClick={send}><Send size={14} /> {busy ? "Sending…" : "Send bulk SMS"}</button>
