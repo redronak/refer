@@ -653,6 +653,7 @@ function PayModal({ plan, business, sessionToken, onClose, onPaid }) {
     if (!stripe || cardEl.current || !cardRef.current) return;
     const card = stripe.elements().create("card", { style: { base: { fontSize: "15px", color: "#1C1A17", "::placeholder": { color: "#9b9488" } } } });
     card.mount(cardRef.current); cardEl.current = card; setReady(true);
+    return () => { try { card.destroy(); } catch (e) {} cardEl.current = null; };
   }, [stripe]);
   const pay = async () => {
     if (!stripe || !cardEl.current) { setErr("Payment form still loading…"); return; }
@@ -680,7 +681,10 @@ function PayModal({ plan, business, sessionToken, onClose, onPaid }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <Field label="Name on card"><input className="er-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" /></Field>
           <Field label="Email"><input className="er-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@brand.com" /></Field>
-          <Field label="Card details"><div ref={cardRef} className="er-input" style={{ padding: "14px" }}>{!ready && <span style={{ color: C.muted, fontSize: 14 }}>Loading secure card field…</span>}</div></Field>
+          <Field label="Card details">
+            <div ref={cardRef} className="er-input" style={{ padding: "14px", minHeight: 48 }} />
+            {!ready && <span style={{ display: "block", fontSize: 12, color: C.muted, marginTop: 6 }}>Loading secure card field…</span>}
+          </Field>
           <p style={{ margin: 0, fontSize: 12, color: C.muted, display: "flex", alignItems: "center", gap: 6 }}><Lock size={13} /> Secured by Stripe. One-time charge, refundable per the plan terms.</p>
           <ErrBox msg={err} />
           <button className="er-btn er-btn-primary er-btn-block" disabled={busy || !ready} onClick={pay}>{busy ? "Processing…" : `Pay $${plan.amount}`}</button>
