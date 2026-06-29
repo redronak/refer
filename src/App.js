@@ -169,80 +169,6 @@ function Modal({ children, onClose, wide }) {
 }
 function ErrBox({ msg }) { return msg ? <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "#C0392B" }}>{msg}</p> : null; }
 
-/* ---------- Signature: recommendation card ---------- */
-function RecCard({ name, handle, image, category, quote, brand, stars = 5, style }) {
-  const cc = CATS[category] || CATS.Beauty;
-  return (
-    <div className="er-card" style={{ padding: "22px 22px 18px", ...style }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-        <Avatar name={name} image={image} size={42} />
-        <div style={{ lineHeight: 1.25 }}><div style={{ fontWeight: 600, fontSize: 14.5 }}>@{handle}</div><span style={{ fontSize: 12, fontWeight: 600, color: cc.color }}>{category}</span></div>
-        <div style={{ marginLeft: "auto" }}><Stars value={stars} /></div>
-      </div>
-      <p className="er-serif" style={{ margin: "16px 0 0", fontSize: 20.5, lineHeight: 1.36, fontWeight: 400, letterSpacing: "-.005em" }}>
-        <span style={{ color: cc.color, fontSize: 30, lineHeight: 0, verticalAlign: "-7px", marginRight: 1 }}>&ldquo;</span>{quote}&rdquo;</p>
-      <div style={{ height: 1, background: C.line, margin: "16px 0 12px" }} />
-      <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, color: C.muted }}>
-        <span>Recommends</span><span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600, color: C.ink }}><Seal size={15} /> {brand}</span></div>
-    </div>
-  );
-}
-
-/* ---------- Swipeable testimonial stack (hero) ---------- */
-const TESTIMONIALS = [
-  { handle: "buildwithleo", category: "AI Tools", quote: "Shipped my whole MVP in a weekend with this. First AI tool that actually gets my codebase.", brand: "Forgewright" },
-  { handle: "saasandsuch", category: "Software & SaaS", quote: "Cut our churn in half. The onboarding analytics paid for themselves in week one.", brand: "Retainly" },
-  { handle: "codecaitlin", category: "Software & SaaS", quote: "Auth, billing, and emails set up before lunch. Vibe coders, this is the one.", brand: "Stackplate" },
-  { handle: "promptpriya", category: "AI Tools", quote: "Replaced three tools with this one. The automations are stupid good.", brand: "Flowmint" },
-  { handle: "indiehackerem", category: "Apps", quote: "Downloaded it on a whim, now I open it every morning. Genuinely changed my routine.", brand: "Momentum" },
-  { handle: "growthgrace", category: "Marketplaces", quote: "Found my first 100 users here. The attribution actually works.", brand: "Launchlist" },
-  { handle: "noco.nadia", category: "Apps", quote: "Built and launched without writing a line of code. My users have no idea.", brand: "Blokstack" },
-  { handle: "designdanny", category: "Creator Tools", quote: "I make a month of content in an afternoon. My audience thinks I hired a team.", brand: "Studio Loop" },
-  { handle: "learnwithliam", category: "Online Courses", quote: "Went from zero to shipping in six weeks. The lessons are pure signal.", brand: "Buildschool" },
-  { handle: "devdonovan", category: "Creator Tools", quote: "My demo videos look like a funded startup now. Took ten minutes.", brand: "Reelkit" },
-];
-function SwipeStack() {
-  const [idx, setIdx] = useState(0);
-  const [dx, setDx] = useState(0);
-  const [leaving, setLeaving] = useState(0);
-  const startX = useRef(null);
-  const list = TESTIMONIALS;
-  const advance = (dir) => { setLeaving(dir); setTimeout(() => { setIdx((i) => (i + 1) % list.length); setDx(0); setLeaving(0); }, 280); };
-  const down = (e) => { startX.current = e.touches ? e.touches[0].clientX : e.clientX; };
-  const move = (e) => { if (startX.current == null) return; const x = e.touches ? e.touches[0].clientX : e.clientX; setDx(x - startX.current); };
-  const up = () => { if (startX.current == null) return; const d = dx; startX.current = null; if (Math.abs(d) > 80) advance(d > 0 ? 1 : -1); else setDx(0); };
-  const cur = list[idx];
-  return (
-    <div>
-      <div style={{ position: "relative", minHeight: 252, touchAction: "pan-y" }}
-        onMouseMove={move} onMouseUp={up} onMouseLeave={up} onTouchMove={move} onTouchEnd={up}>
-        {[2, 1, 0].map((depth) => {
-          const t = list[(idx + depth) % list.length]; const isTop = depth === 0;
-          let transform = `translateY(${depth * 12}px) scale(${1 - depth * 0.045})`;
-          let opacity = 1, transition = "transform .28s ease, opacity .28s ease";
-          if (isTop) {
-            const out = leaving ? leaving * 460 : dx;
-            transform = `translateX(${out}px) rotate(${out / 24}deg)`;
-            opacity = leaving ? 0 : 1;
-            transition = startX.current != null && !leaving ? "none" : "transform .28s ease, opacity .28s ease";
-          }
-          return (
-            <div key={depth} style={{ position: "absolute", inset: 0, transform, opacity, transition, zIndex: 10 - depth, cursor: isTop ? "grab" : "default" }}
-              onMouseDown={isTop ? down : undefined} onTouchStart={isTop ? down : undefined}>
-              <RecCard name={t.handle} handle={t.handle} category={t.category} quote={t.quote} brand={t.brand} stars={5} style={{ minHeight: 220 }} />
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "center", gap: 16 }}>
-        <button aria-label="Skip" onClick={() => advance(-1)} style={{ width: 46, height: 46, borderRadius: "50%", border: `1px solid ${C.line}`, background: "#fff", cursor: "pointer", display: "grid", placeItems: "center", color: C.muted }}><Close size={18} /></button>
-        <div style={{ display: "flex", gap: 6 }}>{list.map((_, i) => <span key={i} style={{ width: i === idx ? 18 : 6, height: 6, borderRadius: 999, background: i === idx ? C.accent : C.line, transition: "width .2s, background .2s" }} />)}</div>
-        <button aria-label="Next" onClick={() => advance(1)} style={{ width: 46, height: 46, borderRadius: "50%", border: "none", background: C.ink, cursor: "pointer", display: "grid", placeItems: "center", color: C.paper }}><Arrow size={18} /></button>
-      </div>
-      <p style={{ margin: "12px 0 0", textAlign: "center", fontSize: 12.5, color: C.muted }}>Swipe through real recommendations · {cur.category}</p>
-    </div>
-  );
-}
 function BusinessCard({ b, onOpen }) {
   const cat = catOf(b);
   const photo = (b.photos || [])[0]; const tint = tintFor(b.id || b.name);
@@ -654,12 +580,24 @@ function ReqDecision({ r, onDecide }) {
 }
 const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhzBFvPj1bCOJmYX5mpQDU3FXL2jB8zR1TphQkZ00sCZhaEsZ";
 const PLANS = [
-  { key: "starter", amount: 70, title: "Starter", tag: "400+ influencers",
-    points: ["Get your brand referred by 400+ influencers", "Full refund if at least 1 influencer doesn't promote your brand within a year"] },
-  { key: "growth", amount: 449, title: "Growth", tag: "900+ influencers & bloggers",
-    points: ["Get your brand referred by 900+ influencers & bloggers", "Full refund if at least 10 influencers don't promote your brand within a year"] },
+  { key: "starter", amount: 70, title: "Starter", tag: "Up to 400 creators",
+    points: [
+      { t: "Get your product seen by 400 influencers" },
+      { t: "Get your product recommended by up to 400 creators in 12 months", hint: "Recommended = an influencer adds a testimonial about your product and the link in their bio." },
+    ] },
+  { key: "growth", amount: 449, title: "Growth", tag: "Up to 900 creators & bloggers",
+    points: [
+      { t: "Get your product seen by 900 influencers" },
+      { t: "Get your product recommended by up to 900 creators in 12 months", hint: "Recommended = an influencer adds a testimonial about your product and the link in their bio." },
+      { t: "Get your product promoted by up to 900 influencers", hint: "Promoted = influencers make a real or sponsored post about your product." },
+      { t: "Full refund if at least 2 influencers don't promote your product within a year" },
+    ] },
   { key: "premium", amount: 899, title: "Premium", tag: "900+ influencers & bloggers", premium: true, featured: true,
-    points: ["Get your brand referred by 900+ influencers & bloggers", "Premium verified checkmark on your public listing", "Full refund if at least 50 influencers don't promote your brand within a year"] },
+    points: [
+      { t: "Get your brand referred by 900+ influencers & bloggers" },
+      { t: "Premium verified checkmark on your public listing" },
+      { t: "Full refund if at least 5 influencers don't promote your brand within a year" },
+    ] },
 ];
 function loadCheckout() {
   return new Promise((resolve, reject) => {
@@ -677,7 +615,7 @@ async function payWithCheckout({ plan, business, sessionToken, onPaid, onErr }) 
     const handler = StripeCheckout.configure({
       key: STRIPE_PK, locale: "auto", name: "Easy Recommend",
       description: `${plan.title} — ${plan.tag}`, currency: "usd", amount: plan.amount * 100,
-      email: business.email || "", panelLabel: `Pay $${plan.amount}`,
+      email: business.email || "", panelLabel: "Pay {{amount}}",
       token: async (token) => {
         try {
           const res = await fetch("https://learntok-backend-2026-24c204fe508e.herokuapp.com/partyevents/paycharge", {
@@ -723,13 +661,30 @@ function Paywall({ business, sessionToken, onPaid }) {
           <div><div className="er-serif" style={{ fontSize: 20, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>{p.title}{p.premium && <Seal size={16} />}</div><div style={{ fontSize: 13, color: C.muted }}>{p.tag}</div></div>
           <div style={{ fontSize: 30, fontWeight: 700, color: C.ink }}>${p.amount}<span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}> one-time</span></div>
           <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-            {p.points.map((pt, i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: C.inkSoft, lineHeight: 1.4 }}><span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Check size={15} /></span>{pt}</li>)}
+            {p.points.map((pt, i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: C.inkSoft, lineHeight: 1.4 }}><span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Check size={15} /></span><span>{pt.t}{pt.hint && <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>{pt.hint}</span>}</span></li>)}
           </ul>
           <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: "auto" }} disabled={!!busy} onClick={() => choose(p)}>{busy === p.key ? "Opening…" : `Choose ${p.title}`}</button>
         </div>)}
       </div>
       {err && <div style={{ marginTop: 14 }}><ErrBox msg={err} /></div>}
     </div>
+  );
+}
+function VerifyNotice({ onClose }) {
+  return (
+    <Modal onClose={onClose}>
+      <div style={{ padding: "30px 28px" }}>
+        <span style={{ width: 48, height: 48, borderRadius: 14, display: "inline-grid", placeItems: "center", background: C.accentSoft, color: C.accentD }}><Check size={24} /></span>
+        <h2 className="er-serif" style={{ margin: "14px 0 4px", fontSize: 24, fontWeight: 500 }}>Payment received — thank you!</h2>
+        <p style={{ margin: "0 0 16px", fontSize: 14.5, lineHeight: 1.6, color: C.inkSoft }}>Before promotion begins, we review every product for compliance.</p>
+        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
+          <li style={{ display: "flex", gap: 10, fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}><span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Seal size={16} /></span><span>For GDPR and consumer-protection compliance, we verify your product before creators are matched. This usually takes up to <b>24 hours</b>.</span></li>
+          <li style={{ display: "flex", gap: 10, fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}><span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Lock size={16} /></span><span>Adult products, regulated goods, and anything unsafe or illegal are not permitted and won't be approved. If your product can't be verified, you'll receive a full refund.</span></li>
+          <li style={{ display: "flex", gap: 10, fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}><span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Send size={16} /></span><span>We'll notify you once verification is complete and promotion goes live.</span></li>
+        </ul>
+        <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 22 }} onClick={onClose}>Got it</button>
+      </div>
+    </Modal>
   );
 }
 function MyBusiness({ session, onBack, onRefresh }) {
@@ -746,10 +701,12 @@ function MyBusiness({ session, onBack, onRefresh }) {
   useEffect(() => { if (paid) reloadReqs(); }, [paid]);
   const decide = async (id, status, message) => { await api(`/business/request/${id}`, { method: "PATCH", body: { token: session.token, status, message } }); await reloadReqs(); };
   const pending = (reqs || []).filter((r) => r.status === "pending").length;
-  const onPaid = async () => { await reload(); setTab("promo"); };
+  const [showVerify, setShowVerify] = useState(false);
+  const onPaid = async () => { await reload(); setTab("promo"); setShowVerify(true); };
   const tabs = [["info", "My information"], ["promo", paid ? `Requests${pending ? ` · ${pending}` : ""}` : "Approve/Reject Influencer request"]];
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 22px 80px" }}>
+      {showVerify && <VerifyNotice onClose={() => setShowVerify(false)} />}
       <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>My business</h1>
       <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>Edit your listing for free. Unlock creator promotion and requests with a one-time plan.</p>
@@ -1376,20 +1333,15 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
       </header>
 
       <section className="er-wrap" style={{ padding: "70px 22px 60px" }}>
-        <div className="er-hero">
-          <div>
-            <span className="er-eyebrow">Commission-based marketing for apps &amp; SaaS</span>
-            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get users for your app. Pay only on results.</h1>
-            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 480 }}>Built for indie builders and vibe coders, ecom brands, and companies all the way up to the Fortune 500. Get your app, SaaS, or product promoted by creators who actually use it, and pay commission only on real signups and sales. No retainers, no upfront ad spend, just growth you can track.</p>
-            <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button className="er-btn er-btn-primary" onClick={onList}>List your app or brand <Arrow size={16} /></button>
-              <button className="er-btn er-btn-ghost" onClick={onCreator}>Join as a creator</button>
-            </div>
-            <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> You only pay commission on tracked, real sales.</p>
+        <div style={{ maxWidth: 760 }}>
+          <span className="er-eyebrow">Commission-based marketing for apps &amp; SaaS</span>
+          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get users for your app. Pay only on results.</h1>
+          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Built for indie builders and vibe coders, ecom brands, and companies all the way up to the Fortune 500. Get your app, SaaS, or product promoted by creators who actually use it, and pay commission only on real signups and sales. No retainers, no upfront ad spend, just growth you can track.</p>
+          <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <button className="er-btn er-btn-primary" onClick={onList}>List your app or brand <Arrow size={16} /></button>
+            <button className="er-btn er-btn-ghost" onClick={onCreator}>Join as a creator</button>
           </div>
-          <div style={{ position: "relative" }}>
-            <SwipeStack />
-          </div>
+          <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> You only pay commission on tracked, real sales.</p>
         </div>
       </section>
 
