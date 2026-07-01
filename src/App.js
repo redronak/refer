@@ -87,6 +87,8 @@ function parseRoute() {
   if (p === "/admin" || window.location.hash === "#admin") return { view: "admin", handle: null };
   if (p === "/my-business") return { view: getSession() ? "mybiz" : "home", handle: null };
   if (p === "/settings") return { view: getSession() ? "settings" : "home", handle: null };
+  if (p === "/business") return { view: "business", handle: null };
+  if (p === "/influencers") return { view: "influencers", handle: null };
   const m = p.match(/^\/@([A-Za-z0-9_]+)/);
   if (m) return { view: "profile", handle: m[1].toLowerCase() };
   return { view: "home", handle: null };
@@ -582,21 +584,23 @@ const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhz
 const PLANS = [
   { key: "starter", amount: 70, title: "Starter", tag: "Up to 400 creators",
     points: [
-      { t: "Get your product seen by 400 influencers" },
-      { t: "Get your product recommended by up to 400 creators in 12 months", hint: "Recommended = an influencer adds a testimonial about your product and the link in their bio." },
+      { t: "Reach up to 400 vetted influencers" },
+      { t: "Get recommended by up to 400 creators over 12 months", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their bio." },
     ] },
   { key: "growth", amount: 449, title: "Growth", tag: "Up to 900 creators & bloggers",
     points: [
-      { t: "Get your product seen by 900 influencers" },
-      { t: "Get your product recommended by up to 900 creators in 12 months", hint: "Recommended = an influencer adds a testimonial about your product and the link in their bio." },
-      { t: "Get your product promoted by up to 900 influencers", hint: "Promoted = influencers make a real or sponsored post about your product." },
-      { t: "Full refund if at least 2 influencers don't promote your product within a year" },
+      { t: "Reach up to 900 vetted influencers and bloggers" },
+      { t: "Get recommended by up to 900 creators over 12 months", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their bio." },
+      { t: "Get promoted by up to 900 influencers", hint: "A promotion means an influencer publishes an organic or sponsored post about your product." },
+      { t: "Browse the creator directory and request specific influencers to work with" },
+      { t: "Full refund if fewer than 2 influencers promote your product within 12 months" },
     ] },
   { key: "premium", amount: 899, title: "Premium", tag: "900+ influencers & bloggers", premium: true, featured: true,
     points: [
-      { t: "Get your brand referred by 900+ influencers & bloggers" },
-      { t: "Premium verified checkmark on your public listing" },
-      { t: "Full refund if at least 5 influencers don't promote your brand within a year" },
+      { t: "Get referred by 900+ influencers and bloggers" },
+      { t: "Priority matching and a verified checkmark on your public listing" },
+      { t: "Browse and request specific influencers, with priority outreach on your behalf" },
+      { t: "Full refund if fewer than 5 influencers promote your brand within 12 months" },
     ] },
 ];
 function loadCheckout() {
@@ -610,6 +614,16 @@ function loadCheckout() {
   });
 }
 async function payWithCheckout({ plan, business, sessionToken, onPaid, onErr }) {
+  const host = (typeof window !== "undefined" && window.location.hostname) || "";
+  const isLocal = host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host.endsWith(".local");
+  if (isLocal) {
+    // Local dev: bypass Stripe entirely and unlock so you can test without paying.
+    try {
+      await api("/business/pay", { method: "POST", body: { token: sessionToken, plan: plan.key, amount: plan.amount, chargeId: "local_test_" + Date.now() } });
+      onPaid();
+    } catch (e) { onErr(e.message); }
+    return;
+  }
   try {
     const StripeCheckout = await loadCheckout();
     const handler = StripeCheckout.configure({
@@ -632,6 +646,24 @@ async function payWithCheckout({ plan, business, sessionToken, onPaid, onErr }) 
     api("/business/pay-start", { method: "POST", body: { token: sessionToken, plan: plan.key, amount: plan.amount } }).catch(() => {});
     handler.open();
   } catch (e) { onErr(e.message); }
+}
+function WhyOneTimeLink({ center }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div style={{ textAlign: center ? "center" : "left" }}>
+        <button onClick={() => setOpen(true)} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, color: C.accentD, fontWeight: 600, textDecoration: "underline" }}>Why a one-time fee instead of monthly?</button>
+      </div>
+      {open && <Modal onClose={() => setOpen(false)}>
+        <div style={{ padding: "30px 28px" }}>
+          <h2 className="er-serif" style={{ margin: "0 0 12px", fontSize: 23, fontWeight: 500 }}>Why we charge a one-time fee, not monthly</h2>
+          <p style={{ margin: "0 0 12px", fontSize: 14.5, lineHeight: 1.6, color: C.inkSoft }}>Commissions and conversions don't happen overnight. Influencer marketing is a long game: it takes time for creators to discover your product, post about it, and for their audiences to act.</p>
+          <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: C.inkSoft }}>Because results compound over months rather than days, we charge a single one-time fee that covers your full 12-month campaign — no recurring bills and no pressure to cancel. You focus on the outcomes, not a monthly subscription.</p>
+          <button className="er-btn er-btn-primary er-btn-sm" style={{ marginTop: 22 }} onClick={() => setOpen(false)}>Got it</button>
+        </div>
+      </Modal>}
+    </>
+  );
 }
 function Paywall({ business, sessionToken, onPaid }) {
   const [busy, setBusy] = useState(""); const [err, setErr] = useState("");
@@ -666,6 +698,7 @@ function Paywall({ business, sessionToken, onPaid }) {
           <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: "auto" }} disabled={!!busy} onClick={() => choose(p)}>{busy === p.key ? "Opening…" : `Choose ${p.title}`}</button>
         </div>)}
       </div>
+      <div style={{ marginTop: 16 }}><WhyOneTimeLink center /></div>
       {err && <div style={{ marginTop: 14 }}><ErrBox msg={err} /></div>}
     </div>
   );
@@ -1303,7 +1336,131 @@ function VidTile({ v }) {
     </div>
   );
 }
-function Landing({ activeCat, setActiveCat, businesses, creators, loading, error, session, onList, onCreator, onAdmin, onProfile, onOpenBusiness, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal }) {
+function PageHeader({ onHome, onLogin, right }) {
+  return (
+    <header style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(253,252,250,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
+      <div className="er-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
+        <button onClick={onHome} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer" }}><Seal size={20} /><span className="er-serif" style={{ fontSize: 19, fontWeight: 600, color: C.ink, whiteSpace: "nowrap" }}>Easy Recommend</span></button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogin}>Log in</button>
+          {right}
+        </div>
+      </div>
+    </header>
+  );
+}
+function HowStep({ n, title, body }) {
+  return (
+    <div style={{ display: "flex", gap: 16 }}>
+      <span style={{ flexShrink: 0, width: 34, height: 34, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: C.paper, fontWeight: 700, fontSize: 15 }}>{n}</span>
+      <div><h3 className="er-serif" style={{ margin: 0, fontSize: 19, fontWeight: 500 }}>{title}</h3><p style={{ margin: "4px 0 0", fontSize: 14.5, lineHeight: 1.55, color: C.inkSoft }}>{body}</p></div>
+    </div>
+  );
+}
+function PageFooter({ onLegal }) {
+  return (
+    <footer style={{ borderTop: `1px solid ${C.line}`, background: C.paper }}>
+      <div className="er-wrap" style={{ padding: "28px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend</p>
+        <div style={{ display: "flex", gap: 16 }}>
+          <button onClick={onLegal} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: C.muted, fontWeight: 500 }}>Privacy &amp; Cookies</button>
+          <a href="mailto:ronak@builderHQ.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none", fontSize: 12.5 }}>ronak@builderHQ.co</a>
+        </div>
+      </div>
+    </footer>
+  );
+}
+function PlanCardsInfo({ onCta }) {
+  return (
+    <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+      {PLANS.map((p) => <div key={p.key} className="er-card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 12, border: p.featured ? `2px solid ${C.accent}` : `1px solid ${C.line}`, position: "relative" }}>
+        {p.featured && <span style={{ position: "absolute", top: -11, left: 18, background: C.accent, color: "#fff", fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em", padding: "3px 10px", borderRadius: 999 }}>MOST POPULAR</span>}
+        <div><div className="er-serif" style={{ fontSize: 21, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>{p.title}{p.premium && <Seal size={16} />}</div><div style={{ fontSize: 13, color: C.muted }}>{p.tag}</div></div>
+        <div style={{ fontSize: 32, fontWeight: 700, color: C.ink }}>${p.amount}<span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}> one-time</span></div>
+        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 9 }}>
+          {p.points.map((pt, i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: C.inkSoft, lineHeight: 1.4 }}><span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Check size={15} /></span><span>{pt.t}{pt.hint && <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3 }}>{pt.hint}</span>}</span></li>)}
+        </ul>
+        <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: "auto" }} onClick={onCta}>Get started</button>
+      </div>)}
+    </div>
+  );
+}
+function BusinessPage({ onHome, onList, onCreator, onLogin, onLegal }) {
+  return (
+    <div>
+      <PageHeader onHome={onHome} onLogin={onLogin} right={<button className="er-btn er-btn-primary er-btn-sm" onClick={onList}>List your business</button>} />
+      <section className="er-wrap" style={{ padding: "70px 22px 50px" }}>
+        <div style={{ maxWidth: 760 }}>
+          <span className="er-eyebrow">For businesses</span>
+          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(34px,5.5vw,56px)", lineHeight: 1.05, fontWeight: 500, letterSpacing: "-.02em" }}>Get your product recommended by the right influencers.</h1>
+          <p style={{ margin: "20px 0 0", fontSize: 17, lineHeight: 1.55, color: C.inkSoft, maxWidth: 560 }}>List your brand, product, or app and let vetted creators recommend it to their audience. You set the commission and only pay when a referral converts — no retainers, no upfront ad spend.</p>
+          <div style={{ marginTop: 26, display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
+            <button className="er-btn er-btn-ghost" onClick={onCreator}>I'm a creator</button>
+          </div>
+        </div>
+      </section>
+      <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+        <div className="er-wrap" style={{ padding: "56px 22px" }}>
+          <div style={{ maxWidth: 640 }}>
+            <h2 className="er-serif" style={{ margin: "0 0 28px", fontSize: "clamp(24px,3.5vw,34px)", fontWeight: 500 }}>How it works</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+              <HowStep n={1} title="List your product" body="Add your brand, set your commission and any customer perk, and choose your categories." />
+              <HowStep n={2} title="Influencers recommend you" body="Creators add your product to their recommendation list and share the link in their bio." />
+              <HowStep n={3} title="They create content" body="Influencers promote your product to their audience — testimonials, posts, and sponsored content." />
+              <HowStep n={4} title="You pay on results" body="Commission is paid only on tracked sales. Every click and conversion is attributed to the creator who drove it." />
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="er-wrap" style={{ padding: "56px 22px" }}>
+        <h2 className="er-serif" style={{ margin: "0 0 6px", fontSize: "clamp(24px,3.5vw,34px)", fontWeight: 500, textAlign: "center" }}>Plans</h2>
+        <p style={{ margin: "0 auto 14px", fontSize: 15, color: C.muted, textAlign: "center", maxWidth: 560 }}>Choose a one-time plan to get your product in front of creators. Growth and Premium let you browse and request specific influencers.</p>
+        <div style={{ marginBottom: 26 }}><WhyOneTimeLink center /></div>
+        <PlanCardsInfo onCta={onList} />
+      </section>
+      <PageFooter onLegal={onLegal} />
+    </div>
+  );
+}
+function InfluencerPage({ onHome, onCreator, onList, onLogin, onLegal }) {
+  return (
+    <div>
+      <PageHeader onHome={onHome} onLogin={onLogin} right={<button className="er-btn er-btn-primary er-btn-sm" onClick={onCreator}>Join as a creator</button>} />
+      <section className="er-wrap" style={{ padding: "70px 22px 50px" }}>
+        <div style={{ maxWidth: 760 }}>
+          <span className="er-eyebrow">For creators</span>
+          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(34px,5.5vw,56px)", lineHeight: 1.05, fontWeight: 500, letterSpacing: "-.02em" }}>Recommend brands you love. Get paid for it.</h1>
+          <p style={{ margin: "20px 0 0", fontSize: 17, lineHeight: 1.55, color: C.inkSoft, maxWidth: 560 }}>Build a recommendation list of the products you actually use, share one link in your bio, and earn commission on every sale. Want more? Create content or sponsored posts for higher rates.</p>
+          <div style={{ marginTop: 26, display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <button className="er-btn er-btn-primary" onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
+            <button className="er-btn er-btn-ghost" onClick={onList}>I'm a business</button>
+          </div>
+        </div>
+      </section>
+      <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+        <div className="er-wrap" style={{ padding: "56px 22px" }}>
+          <div style={{ maxWidth: 640 }}>
+            <h2 className="er-serif" style={{ margin: "0 0 28px", fontSize: "clamp(24px,3.5vw,34px)", fontWeight: 500 }}>How it works</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+              <HowStep n={1} title="Sign up free" body="Create your creator profile in under a minute — username, photo, and your follower count." />
+              <HowStep n={2} title="Build your recommendation list" body="Pick the brands and products you genuinely back. Each one gets its own tracked referral link." />
+              <HowStep n={3} title="Share it in your bio" body="One link to everything you recommend. Your audience taps through and shops." />
+              <HowStep n={4} title="Get paid commission" body="Earn on every sale that comes through your links — automatically tracked and attributed to you." />
+              <HowStep n={5} title="Promote for more" body="Create content or sponsored posts for brands to unlock higher commission or a sponsorship fee." />
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="er-wrap" style={{ padding: "56px 22px", textAlign: "center" }}>
+        <h2 className="er-serif" style={{ margin: 0, fontSize: "clamp(24px,3.5vw,34px)", fontWeight: 500 }}>Start earning on what you already recommend.</h2>
+        <div style={{ marginTop: 20 }}><button className="er-btn er-btn-primary" onClick={onCreator}>Join as a creator <Arrow size={16} /></button></div>
+      </section>
+      <PageFooter onLegal={onLegal} />
+    </div>
+  );
+}
+function Landing({ activeCat, setActiveCat, businesses, creators, loading, error, session, onList, onCreator, onAdmin, onProfile, onOpenBusiness, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage }) {
   const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
   const visible = businesses.filter((b) => (b.categories || []).includes(activeCat));
   const steps = [
@@ -1324,8 +1481,9 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
               <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onSettings}>Settings</button>
               <button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogout}>Log out</button>
             </> : <>
+              <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onBusinessPage}>For business</button>
+              <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onInfluencerPage}>For creators</button>
               <button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogin}>Log in</button>
-              <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onList}>List business</button>
               <button className="er-btn er-btn-primary er-btn-sm" onClick={onCreator}>Join</button>
             </>}
           </div>
@@ -1334,12 +1492,12 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
 
       <section className="er-wrap" style={{ padding: "70px 22px 60px" }}>
         <div style={{ maxWidth: 760 }}>
-          <span className="er-eyebrow">Commission-based marketing for apps &amp; SaaS</span>
-          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get users for your app. Pay only on results.</h1>
-          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Built for indie builders and vibe coders, ecom brands, and companies all the way up to the Fortune 500. Get your app, SaaS, or product promoted by creators who actually use it, and pay commission only on real signups and sales. No retainers, no upfront ad spend, just growth you can track.</p>
+          <span className="er-eyebrow">Commission-based influencer marketing</span>
+          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get your brand recommended by influencers.</h1>
+          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Influencers add your product to their recommendation list, share it in their bio, and create content to promote it. They earn a commission on every sale — so you only ever pay for results. Built for indie builders, ecom brands, and companies up to the Fortune 500.</p>
           <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <button className="er-btn er-btn-primary" onClick={onList}>List your app or brand <Arrow size={16} /></button>
-            <button className="er-btn er-btn-ghost" onClick={onCreator}>Join as a creator</button>
+            <button className="er-btn er-btn-primary" onClick={onBusinessPage}>For businesses <Arrow size={16} /></button>
+            <button className="er-btn er-btn-ghost" onClick={onInfluencerPage}>For creators</button>
           </div>
           <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> You only pay commission on tracked, real sales.</p>
         </div>
@@ -1435,7 +1593,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           <div style={{ minWidth: 180 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 18, fontWeight: 600 }}>Easy Recommend</span></div>
             <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.5, maxWidth: 260 }}>A network where creators earn on the businesses they actually trust.</p>
-            <a href="mailto:support@easyrecommend.co" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> support@easyrecommend.co</span></a>
+            <a href="mailto:ronak@builderHQ.co" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> ronak@builderHQ.co</span></a>
           </div>
           {[
             { h: "For creators", links: [["Join as a creator", onCreator], ["Creator log in", onLogin]] },
@@ -1454,7 +1612,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend · Recommendations worth passing on</p>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <button onClick={onLegal} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: C.muted, fontWeight: 500 }}>Privacy &amp; Cookies</button>
-            <a href="mailto:support@easyrecommend.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>support@easyrecommend.co</a>
+            <a href="mailto:ronak@builderHQ.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>ronak@builderHQ.co</a>
           </div>
         </div>
       </footer>
@@ -1702,14 +1860,14 @@ function LegalModal({ onClose }) {
     ["10. How we share information", ["Between users of the Service: when a creator requests a commission, the relevant brand sees the creator's username, follower count, and request details; public listings and creator profiles are visible to other users and visitors.", "Service providers: vendors who host our infrastructure, send SMS/email, and process payments, acting on our instructions.", "Legal and safety: when required by law, to respond to legal process, or to protect the rights, safety, and security of users, the public, or Easy Recommend.", "Business transfers: in connection with a merger, acquisition, financing, or sale of assets, subject to this policy.", "We do not sell your personal information."]],
     ["11. Data retention", "We keep personal data for as long as your account is active or as needed to provide the Service, then for any additional period required to comply with legal, tax, accounting, or dispute-resolution obligations. When you delete your account, we remove your profile and associated links, reviews, and commission requests, though some records (such as transaction logs) may be retained where required. Backups are purged on a rolling schedule."],
     ["12. Data security", "We use reasonable technical and organizational measures to protect personal data, including encrypted connections (HTTPS), access controls, and tokenized authentication. No method of transmission or storage is completely secure, so we cannot guarantee absolute security. Please keep your account and device credentials confidential and notify us of any suspected unauthorized access."],
-    ["13. Your rights and choices", ["Access, correct, or update most details from Account settings.", "Delete your account at any time from Account settings, which removes your profile and related data.", "Opt out of non-essential SMS (reply STOP) and manage cookies via our banner and your browser.", "Depending on where you live, you may also have rights to access, port, restrict, or object to processing, and to lodge a complaint with a supervisory authority. To exercise these, contact us at support@easyrecommend.co; we may need to verify your identity before responding."]],
-    ["14. California privacy rights", "If you are a California resident, the CCPA/CPRA gives you rights to know what personal information we collect, to access and delete it, to correct inaccuracies, and to opt out of the \"sale\" or \"sharing\" of personal information. We do not sell or share personal information as those terms are defined, and we do not discriminate against you for exercising your rights. Submit requests to support@easyrecommend.co."],
+    ["13. Your rights and choices", ["Access, correct, or update most details from Account settings.", "Delete your account at any time from Account settings, which removes your profile and related data.", "Opt out of non-essential SMS (reply STOP) and manage cookies via our banner and your browser.", "Depending on where you live, you may also have rights to access, port, restrict, or object to processing, and to lodge a complaint with a supervisory authority. To exercise these, contact us at ronak@builderHQ.co; we may need to verify your identity before responding."]],
+    ["14. California privacy rights", "If you are a California resident, the CCPA/CPRA gives you rights to know what personal information we collect, to access and delete it, to correct inaccuracies, and to opt out of the \"sale\" or \"sharing\" of personal information. We do not sell or share personal information as those terms are defined, and we do not discriminate against you for exercising your rights. Submit requests to ronak@builderHQ.co."],
     ["15. European & UK users", "If you are in the EEA, UK, or Switzerland, you have rights under the GDPR/UK GDPR described in Section 13, including access, rectification, erasure, restriction, portability, and objection. Where we transfer data outside your region, we rely on appropriate safeguards such as standard contractual clauses."],
     ["16. International data transfers", "We and our service providers may process and store information in countries other than the one in which you live, including the United States. Where required, we put safeguards in place to protect your information consistent with this policy and applicable law."],
     ["17. Children's privacy", "The Service is not directed to children, and we do not knowingly collect personal information from anyone under 18. If you believe a minor has provided us information, contact us and we will delete it."],
     ["18. Third-party links and services", "The Service may contain links to third-party sites and products (for example, a brand's website or a creator's social profiles). We are not responsible for the privacy practices of those third parties; review their policies before providing information."],
     ["19. Changes to this policy", "We may update this policy from time to time. When we make material changes, we will update the \"Last updated\" date and, where appropriate, provide additional notice. Your continued use of the Service after changes take effect constitutes acceptance of the updated policy."],
-    ["20. Contact us", "Questions, requests, or complaints about this policy or your data? Email us at support@easyrecommend.co and we'll be glad to help."],
+    ["20. Contact us", "Questions, requests, or complaints about this policy or your data? Email us at ronak@builderHQ.co and we'll be glad to help."],
   ];
   return (
     <Modal onClose={onClose} wide>
@@ -1789,6 +1947,8 @@ function EasyApp() {
   const logout = () => { clearSession(); setSessionState(null); setView("home"); nav("/"); };
   const [legalOpen, setLegalOpen] = useState(false);
   const goSettings = () => { setView("settings"); nav("/settings"); };
+  const goBusinessPage = () => { setView("business"); nav("/business"); window.scrollTo(0, 0); };
+  const goInfluencerPage = () => { setView("influencers"); nav("/influencers"); window.scrollTo(0, 0); };
 
   useEffect(() => {
     const f = document.createElement("link"); f.rel = "stylesheet";
@@ -1828,11 +1988,13 @@ function EasyApp() {
     <div className="er-root">
       {view === "home" && <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} creators={creators} loading={loading} error={error} session={session}
         onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)}
-        onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} />}
+        onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} />}
+      {view === "business" && <BusinessPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
+      {view === "influencers" && <InfluencerPage onHome={goHome} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onList={() => setBrandOpen(true)} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "admin" && <AdminPanel onBack={goHome} onRefresh={refresh} />}
       {view === "mybiz" && session && <MyBusiness session={session} onBack={goHome} onRefresh={refresh} />}
       {view === "settings" && session && <AccountSettings session={session} onBack={goHome} onLogout={logout} onEditProfile={() => goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onLegal={() => setLegalOpen(true)} onDeleted={() => { logout(); }} />}
-      {view === "settings" && !session && <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} creators={creators} loading={loading} error={error} session={session} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => {}} onMyBiz={() => {}} onSettings={goSettings} onLegal={() => setLegalOpen(true)} />}
+      {view === "settings" && !session && <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} creators={creators} loading={loading} error={error} session={session} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => {}} onMyBiz={() => {}} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} />}
       {view === "profile" && <InfluencerProfile handle={profileHandle} session={session} dataVersion={ver} onBack={goHome} onBrowse={goHome} onOpenBusiness={(id) => setDetailId(id)} onAddBrand={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onRefresh={refresh} />}
 
       <CookieBar onLearnMore={() => setLegalOpen(true)} />
