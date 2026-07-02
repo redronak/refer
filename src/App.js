@@ -308,16 +308,12 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
 /* ---------- Brand onboarding ---------- */
 function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: "", phone: "", email: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: [], contacts: ["phone"] });
+  const [f, setF] = useState({ name: "", phone: "", email: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: [], contacts: ["website"] });
   const [otp, setOtp] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
-  const toggleContact = (m) => setF((p) => ({ ...p, contacts: p.contacts.includes(m) ? p.contacts.filter((x) => x !== m) : [...p.contacts, m] }));
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
-  const contactsFilled = f.contacts.length > 0
-    && (!f.contacts.includes("website") || !!f.website.trim())
-    && (!f.contacts.includes("phone") || !!f.phone.trim())
-    && (!f.contacts.includes("email") || !!f.email.trim());
+  const contactsFilled = !!f.website.trim();
   const valid = [f.name && f.phone.trim() && contactsFilled, f.categories.length > 0 && (f.online || f.city), commValid, otp.length >= 6];
   const titles = ["About your business", "Where to find you", "Your terms", "Verify your number"];
 
@@ -343,14 +339,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
           {step === 0 && <>
             <Field label="Brand, product, or app name"><input className="er-input" placeholder="Lumière Skincare, Focusly app, etc." value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
             <Field label="Mobile number" hint="We'll text a 6-digit code. You'll sign in with this number from now on."><PhoneInput value={f.phone} onChange={(v) => set("phone", v)} /></Field>
-            <Field label="Point of contact" hint="How should customers reach you? We'll show what you pick on your public page.">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {[["website", "Website"], ["email", "Email"], ["phone", "Phone"]].map(([m, lbl]) => { const on = f.contacts.includes(m);
-                  return <button key={m} type="button" onClick={() => toggleContact(m)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "9px 15px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{on && "✓ "}{lbl}</button>; })}
-              </div>
-            </Field>
-            {f.contacts.includes("website") && <Field label="Website" hint="The link customers visit."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>}
-            {f.contacts.includes("email") && <Field label="Contact email" hint="Shown on your public page so customers can reach you."><input className="er-input" type="email" placeholder="hello@brand.com" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>}
+            <Field label="Website" hint="The link customers visit — shown on your public page."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>
           </>}
           {step === 1 && <>
             <Field label="Categories" hint="Pick all that apply.">
@@ -386,6 +375,10 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <input type="range" min="0" max="40" value={f.discount} onChange={(e) => set("discount", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
                 <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.panel, color: C.ink }}>{f.discount}%</span></div></Field>
+            {f.discount > 0 && <div style={{ background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 12, padding: "12px 14px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.accentD, marginBottom: 4 }}>Shown to shoppers</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>Get {f.discount}% off when you shop {f.name || "us"} through this link{f.website ? ` at ${f.website}` : ""}.</div>
+            </div>}
           </>}
           {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone}</b>.</div>
@@ -584,19 +577,23 @@ const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhz
 const PLANS = [
   { key: "starter", amount: 70, title: "Starter", tag: "Up to 400 creators",
     points: [
-      { t: "Reach up to 400 vetted influencers" },
-      { t: "Get recommended by up to 400 creators over 12 months", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their bio." },
+      { t: "Get seen by 400+ vetted influencers" },
+      { t: "Get recommended by up to 400 creators over 12 months", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
+      { t: "Browse the creator directory and request specific influencers to work with", off: true },
+      { t: "Full refund if fewer than 2 influencers promote your product within 12 months", off: true },
     ] },
-  { key: "growth", amount: 449, title: "Growth", tag: "Up to 900 creators & bloggers",
+  { key: "growth", amount: 159, title: "Growth", tag: "Up to 900 creators & bloggers",
     points: [
-      { t: "Reach up to 900 vetted influencers and bloggers" },
-      { t: "Get recommended by up to 900 creators over 12 months", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their bio." },
+      { t: "See influencer requests — approve or reject each one" },
+      { t: "Get seen by 900 vetted influencers and bloggers" },
+      { t: "Get recommended by up to 900 creators over 12 months", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "Get promoted by up to 900 influencers", hint: "A promotion means an influencer publishes an organic or sponsored post about your product." },
       { t: "Browse the creator directory and request specific influencers to work with" },
       { t: "Full refund if fewer than 2 influencers promote your product within 12 months" },
     ] },
-  { key: "premium", amount: 899, title: "Premium", tag: "900+ influencers & bloggers", premium: true, featured: true,
+  { key: "premium", amount: 499, title: "Premium", tag: "900+ influencers & bloggers", premium: true, featured: true,
     points: [
+      { t: "See influencer requests — approve or reject each one" },
       { t: "Get referred by 900+ influencers and bloggers" },
       { t: "Priority matching and a verified checkmark on your public listing" },
       { t: "Browse and request specific influencers, with priority outreach on your behalf" },
@@ -693,7 +690,7 @@ function Paywall({ business, sessionToken, onPaid }) {
           <div><div className="er-serif" style={{ fontSize: 20, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>{p.title}{p.premium && <Seal size={16} />}</div><div style={{ fontSize: 13, color: C.muted }}>{p.tag}</div></div>
           <div style={{ fontSize: 30, fontWeight: 700, color: C.ink }}>${p.amount}<span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}> one-time</span></div>
           <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-            {p.points.map((pt, i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: C.inkSoft, lineHeight: 1.4 }}><span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Check size={15} /></span><span>{pt.t}{pt.hint && <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>{pt.hint}</span>}</span></li>)}
+            {p.points.map((pt, i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: pt.off ? C.muted : C.inkSoft, lineHeight: 1.4 }}><span style={{ color: pt.off ? C.muted : C.accent, flexShrink: 0, marginTop: 1 }}>{pt.off ? <Close size={15} /> : <Check size={15} />}</span><span>{pt.t}{pt.hint && <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>{pt.hint}</span>}</span></li>)}
           </ul>
           <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: "auto" }} disabled={!!busy} onClick={() => choose(p)}>{busy === p.key ? "Opening…" : `Choose ${p.title}`}</button>
         </div>)}
@@ -1265,9 +1262,10 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                     {photo ? <img src={photo} alt="" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} /> : <span style={{ width: 48, height: 48, borderRadius: 12, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={19} /></span>}
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}><h3 className="er-serif" style={{ margin: 0, fontSize: 19, fontWeight: 500 }}>{b.name}</h3><span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 999, background: cc.bg, color: cc.color }}>{b.categories[0]}</span></div>
-                      <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : b.city}{b.discount > 0 ? ` · ${b.discount}% off via this link` : ""}</p></div>
+                      <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : b.city}</p></div>
                     {isOwner && <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => removeBrand(b.id)}><Close size={14} /> Remove</button>}
                   </div>
+                  {b.discount > 0 && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 13, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "9px 12px" }}><span style={{ color: C.accentD, flexShrink: 0 }}><Seal size={16} /></span><span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>Get {b.discount}% off when you shop {b.name} through this link{site ? ` at ${site}` : ""}.</span></div>}
                   {!isOwner && hasContact && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 13 }}>
                     {b.website && <button className="er-btn er-btn-primary er-btn-sm" onClick={() => { trackClick(data.username, b.id); openSite(b.website); }}><Globe size={14} /> {site}</button>}
                     {b.email && <a href={`mailto:${b.email}`} onClick={() => trackClick(data.username, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Mail size={14} /> {b.email}</a>}
@@ -1378,14 +1376,14 @@ function PlanCardsInfo({ onCta }) {
         <div><div className="er-serif" style={{ fontSize: 21, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>{p.title}{p.premium && <Seal size={16} />}</div><div style={{ fontSize: 13, color: C.muted }}>{p.tag}</div></div>
         <div style={{ fontSize: 32, fontWeight: 700, color: C.ink }}>${p.amount}<span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}> one-time</span></div>
         <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 9 }}>
-          {p.points.map((pt, i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: C.inkSoft, lineHeight: 1.4 }}><span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Check size={15} /></span><span>{pt.t}{pt.hint && <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3 }}>{pt.hint}</span>}</span></li>)}
+          {p.points.map((pt, i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: pt.off ? C.muted : C.inkSoft, lineHeight: 1.4 }}><span style={{ color: pt.off ? C.muted : C.accent, flexShrink: 0, marginTop: 1 }}>{pt.off ? <Close size={15} /> : <Check size={15} />}</span><span>{pt.t}{pt.hint && <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3 }}>{pt.hint}</span>}</span></li>)}
         </ul>
         <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: "auto" }} onClick={onCta}>Get started</button>
       </div>)}
     </div>
   );
 }
-function BusinessPage({ onHome, onList, onCreator, onLogin, onLegal }) {
+function BusinessPage({ session, onHome, onList, onCreator, onLogin, onLegal }) {
   return (
     <div>
       <PageHeader onHome={onHome} onLogin={onLogin} right={<button className="er-btn er-btn-primary er-btn-sm" onClick={onList}>List your business</button>} />
@@ -1413,7 +1411,19 @@ function BusinessPage({ onHome, onList, onCreator, onLogin, onLegal }) {
           </div>
         </div>
       </section>
-
+      <section className="er-wrap" style={{ padding: "56px 22px" }}>
+        <h2 className="er-serif" style={{ margin: "0 0 6px", fontSize: "clamp(24px,3.5vw,34px)", fontWeight: 500, textAlign: "center" }}>Plans</h2>
+        {session && session.role !== "creator" ? <>
+          <p style={{ margin: "0 auto 14px", fontSize: 15, color: C.muted, textAlign: "center", maxWidth: 560 }}>Choose a one-time plan to get your product in front of creators. Growth and Premium let you browse and request specific influencers.</p>
+          <div style={{ marginBottom: 26 }}><WhyOneTimeLink center /></div>
+          <PlanCardsInfo onCta={onList} />
+        </> : (
+          <div style={{ maxWidth: 520, margin: "0 auto", textAlign: "center" }}>
+            <p style={{ margin: "0 0 20px", fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>List your business to view plans and pricing. It's free to create your listing — you only choose a plan when you're ready to go live.</p>
+            <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
+          </div>
+        )}
+      </section>
       <PageFooter onLegal={onLegal} />
     </div>
   );
@@ -1489,8 +1499,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         <div style={{ maxWidth: 760 }}>
           <span className="er-eyebrow">Commission-based influencer marketing</span>
           <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get your brand recommended by influencers.</h1>
-          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}><br></br>Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500.
-</p>
+          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500.</p>
           <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button className="er-btn er-btn-primary" onClick={onBusinessPage}>For businesses <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" onClick={onInfluencerPage}>For creators</button>
@@ -1985,7 +1994,7 @@ function EasyApp() {
       {view === "home" && <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} creators={creators} loading={loading} error={error} session={session}
         onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)}
         onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} />}
-      {view === "business" && <BusinessPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
+      {view === "business" && <BusinessPage session={session} onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "influencers" && <InfluencerPage onHome={goHome} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onList={() => setBrandOpen(true)} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "admin" && <AdminPanel onBack={goHome} onRefresh={refresh} />}
       {view === "mybiz" && session && <MyBusiness session={session} onBack={goHome} onRefresh={refresh} />}
