@@ -1498,7 +1498,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         </div>
       </section>
 
-      <section id="er-directory" style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}`, scrollMarginTop: 70 }}>
+      {/* <section id="er-directory" style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}`, scrollMarginTop: 70 }}>
         <div className="er-wrap" style={{ padding: "72px 22px" }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", justifyContent: "space-between" }}>
             <div><span className="er-eyebrow">The directory</span><h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(28px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em" }}>Browsed and vouched for</h2></div>
@@ -1512,7 +1512,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           {!error && !loading && visible.length === 0 && <p style={{ marginTop: 28, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: "44px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No businesses in {activeCat} yet — check back soon.</p>}
           {loading && <p style={{ marginTop: 28, textAlign: "center", color: C.muted }}>Loading…</p>}
         </div>
-      </section>
+      </section> */}
 
       <section id="er-how" className="er-wrap" style={{ padding: "0 22px 72px", scrollMarginTop: 70 }}>
         <div className="er-stepwork">
