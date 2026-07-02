@@ -528,7 +528,7 @@ const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhz
 const PLANS = [
   { key: "starter", amount: 70, title: "Starter", tag: "Up to 500 creators",
     points: [
-      { t: "Get your product recommended by up to 500+ influencers", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
+      { t: "Get your product recommended by up to 500+ influencers", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "See influencer requests — approve or reject them" },
     ] },
   { key: "growth", amount: 159, title: "Growth", tag: "Up to 1,000 creators", featured: true,
@@ -1449,7 +1449,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
 
       <section style={{ background: C.ink }}>
         <div className="er-wrap" style={{ padding: "44px 22px", display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", textAlign: "center" }}>
-          {[["1,000+", "products using it"], ["$300,000", "in sales driven"], ["300+", "creators earning"], ["4.9★", "average rating"]].map(([n, l]) => (
+          {[["1,000+", "products using it"], ["$300,000", "in sales driven"], ["3000+", "creators earning"], ["4.9★", "average rating"]].map(([n, l]) => (
             <div key={l}>
               <div className="er-serif" style={{ fontSize: "clamp(30px,4.5vw,44px)", fontWeight: 500, color: C.paper, letterSpacing: "-.02em" }}>{n}</div>
               <div style={{ marginTop: 4, fontSize: 13, color: "rgba(253,252,250,.66)" }}>{l}</div>
