@@ -577,6 +577,9 @@ const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhz
 const PLANS = [
   { key: "starter", amount: 70, title: "Starter", tag: "Up to 400 creators",
     points: [
+            { t: "Get seen by 400+ vetted influencers" },
+ { t: "See influencer requests — approve or reject each one" },
+    
       { t: "Get seen by 400+ vetted influencers" },
       { t: "Get recommended by up to 400 creators over 12 months", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "Browse the creator directory and request specific influencers to work with", off: true },
@@ -584,7 +587,7 @@ const PLANS = [
     ] },
   { key: "growth", amount: 159, title: "Growth", tag: "Up to 900 creators & bloggers",
     points: [
-      { t: "See influencer requests — approve or reject each one" },
+    
       { t: "Get seen by 900 vetted influencers and bloggers" },
       { t: "Get recommended by up to 900 creators over 12 months", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "Get promoted by up to 900 influencers", hint: "A promotion means an influencer publishes an organic or sponsored post about your product." },
@@ -679,8 +682,11 @@ function Paywall({ business, sessionToken, onPaid }) {
         <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", padding: 16 }}>
           <div style={{ textAlign: "center" }}>
             <span style={{ width: 48, height: 48, borderRadius: 14, display: "inline-grid", placeItems: "center", background: C.ink, color: C.paper }}><Lock size={22} /></span>
-            <p className="er-serif" style={{ margin: "12px 0 0", fontSize: 23, fontWeight: 500 }}>Unlock your promotion</p>
-            <p style={{ margin: "4px auto 0", fontSize: 14, color: C.muted, maxWidth: 380 }}>Get your brand referred by real creators, then see who's backing you and handle their requests. Pick a plan to unlock.</p>
+            <p className="er-serif" style={{ margin: "12px 0 0", fontSize: 23, fontWeight: 500 }}>  Unlock Influencer Requests
+            </p>
+            <p style={{ margin: "4px auto 0", fontSize: 14, color: C.muted, maxWidth: 380 }}>  Choose the Starter plan to view the influencer request. Upgrade to the
+  Growth plan to unlock the full list of influencers and send recommendation
+  requests to any of them.</p>
           </div>
         </div>
       </div>
