@@ -526,7 +526,7 @@ function ReqDecision({ r, onDecide }) {
 }
 const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhzBFvPj1bCOJmYX5mpQDU3FXL2jB8zR1TphQkZ00sCZhaEsZ";
 const PLANS = [
-  { key: "starter", amount: 70, title: "Starter", tag: "Up to 500 creators",
+  { key: "starter", amount: 70, title: "Starter", tag: "Up to 1000 creators",
     points: [
       { t: "Get your App/Website recommended by up to 1000+ influencers", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "See influencer requests — approve or reject them" },
