@@ -528,7 +528,7 @@ const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhz
 const PLANS = [
   { key: "starter", amount: 70, title: "Starter", tag: "Up to 500 creators",
     points: [
-      { t: "Get your product recommended by up to 1000+ influencers", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their recommendation list, which they put in their bio." },
+      { t: "Get your App/Website recommended by up to 1000+ influencers", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "See influencer requests — approve or reject them" },
     ] },
   { key: "growth", amount: 159, title: "Growth", tag: "Up to 1,000 creators", featured: true,
@@ -1326,7 +1326,7 @@ function BusinessPage({ onHome, onList, onCreator, onLogin, onLegal }) {
       <section className="er-wrap" style={{ padding: "70px 22px 50px" }}>
         <div style={{ maxWidth: 760 }}>
           <span className="er-eyebrow">For businesses</span>
-          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(34px,5.5vw,56px)", lineHeight: 1.05, fontWeight: 500, letterSpacing: "-.02em" }}>Get your product recommended by the right influencers.</h1>
+          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(34px,5.5vw,56px)", lineHeight: 1.05, fontWeight: 500, letterSpacing: "-.02em" }}>Get your App/Website recommended by the right influencers.</h1>
           <p style={{ margin: "20px 0 0", fontSize: 17, lineHeight: 1.55, color: C.inkSoft, maxWidth: 560 }}>List your brand, product, or app and let vetted creators recommend it to their audience. You set the commission and only pay when a referral converts — no retainers, no upfront ad spend.</p>
           <div style={{ marginTop: 26, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
@@ -1423,8 +1423,8 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
       <section className="er-wrap" style={{ padding: "70px 22px 60px" }}>
         <div style={{ maxWidth: 760 }}>
           <span className="er-eyebrow">Commission-based influencer marketing</span>
-          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get your product recommended by influencers.</h1>
-          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500.</p>
+          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get your App/Website recommended by influencers.</h1>
+          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Built for indie builders, brands, and companies ranging from startups to the Fortune 500.</p>
           <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button className="er-btn er-btn-primary" onClick={onBusinessPage}>For businesses <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" onClick={onInfluencerPage}>For creators</button>
