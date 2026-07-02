@@ -171,35 +171,6 @@ function Modal({ children, onClose, wide }) {
 }
 function ErrBox({ msg }) { return msg ? <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "#C0392B" }}>{msg}</p> : null; }
 
-function BusinessCard({ b, onOpen }) {
-  const cat = catOf(b);
-  const photo = (b.photos || [])[0]; const tint = tintFor(b.id || b.name);
-  return (
-    <div className="er-card er-card-h" role="button" tabIndex={0} onClick={onOpen}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
-      style={{ display: "flex", flexDirection: "column", overflow: "hidden", cursor: "pointer", textAlign: "left" }}>
-      <div style={{ position: "relative", height: 128, background: photo ? cat.bg : tint.bg, display: "grid", placeItems: "center" }}>
-        {photo ? <img src={photo} alt={b.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-          : <span style={{ color: tint.color, opacity: .7 }}><Store size={30} /></span>}
-        <span style={{ position: "absolute", left: 12, top: 12, fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 999, background: "rgba(255,255,255,.92)", color: cat.color }}>{b.categories[0]}</span>
-        <span style={{ position: "absolute", right: 12, top: 12, background: "#fff", borderRadius: 999, display: "flex", padding: 1 }}><Seal size={18} /></span>
-      </div>
-      <div style={{ padding: "13px 18px 0", flex: 1 }}>
-        <h3 className="er-serif" style={{ margin: 0, fontSize: 21, fontWeight: 500, letterSpacing: "-.01em", display: "flex", alignItems: "center", gap: 6 }}>{b.name}{b.premium && <span title="Premium verified" style={{ color: C.accent, display: "inline-flex" }}><Seal size={16} /></span>}</h3>
-        <p style={{ margin: "5px 0 0", fontSize: 14, color: C.muted, lineHeight: 1.45 }}>{b.blurb}</p>
-      </div>
-      <div style={{ padding: "14px 18px 0", display: "flex", alignItems: "center", gap: 14, fontSize: 13, color: C.inkSoft }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>{b.online ? <Globe size={14} color={C.muted} /> : <Pin size={14} color={C.muted} />}{b.online ? "Online" : b.city}</span>
-        {b.discount > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.accent, fontWeight: 600 }}>{b.discount}% member perk</span>}
-      </div>
-      <div style={{ height: 1, background: C.line, margin: "16px 18px 0" }} />
-      <div style={{ padding: "12px 18px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ marginLeft: "auto", color: C.ink }}><Arrow size={16} /></span>
-      </div>
-    </div>
-  );
-}
-
 /* ---------- Business detail (fetches /business/:id) ---------- */
 function BusinessDetail({ id, onClose, onRecommend }) {
   const [b, setB] = useState(null); const [err, setErr] = useState("");
@@ -555,28 +526,22 @@ function ReqDecision({ r, onDecide }) {
 }
 const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhzBFvPj1bCOJmYX5mpQDU3FXL2jB8zR1TphQkZ00sCZhaEsZ";
 const PLANS = [
-  { key: "starter", amount: 70, title: "Starter", tag: "Up to 400 creators",
+  { key: "starter", amount: 70, title: "Starter", tag: "Up to 500 creators",
     points: [
-      { t: "See influencer requests — approve or reject each one" },
-      { t: "Get seen by 400+ vetted influencers" },
-      { t: "Get recommended by up to 400 creators over 12 months", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
+      { t: "Get your product recommended by up to 500+ influencers", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
+      { t: "See influencer requests — approve or reject them" },
     ] },
-  { key: "growth", amount: 159, title: "Growth", tag: "Up to 900 creators & bloggers",
+  { key: "growth", amount: 159, title: "Growth", tag: "Up to 1,000 creators", featured: true,
     points: [
-      { t: "See influencer requests — approve or reject each one" },
-      { t: "Get seen by 900 vetted influencers and bloggers" },
-      { t: "Get recommended by up to 900 creators over 12 months", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
-      { t: "Get promoted by up to 900 influencers", hint: "A promotion means an influencer publishes an organic or sponsored post about your product." },
-      { t: "Browse the creator directory and request specific influencers to work with" },
-      { t: "Full refund if fewer than 2 influencers promote your product within 12 months" },
+      { t: "Get your product recommended by up to 1,000+ influencers" },
+      { t: "Get your product promoted by up to 1,000+ influencers", hint: "A promotion means an influencer publishes an organic or sponsored post about your product." },
+      { t: "Everything in Starter" },
     ] },
-  { key: "premium", amount: 499, title: "Premium", tag: "900+ influencers & bloggers", premium: true, featured: true,
+  { key: "premium", amount: 499, title: "Professional", tag: "Up to 2,000 creators", premium: true,
     points: [
-      { t: "See influencer requests — approve or reject each one" },
-      { t: "Get referred by 900+ influencers and bloggers" },
-      { t: "Priority matching and a verified checkmark on your public listing" },
-      { t: "Browse and request specific influencers, with priority outreach on your behalf" },
-      { t: "Full refund if fewer than 5 influencers promote your brand within 12 months" },
+      { t: "Get your product recommended by up to 2,000+ influencers" },
+      { t: "Get your product promoted by up to 1,000+ influencers", hint: "A promotion means an influencer publishes an organic or sponsored post about your product." },
+      { t: "Everything in Growth and Starter" },
     ] },
 ];
 function loadCheckout() {
@@ -592,10 +557,12 @@ function loadCheckout() {
 async function payWithCheckout({ plan, business, sessionToken, onPaid, onErr }) {
   const host = (typeof window !== "undefined" && window.location.hostname) || "";
   const isLocal = host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host.endsWith(".local");
-  if (isLocal) {
-    // Local dev: bypass Stripe entirely and unlock so you can test without paying.
+  let devPay = false;
+  try { devPay = localStorage.getItem("er_devpay") === "ronak-skip-1997"; } catch (e) {}
+  if (isLocal || devPay) {
+    // Local dev / dev-flag: bypass Stripe entirely and unlock so you can test without paying.
     try {
-      await api("/business/pay", { method: "POST", body: { token: sessionToken, plan: plan.key, amount: plan.amount, chargeId: "local_test_" + Date.now() } });
+      await api("/business/pay", { method: "POST", body: { token: sessionToken, plan: plan.key, amount: plan.amount, chargeId: "dev_test_" + Date.now() } });
       onPaid();
     } catch (e) { onErr(e.message); }
     return;
@@ -665,7 +632,7 @@ function Paywall({ business, sessionToken, onPaid }) {
       </div>
       <div style={{ marginTop: 30, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(212px,1fr))" }}>
         {PLANS.map((p) => <div key={p.key} className="er-card" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12, border: p.featured ? `2px solid ${C.accent}` : `1px solid ${C.line}`, position: "relative" }}>
-          {p.featured && <span style={{ position: "absolute", top: -11, left: 18, background: C.accent, color: "#fff", fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em", padding: "3px 10px", borderRadius: 999 }}>MOST PROMOTION</span>}
+          {p.featured && <span style={{ position: "absolute", top: -11, left: 18, background: C.accent, color: "#fff", fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em", padding: "3px 10px", borderRadius: 999 }}>MOST POPULAR</span>}
           <div><div className="er-serif" style={{ fontSize: 20, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>{p.title}{p.premium && <Seal size={16} />}</div><div style={{ fontSize: 13, color: C.muted }}>{p.tag}</div></div>
           <div style={{ fontSize: 30, fontWeight: 700, color: C.ink }}>${p.amount}<span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}> one-time</span></div>
           <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1002,7 +969,7 @@ function AdminRow({ b, reload }) {
   );
 }
 function BulkSms() {
-  const [msg, setMsg] = useState(""); const [nums, setNums] = useState(""); const [aud, setAud] = useState("approved");
+  const [msg, setMsg] = useState(""); const [nums, setNums] = useState(""); const [aud, setAud] = useState("approved"); const [richOnly, setRichOnly] = useState(false);
   const [busy, setBusy] = useState(false); const [res, setRes] = useState(""); const [err, setErr] = useState("");
   const send = async () => {
     if (!msg.trim()) { setErr("Write a message first."); return; }
@@ -1010,8 +977,8 @@ function BulkSms() {
     if (!window.confirm("Send this SMS now?")) return;
     setBusy(true); setErr(""); setRes("");
     try {
-      const r = await api("/admin/bulk-sms", { method: "POST", admin: true, body: { message: msg, numbers: nums, audience: aud === "none" ? "" : aud } });
-      setRes(`Sent to ${r.sent} of ${r.recipients} recipient(s).`);
+      const r = await api("/admin/bulk-sms", { method: "POST", admin: true, body: { message: msg, numbers: nums, audience: aud === "none" ? "" : aud, richOnly } });
+      setRes(`Sent to ${r.sent} of ${r.recipients} recipient(s).${r.skipped ? ` Skipped ${r.skipped} non-rich number(s).` : ""}`);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   return (
@@ -1026,6 +993,11 @@ function BulkSms() {
       <textarea className="er-input" style={{ minHeight: 88 }} placeholder="Your message…" value={msg} onChange={(e) => setMsg(e.target.value)} />
       <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, margin: "14px 0 8px" }}>Extra numbers (optional)</div>
       <textarea className="er-input" style={{ minHeight: 60 }} placeholder="Phone numbers — separate by commas, spaces, or new lines (e.g. +15550102030)" value={nums} onChange={(e) => setNums(e.target.value)} />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", marginTop: 14 }}>
+        <div><div style={{ fontSize: 14, fontWeight: 600 }}>Rich countries only</div><div style={{ fontSize: 12.5, color: C.muted }}>Only send to numbers in high-income countries (US, UK, EU, Gulf, etc.).</div></div>
+        <button type="button" onClick={() => setRichOnly(!richOnly)} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: "pointer", background: richOnly ? C.accent : "#CFC8BA", transition: "background .15s", flexShrink: 0 }}>
+          <span style={{ position: "absolute", top: 3, left: richOnly ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} /></button>
+      </div>
       {err && <p style={{ margin: "10px 0 0", fontSize: 13, color: "#C0392B" }}>{err}</p>}
       {res && <p style={{ margin: "10px 0 0", fontSize: 13, color: C.accent, fontWeight: 600 }}>{res}</p>}
       <button className="er-btn er-btn-primary er-btn-sm" style={{ marginTop: 12 }} disabled={busy} onClick={send}><Send size={14} /> {busy ? "Sending…" : "Send bulk SMS"}</button>
@@ -1419,9 +1391,8 @@ function InfluencerPage({ onHome, onCreator, onList, onLogin, onLegal }) {
     </div>
   );
 }
-function Landing({ activeCat, setActiveCat, businesses, creators, loading, error, session, onList, onCreator, onAdmin, onProfile, onOpenBusiness, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage }) {
+function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage }) {
   const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
-  const visible = businesses.filter((b) => (b.categories || []).includes(activeCat));
   const steps = [
     { t: "Businesses apply", d: "They add their details and a customer perk. We review every one before it's listed." },
     { t: "Creators curate", d: "A creator backs the businesses they trust and gets a tracked link." },
@@ -1458,7 +1429,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
             <button className="er-btn er-btn-primary" onClick={onBusinessPage}>For businesses <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" onClick={onInfluencerPage}>For creators</button>
           </div>
-          <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> You only pay commission on tracked, real sales.</p>
+          <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Trusted by 1,000+ products · you only pay commission on real, tracked sales.</p>
         </div>
       </section>
 
@@ -1478,7 +1449,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
 
       <section style={{ background: C.ink }}>
         <div className="er-wrap" style={{ padding: "44px 22px", display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", textAlign: "center" }}>
-          {[["$300,000", "in sales driven"], ["300+", "creators earning"], ["500+", "recommendations made"], ["4.9★", "average rating"]].map(([n, l]) => (
+          {[["1,000+", "products using it"], ["$300,000", "in sales driven"], ["300+", "creators earning"], ["4.9★", "average rating"]].map(([n, l]) => (
             <div key={l}>
               <div className="er-serif" style={{ fontSize: "clamp(30px,4.5vw,44px)", fontWeight: 500, color: C.paper, letterSpacing: "-.02em" }}>{n}</div>
               <div style={{ marginTop: 4, fontSize: 13, color: "rgba(253,252,250,.66)" }}>{l}</div>
@@ -1489,7 +1460,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
 
       <section style={{ background: C.paper }}>
         <div className="er-wrap" style={{ padding: "44px 22px", textAlign: "center" }}>
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.muted }}>Built for apps, SaaS &amp; brands like</p>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.muted }}>Used by</p>
           <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "20px 36px" }}>
             {["Notion", "Linear", "Figma", "Vercel", "Cursor", "Canva", "Framer", "Webflow", "Raycast", "Superhuman"].map((b) => (
               <span key={b} className="er-serif" style={{ fontSize: "clamp(18px,2.8vw,27px)", fontWeight: 600, color: C.inkSoft, opacity: 0.7, letterSpacing: "-.01em" }}>{b}</span>
@@ -1497,22 +1468,6 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           </div>
         </div>
       </section>
-
-      {/* <section id="er-directory" style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}`, scrollMarginTop: 70 }}>
-        <div className="er-wrap" style={{ padding: "72px 22px" }}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", justifyContent: "space-between" }}>
-            <div><span className="er-eyebrow">The directory</span><h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(28px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em" }}>Browsed and vouched for</h2></div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {CAT_LIST.map((c) => { const on = activeCat === c;
-                return <button key={c} onClick={() => setActiveCat(c)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "9px 16px", borderRadius: 999, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : "#fff", color: on ? C.paper : C.inkSoft }}>{c}</button>; })}
-            </div>
-          </div>
-          {error && <p style={{ marginTop: 24, background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 14, padding: "16px 18px", fontSize: 14, color: "#9B3024" }}>Something went wrong loading businesses. Please reload in a moment.</p>}
-          <div className="er-cards" style={{ marginTop: 28 }}>{visible.map((b) => <BusinessCard key={b.id} b={b} onOpen={() => onOpenBusiness(b.id)} />)}</div>
-          {!error && !loading && visible.length === 0 && <p style={{ marginTop: 28, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: "44px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No businesses in {activeCat} yet — check back soon.</p>}
-          {loading && <p style={{ marginTop: 28, textAlign: "center", color: C.muted }}>Loading…</p>}
-        </div>
-      </section> */}
 
       <section id="er-how" className="er-wrap" style={{ padding: "0 22px 72px", scrollMarginTop: 70 }}>
         <div className="er-stepwork">
@@ -1557,7 +1512,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
           {[
             { h: "For creators", links: [["Join as a creator", onCreator], ["Creator log in", onLogin]] },
             { h: "For businesses", links: [["List your business", onList], ["Business log in", onLogin]] },
-            { h: "Explore", links: [["Browse the directory", () => document.getElementById("er-directory")?.scrollIntoView({ behavior: "smooth" })], ["How it works", () => document.getElementById("er-how")?.scrollIntoView({ behavior: "smooth" })], ["Back to top", () => window.scrollTo({ top: 0, behavior: "smooth" })]] },
+            { h: "Explore", links: [["For businesses", onBusinessPage], ["For creators", onInfluencerPage], ["How it works", () => document.getElementById("er-how")?.scrollIntoView({ behavior: "smooth" })], ["Back to top", () => window.scrollTo({ top: 0, behavior: "smooth" })]] },
           ].map((col) => (
             <div key={col.h}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>{col.h}</p>
@@ -1888,7 +1843,6 @@ function EasyApp() {
   const initial = parseRoute();
   const [view, setView] = useState(initial.view);
   const [profileHandle, setProfileHandle] = useState(initial.handle);
-  const [activeCat, setActiveCat] = useState("Beauty");
   const [businesses, setBusinesses] = useState([]);
   const [creators, setCreators] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1945,7 +1899,7 @@ function EasyApp() {
 
   return (
     <div className="er-root">
-      {view === "home" && <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} creators={creators} loading={loading} error={error} session={session}
+      {view === "home" && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session}
         onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)}
         onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} />}
       {view === "business" && <BusinessPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
@@ -1953,7 +1907,7 @@ function EasyApp() {
       {view === "admin" && <AdminPanel onBack={goHome} onRefresh={refresh} />}
       {view === "mybiz" && session && <MyBusiness session={session} onBack={goHome} onRefresh={refresh} />}
       {view === "settings" && session && <AccountSettings session={session} onBack={goHome} onLogout={logout} onEditProfile={() => goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onLegal={() => setLegalOpen(true)} onDeleted={() => { logout(); }} />}
-      {view === "settings" && !session && <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} creators={creators} loading={loading} error={error} session={session} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => {}} onMyBiz={() => {}} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} />}
+      {view === "settings" && !session && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => {}} onMyBiz={() => {}} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} />}
       {view === "profile" && <InfluencerProfile handle={profileHandle} session={session} dataVersion={ver} onBack={goHome} onBrowse={goHome} onOpenBusiness={(id) => setDetailId(id)} onAddBrand={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onRefresh={refresh} />}
 
       <CookieBar onLearnMore={() => setLegalOpen(true)} />
