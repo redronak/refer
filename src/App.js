@@ -201,7 +201,7 @@ function BusinessCard({ b, onOpen }) {
 }
 
 /* ---------- Business detail (fetches /business/:id) ---------- */
-function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
+function BusinessDetail({ id, onClose, onRecommend }) {
   const [b, setB] = useState(null); const [err, setErr] = useState("");
   const [reward, setReward] = useState(null);
   const handle = creatorHandle();
@@ -277,26 +277,6 @@ function BusinessDetail({ id, onClose, onProfile, onRecommend }) {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-          <div style={{ height: 1, background: C.line, margin: "24px 0 18px" }} />
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <h3 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>What creators say</h3>
-          </div>
-          {b.reviews.length === 0 ? (
-            <p style={{ background: C.panel, borderRadius: 14, padding: "26px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>No reviews yet — be the first creator to recommend this.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {b.reviews.map((r, i) => (
-                <button key={i} onClick={() => onProfile(r.handle)} className="er-card er-row-h" style={{ textAlign: "left", cursor: "pointer", padding: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                    <Avatar name={r.handle} image={r.image} size={38} />
-                    <div style={{ flex: 1, lineHeight: 1.25 }}><div style={{ fontWeight: 600, fontSize: 14 }}>@{r.handle}</div><div style={{ fontSize: 12, color: C.muted }}>Tap to view profile</div></div>
-                    <Stars value={r.stars} />
-                  </div>
-                  {r.text && <p className="er-serif" style={{ margin: "12px 0 0", fontSize: 16.5, lineHeight: 1.4, color: C.ink }}>&ldquo;{r.text}&rdquo;</p>}
-                </button>
-              ))}
             </div>
           )}
         </div>
@@ -577,9 +557,7 @@ const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhz
 const PLANS = [
   { key: "starter", amount: 70, title: "Starter", tag: "Up to 400 creators",
     points: [
-            { t: "Get seen by 400+ vetted influencers" },
- { t: "See influencer requests — approve or reject each one" },
-    
+      { t: "See influencer requests — approve or reject each one" },
       { t: "Get seen by 400+ vetted influencers" },
       { t: "Get recommended by up to 400 creators over 12 months", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "Browse the creator directory and request specific influencers to work with", off: true },
@@ -587,7 +565,7 @@ const PLANS = [
     ] },
   { key: "growth", amount: 159, title: "Growth", tag: "Up to 900 creators & bloggers",
     points: [
-    
+      { t: "See influencer requests — approve or reject each one" },
       { t: "Get seen by 900 vetted influencers and bloggers" },
       { t: "Get recommended by up to 900 creators over 12 months", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "Get promoted by up to 900 influencers", hint: "A promotion means an influencer publishes an organic or sponsored post about your product." },
@@ -682,11 +660,8 @@ function Paywall({ business, sessionToken, onPaid }) {
         <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", padding: 16 }}>
           <div style={{ textAlign: "center" }}>
             <span style={{ width: 48, height: 48, borderRadius: 14, display: "inline-grid", placeItems: "center", background: C.ink, color: C.paper }}><Lock size={22} /></span>
-            <p className="er-serif" style={{ margin: "12px 0 0", fontSize: 23, fontWeight: 500 }}>  Unlock Influencer Requests
-            </p>
-            <p style={{ margin: "4px auto 0", fontSize: 14, color: C.muted, maxWidth: 380 }}>  Choose the Starter plan to view the influencer request. Upgrade to the
-  Growth plan to unlock the full list of influencers and send recommendation
-  requests to any of them.</p>
+            <p className="er-serif" style={{ margin: "12px 0 0", fontSize: 23, fontWeight: 500 }}>Unlock Influencer Requests</p>
+            <p style={{ margin: "4px auto 0", fontSize: 14, color: C.muted, maxWidth: 380 }}>Choose the Starter plan to view the influencer request. Upgrade to the Growth plan to unlock the full list of influencers and send recommendation requests to any of them.</p>
           </div>
         </div>
       </div>
@@ -746,8 +721,8 @@ function MyBusiness({ session, onBack, onRefresh }) {
       <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>My business</h1>
       <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>Edit your listing for free. Unlock creator promotion and requests with a one-time plan.</p>
-      <div style={{ display: "flex", gap: 18, borderBottom: `1px solid ${C.line}`, marginBottom: 22, flexWrap: "wrap" }}>
-        {tabs.map(([k, lbl]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "10px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, display: "inline-flex", alignItems: "center", gap: 6 }}>{lbl}{k === "promo" && !paid && <Lock size={13} />}</button>)}
+      <div style={{ display: "flex", gap: 26, borderBottom: `1px solid ${C.line}`, marginBottom: 22, flexWrap: "wrap" }}>
+        {tabs.map(([k, lbl]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 17, fontWeight: 600, padding: "12px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2.5px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, display: "inline-flex", alignItems: "center", gap: 7 }}>{lbl}{k === "promo" && !paid && <Lock size={15} />}</button>)}
       </div>
       {err && <p style={{ background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>{err}</p>}
 
@@ -1374,22 +1349,7 @@ function PageFooter({ onLegal }) {
     </footer>
   );
 }
-function PlanCardsInfo({ onCta }) {
-  return (
-    <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
-      {PLANS.map((p) => <div key={p.key} className="er-card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 12, border: p.featured ? `2px solid ${C.accent}` : `1px solid ${C.line}`, position: "relative" }}>
-        {p.featured && <span style={{ position: "absolute", top: -11, left: 18, background: C.accent, color: "#fff", fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em", padding: "3px 10px", borderRadius: 999 }}>MOST POPULAR</span>}
-        <div><div className="er-serif" style={{ fontSize: 21, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>{p.title}{p.premium && <Seal size={16} />}</div><div style={{ fontSize: 13, color: C.muted }}>{p.tag}</div></div>
-        <div style={{ fontSize: 32, fontWeight: 700, color: C.ink }}>${p.amount}<span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}> one-time</span></div>
-        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 9 }}>
-          {p.points.map((pt, i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: pt.off ? C.muted : C.inkSoft, lineHeight: 1.4 }}><span style={{ color: pt.off ? C.muted : C.accent, flexShrink: 0, marginTop: 1 }}>{pt.off ? <Close size={15} /> : <Check size={15} />}</span><span>{pt.t}{pt.hint && <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 3 }}>{pt.hint}</span>}</span></li>)}
-        </ul>
-        <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: "auto" }} onClick={onCta}>Get started</button>
-      </div>)}
-    </div>
-  );
-}
-function BusinessPage({ session, onHome, onList, onCreator, onLogin, onLegal }) {
+function BusinessPage({ onHome, onList, onCreator, onLogin, onLegal }) {
   return (
     <div>
       <PageHeader onHome={onHome} onLogin={onLogin} right={<button className="er-btn er-btn-primary er-btn-sm" onClick={onList}>List your business</button>} />
@@ -1417,18 +1377,8 @@ function BusinessPage({ session, onHome, onList, onCreator, onLogin, onLegal }) 
           </div>
         </div>
       </section>
-      <section className="er-wrap" style={{ padding: "56px 22px" }}>
-        <h2 className="er-serif" style={{ margin: "0 0 6px", fontSize: "clamp(24px,3.5vw,34px)", fontWeight: 500, textAlign: "center" }}>Plans</h2>
-        {session && session.role !== "creator" ? <>
-          <p style={{ margin: "0 auto 14px", fontSize: 15, color: C.muted, textAlign: "center", maxWidth: 560 }}>Choose a one-time plan to get your product in front of creators. Growth and Premium let you browse and request specific influencers.</p>
-          <div style={{ marginBottom: 26 }}><WhyOneTimeLink center /></div>
-          <PlanCardsInfo onCta={onList} />
-        </> : (
-          <div style={{ maxWidth: 520, margin: "0 auto", textAlign: "center" }}>
-            <p style={{ margin: "0 0 20px", fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>List your business to view plans and pricing. It's free to create your listing — you only choose a plan when you're ready to go live.</p>
-            <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
-          </div>
-        )}
+      <section className="er-wrap" style={{ padding: "10px 22px 64px", textAlign: "center" }}>
+        <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
       </section>
       <PageFooter onLegal={onLegal} />
     </div>
@@ -2000,7 +1950,7 @@ function EasyApp() {
       {view === "home" && <Landing activeCat={activeCat} setActiveCat={setActiveCat} businesses={businesses} creators={creators} loading={loading} error={error} session={session}
         onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)}
         onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} />}
-      {view === "business" && <BusinessPage session={session} onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
+      {view === "business" && <BusinessPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "influencers" && <InfluencerPage onHome={goHome} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onList={() => setBrandOpen(true)} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "admin" && <AdminPanel onBack={goHome} onRefresh={refresh} />}
       {view === "mybiz" && session && <MyBusiness session={session} onBack={goHome} onRefresh={refresh} />}
