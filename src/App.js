@@ -1413,12 +1413,7 @@ function BusinessPage({ onHome, onList, onCreator, onLogin, onLegal }) {
           </div>
         </div>
       </section>
-      <section className="er-wrap" style={{ padding: "56px 22px" }}>
-        <h2 className="er-serif" style={{ margin: "0 0 6px", fontSize: "clamp(24px,3.5vw,34px)", fontWeight: 500, textAlign: "center" }}>Plans</h2>
-        <p style={{ margin: "0 auto 14px", fontSize: 15, color: C.muted, textAlign: "center", maxWidth: 560 }}>Choose a one-time plan to get your product in front of creators. Growth and Premium let you browse and request specific influencers.</p>
-        <div style={{ marginBottom: 26 }}><WhyOneTimeLink center /></div>
-        {/* <PlanCardsInfo onCta={onList} /> */}
-      </section>
+
       <PageFooter onLegal={onLegal} />
     </div>
   );
@@ -1494,7 +1489,7 @@ function Landing({ activeCat, setActiveCat, businesses, creators, loading, error
         <div style={{ maxWidth: 760 }}>
           <span className="er-eyebrow">Commission-based influencer marketing</span>
           <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get your brand recommended by influencers.</h1>
-          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Thousands of influencers can add your product to their recommendation lists, feature it in their bios, and create content to promote it. They earn a commission on every sale, so you only pay for results. Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500.
+          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}><br></br>Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500.
 </p>
           <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button className="er-btn er-btn-primary" onClick={onBusinessPage}>For businesses <Arrow size={16} /></button>
