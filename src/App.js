@@ -560,8 +560,6 @@ const PLANS = [
       { t: "See influencer requests — approve or reject each one" },
       { t: "Get seen by 400+ vetted influencers" },
       { t: "Get recommended by up to 400 creators over 12 months", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
-      { t: "Browse the creator directory and request specific influencers to work with", off: true },
-      { t: "Full refund if fewer than 2 influencers promote your product within 12 months", off: true },
     ] },
   { key: "growth", amount: 159, title: "Growth", tag: "Up to 900 creators & bloggers",
     points: [
