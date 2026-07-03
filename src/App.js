@@ -260,32 +260,19 @@ function BusinessDetail({ id, onClose, onRecommend }) {
 function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [step, setStep] = useState(0);
   const [f, setF] = useState({ name: "", phone: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0 });
-  const [otp, setOtp] = useState(""); const [codeSent, setCodeSent] = useState(false);
-  const [bizId, setBizId] = useState(null); const [token, setToken] = useState(null);
-  const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const [otp, setOtp] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
-  const validStep1 = f.categories.length > 0 && (f.online || f.city.trim());
-  const titles = ["Create your account", "Where to find you", "Your terms"];
+  const valid = [f.name.trim() && f.phone.trim() && f.website.trim(), f.categories.length > 0 && (f.online || f.city.trim()), commValid, otp.length >= 6];
+  const titles = ["About your business", "Where to find you", "Your terms", "Verify your number"];
 
-  const sendCode = async () => {
-    setBusy(true); setErr("");
-    try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); setCodeSent(true); }
-    catch (e) { setErr(e.message); } finally { setBusy(false); }
-  };
-  const verifyAndCreate = async () => {
+  const sendCode = async () => { setErr(""); try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); } catch (e) { setErr(e.message); } };
+  const submit = async () => {
     setBusy(true); setErr("");
     try {
-      const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, otp } });
-      if (r && r.token) { setBizId(r.id); setToken(r.token); onLogin({ role: "brand", token: r.token, phone: f.phone }); onRefresh(); setStep(1); }
-      else setErr("Could not create your account. Try again.");
-    } catch (e) { setErr(e.message); } finally { setBusy(false); }
-  };
-  const finish = async () => {
-    setBusy(true); setErr("");
-    try {
-      await api(`/business/me/${bizId}`, { method: "PATCH", body: { token, website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount } });
+      const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount, contacts: ["website"], otp } });
+      if (r && r.token) onLogin({ role: "brand", token: r.token, phone: f.phone });
       onRefresh(); onDone(f.name);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -295,21 +282,15 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
       <div style={{ padding: "30px 28px" }}>
         <span className="er-eyebrow">List your business</span>
         <h2 className="er-serif" style={{ margin: "8px 0 4px", fontSize: 27, fontWeight: 500 }}>{titles[step]}</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 14, color: C.muted }}>Step {step + 1} of 3 · You only pay creators when a referral converts.</p>
-        <Stepper step={step} total={3} />
+        <p style={{ margin: "0 0 16px", fontSize: 14, color: C.muted }}>Step {step + 1} of 4 · You only pay creators when a referral converts.</p>
+        <Stepper step={step} total={4} />
         <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           {step === 0 && <>
-            <Field label="Brand, product, or app name"><input className="er-input" placeholder="Lumière Skincare, Focusly app, etc." value={f.name} disabled={codeSent} onChange={(e) => set("name", e.target.value)} /></Field>
-            <Field label="Mobile number" hint="We'll text a 6-digit code. You'll sign in with this number from now on."><PhoneInput value={f.phone} onChange={(v) => set("phone", v)} disabled={codeSent} /></Field>
-            {codeSent && <>
-              <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone}</b>.</div>
-              <Field label="Verification code"><input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
-              <button className="er-link" onClick={sendCode} style={{ alignSelf: "flex-start" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={14} /> Resend code</span></button>
-            </>}
-            <ErrBox msg={err} />
+            <Field label="Brand, product, or app name"><input className="er-input" placeholder="Lumière Skincare, Focusly app, etc." value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
+            <Field label="Mobile number" hint="We'll text a 6-digit code. You'll sign in with this number from now on."><PhoneInput value={f.phone} onChange={(v) => set("phone", v)} /></Field>
+            <Field label="Website" hint="The link customers visit — shown on your public page."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>
           </>}
           {step === 1 && <>
-            <Field label="Website" hint="The link customers visit — shown on your public page."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>
             <Field label="Categories" hint="Pick all that apply.">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {CAT_LIST.map((c) => { const on = f.categories.includes(c); const cc = CATS[c];
@@ -322,7 +303,6 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
                 <span style={{ position: "absolute", top: 3, left: f.online ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} /></button>
             </div>
             <Field label="City" hint={f.online ? "Optional for online businesses." : "Where customers visit you."}><input className="er-input" placeholder="San Francisco" value={f.city} onChange={(e) => set("city", e.target.value)} /></Field>
-            <ErrBox msg={err} />
           </>}
           {step === 2 && <>
             <Field label="How you'll reward creators" hint="Kept private — creators see it only when they generate a link.">
@@ -348,16 +328,20 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.accentD, marginBottom: 4 }}>Shown to shoppers</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>Get {f.discount}% off when you shop {f.name || "us"} through this link{f.website ? ` at ${f.website}` : ""}.</div>
             </div>}
-            <ErrBox msg={err} />
           </>}
+          {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone}</b>.</div>
+            <Field label="Verification code">
+              <input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
+            <button className="er-link" onClick={sendCode} style={{ alignSelf: "flex-start" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={14} /> Text me a code</span></button>
+            <ErrBox msg={err} />
+          </div>}
         </div>
         <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          {step === 2 ? <button className="er-btn er-btn-ghost" onClick={() => setStep(1)}><ChevL size={16} /> Back</button>
-            : (step === 0 && codeSent ? <button className="er-btn er-btn-ghost" onClick={() => { setCodeSent(false); setOtp(""); setErr(""); }}><ChevL size={16} /> Change number</button> : <span />)}
-          {step === 0 && !codeSent && <button className="er-btn er-btn-primary" disabled={!(f.name.trim() && f.phone.trim()) || busy} onClick={sendCode}>{busy ? "Sending…" : "Send code"} <ChevR size={16} /></button>}
-          {step === 0 && codeSent && <button className="er-btn er-btn-primary" disabled={otp.length < 6 || busy} onClick={verifyAndCreate}><Check size={16} /> {busy ? "Verifying…" : "Verify & continue"}</button>}
-          {step === 1 && <button className="er-btn er-btn-primary" disabled={!validStep1} onClick={() => setStep(2)}>Continue <ChevR size={16} /></button>}
-          {step === 2 && <button className="er-btn er-btn-primary" disabled={!commValid || busy} onClick={finish}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
+          {step > 0 ? <button className="er-btn er-btn-ghost" onClick={() => setStep(step - 1)}><ChevL size={16} /> Back</button> : <span />}
+          {step < 3
+            ? <button className="er-btn er-btn-primary" disabled={!valid[step]} onClick={() => { const next = step + 1; setStep(next); if (next === 3) sendCode(); }}>Continue <ChevR size={16} /></button>
+            : <button className="er-btn er-btn-primary" disabled={!valid[3] || busy} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
         </div>
       </div>
     </Modal>
