@@ -543,6 +543,7 @@ const PLANS = [
   { key: "starter", amount: 70, title: "Starter", tag: "Up to 500 creators",
     points: [
       { t: "Get your product recommended by up to 1000+ influencers", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their recommendation list, which they put in their bio." },
+      { t: "Get on approx 100 recommendation lists" },
       { t: "See influencer requests — approve or reject them" },
     ] },
   { key: "growth", amount: 159, title: "Growth", tag: "Up to 1,000 creators", featured: true,
@@ -1503,7 +1504,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         <div className="er-wrap" style={{ padding: "44px 22px", textAlign: "center" }}>
           <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.muted }}>Used by</p>
           <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "20px 36px" }}>
-            {["Notion", "Linear", "Figma", "Vercel", "Cursor", "Canva", "Framer", "Webflow", "Raycast", "Superhuman"].map((b) => (
+            {["Framer", "Webflow", "Raycast", "Superhuman"].map((b) => (
               <span key={b} className="er-serif" style={{ fontSize: "clamp(18px,2.8vw,27px)", fontWeight: 600, color: C.inkSoft, opacity: 0.7, letterSpacing: "-.01em" }}>{b}</span>
             ))}
           </div>
@@ -1671,7 +1672,7 @@ const RB_AGENTS = [
 ];
 // Videos for the homepage. Files in public/: /video1.mp4 … /video18.mp4, with
 // posters /image1.jpeg … /image18.jpeg. Plays on hover (desktop) / tap (mobile).
-const ER_VIDEOS = Array.from({ length: 18 }, (_, i) => ({ src: `/video${i + 1}.mp4`, poster: `/image${i + 1}.jpeg`, title: "" }));
+const ER_VIDEOS = [13, 14, 15, 16, 17, 18, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => ({ src: `/video${n}.mp4`, poster: `/image${n}.jpeg`, title: "" }));
 
 function RBtn({ children, kind = "primary", as = "button", href, onClick, style }) {
   const cls = `rb-btn rb-btn-${kind}`;
