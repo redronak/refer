@@ -544,7 +544,7 @@ const PLANS = [
     points: [
       { t: "Get your product recommended by up to 1000+ influencers", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "Get on approx 100 recommendation lists" },
-      { t: "See influencer requests — approve or reject them" },
+      { t: "See influencer requests-approve or reject them" },
     ] },
   { key: "growth", amount: 159, title: "Growth", tag: "Up to 1,000 creators", featured: true,
     points: [
