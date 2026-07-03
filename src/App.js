@@ -149,16 +149,16 @@ const COUNTRY_CODES = [
   { c: "ZA", d: "+27", f: "🇿🇦" }, { c: "NG", d: "+234", f: "🇳🇬" }, { c: "IE", d: "+353", f: "🇮🇪" },
 ];
 // Combines a country code + local number into an E.164-ish string for `onChange`.
-function PhoneInput({ value, onChange, autoFocus }) {
+function PhoneInput({ value, onChange, autoFocus, disabled }) {
   const [code, setCode] = useState("+1");
   const [local, setLocal] = useState("");
   const emit = (cd, lc) => { const digits = lc.replace(/\D/g, ""); onChange(digits ? cd + digits : ""); };
   return (
-    <div style={{ display: "flex", gap: 8 }}>
-      <select className="er-input" style={{ flex: "0 0 auto", width: 104, padding: "0 8px" }} value={code} onChange={(e) => { setCode(e.target.value); emit(e.target.value, local); }}>
+    <div style={{ display: "flex", gap: 8, opacity: disabled ? 0.6 : 1 }}>
+      <select className="er-input" disabled={disabled} style={{ flex: "0 0 auto", width: 104, padding: "0 8px" }} value={code} onChange={(e) => { setCode(e.target.value); emit(e.target.value, local); }}>
         {COUNTRY_CODES.map((c, i) => <option key={c.c + i} value={c.d}>{c.f} {c.d}</option>)}
       </select>
-      <input className="er-input" style={{ flex: 1 }} type="tel" autoFocus={autoFocus} placeholder="555 010 2030" value={local} onChange={(e) => { setLocal(e.target.value); emit(code, e.target.value); }} />
+      <input className="er-input" disabled={disabled} style={{ flex: 1 }} type="tel" autoFocus={autoFocus} placeholder="555 010 2030" value={local} onChange={(e) => { setLocal(e.target.value); emit(code, e.target.value); }} />
     </div>
   );
 }
@@ -259,22 +259,33 @@ function BusinessDetail({ id, onClose, onRecommend }) {
 /* ---------- Brand onboarding ---------- */
 function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: "", phone: "", email: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, photos: [], contacts: ["website"] });
-  const [otp, setOtp] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const [f, setF] = useState({ name: "", phone: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0 });
+  const [otp, setOtp] = useState(""); const [codeSent, setCodeSent] = useState(false);
+  const [bizId, setBizId] = useState(null); const [token, setToken] = useState(null);
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
-  const contactsFilled = !!f.website.trim();
-  const valid = [f.name && f.phone.trim() && contactsFilled, f.categories.length > 0 && (f.online || f.city), commValid, otp.length >= 6];
-  const titles = ["About your business", "Where to find you", "Your terms", "Verify your number"];
+  const validStep1 = f.categories.length > 0 && (f.online || f.city.trim());
+  const titles = ["Create your account", "Where to find you", "Your terms"];
 
-  const sendCode = async () => { setErr(""); try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); } catch (e) { setErr(e.message); } };
-  const submit = async () => {
+  const sendCode = async () => {
+    setBusy(true); setErr("");
+    try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); setCodeSent(true); }
+    catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const verifyAndCreate = async () => {
     setBusy(true); setErr("");
     try {
-      const vis = { hideWebsite: !f.contacts.includes("website"), hideEmail: !f.contacts.includes("email"), hidePhone: !f.contacts.includes("phone") };
-      const r = await api("/business", { method: "POST", body: { ...f, ...vis, otp } });
-      if (r && r.token) onLogin({ role: "brand", token: r.token, phone: f.phone, email: f.email });
+      const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, otp } });
+      if (r && r.token) { setBizId(r.id); setToken(r.token); onLogin({ role: "brand", token: r.token, phone: f.phone }); onRefresh(); setStep(1); }
+      else setErr("Could not create your account. Try again.");
+    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const finish = async () => {
+    setBusy(true); setErr("");
+    try {
+      await api(`/business/me/${bizId}`, { method: "PATCH", body: { token, website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount } });
       onRefresh(); onDone(f.name);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -284,15 +295,21 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
       <div style={{ padding: "30px 28px" }}>
         <span className="er-eyebrow">List your business</span>
         <h2 className="er-serif" style={{ margin: "8px 0 4px", fontSize: 27, fontWeight: 500 }}>{titles[step]}</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 14, color: C.muted }}>Step {step + 1} of 4 · You only pay creators when a referral converts.</p>
-        <Stepper step={step} total={4} />
+        <p style={{ margin: "0 0 16px", fontSize: 14, color: C.muted }}>Step {step + 1} of 3 · You only pay creators when a referral converts.</p>
+        <Stepper step={step} total={3} />
         <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           {step === 0 && <>
-            <Field label="Brand, product, or app name"><input className="er-input" placeholder="Lumière Skincare, Focusly app, etc." value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
-            <Field label="Mobile number" hint="We'll text a 6-digit code. You'll sign in with this number from now on."><PhoneInput value={f.phone} onChange={(v) => set("phone", v)} /></Field>
-            <Field label="Website" hint="The link customers visit — shown on your public page."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>
+            <Field label="Brand, product, or app name"><input className="er-input" placeholder="Lumière Skincare, Focusly app, etc." value={f.name} disabled={codeSent} onChange={(e) => set("name", e.target.value)} /></Field>
+            <Field label="Mobile number" hint="We'll text a 6-digit code. You'll sign in with this number from now on."><PhoneInput value={f.phone} onChange={(v) => set("phone", v)} disabled={codeSent} /></Field>
+            {codeSent && <>
+              <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone}</b>.</div>
+              <Field label="Verification code"><input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
+              <button className="er-link" onClick={sendCode} style={{ alignSelf: "flex-start" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={14} /> Resend code</span></button>
+            </>}
+            <ErrBox msg={err} />
           </>}
           {step === 1 && <>
+            <Field label="Website" hint="The link customers visit — shown on your public page."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>
             <Field label="Categories" hint="Pick all that apply.">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {CAT_LIST.map((c) => { const on = f.categories.includes(c); const cc = CATS[c];
@@ -305,6 +322,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
                 <span style={{ position: "absolute", top: 3, left: f.online ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} /></button>
             </div>
             <Field label="City" hint={f.online ? "Optional for online businesses." : "Where customers visit you."}><input className="er-input" placeholder="San Francisco" value={f.city} onChange={(e) => set("city", e.target.value)} /></Field>
+            <ErrBox msg={err} />
           </>}
           {step === 2 && <>
             <Field label="How you'll reward creators" hint="Kept private — creators see it only when they generate a link.">
@@ -330,20 +348,16 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.accentD, marginBottom: 4 }}>Shown to shoppers</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>Get {f.discount}% off when you shop {f.name || "us"} through this link{f.website ? ` at ${f.website}` : ""}.</div>
             </div>}
-          </>}
-          {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone}</b>.</div>
-            <Field label="Verification code">
-              <input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
-            <button className="er-link" onClick={sendCode} style={{ alignSelf: "flex-start" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={14} /> Text me a code</span></button>
             <ErrBox msg={err} />
-          </div>}
+          </>}
         </div>
         <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          {step > 0 ? <button className="er-btn er-btn-ghost" onClick={() => setStep(step - 1)}><ChevL size={16} /> Back</button> : <span />}
-          {step < 3
-            ? <button className="er-btn er-btn-primary" disabled={!valid[step]} onClick={() => { const next = step + 1; setStep(next); if (next === 3) sendCode(); }}>Continue <ChevR size={16} /></button>
-            : <button className="er-btn er-btn-primary" disabled={!valid[3] || busy} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
+          {step === 2 ? <button className="er-btn er-btn-ghost" onClick={() => setStep(1)}><ChevL size={16} /> Back</button>
+            : (step === 0 && codeSent ? <button className="er-btn er-btn-ghost" onClick={() => { setCodeSent(false); setOtp(""); setErr(""); }}><ChevL size={16} /> Change number</button> : <span />)}
+          {step === 0 && !codeSent && <button className="er-btn er-btn-primary" disabled={!(f.name.trim() && f.phone.trim()) || busy} onClick={sendCode}>{busy ? "Sending…" : "Send code"} <ChevR size={16} /></button>}
+          {step === 0 && codeSent && <button className="er-btn er-btn-primary" disabled={otp.length < 6 || busy} onClick={verifyAndCreate}><Check size={16} /> {busy ? "Verifying…" : "Verify & continue"}</button>}
+          {step === 1 && <button className="er-btn er-btn-primary" disabled={!validStep1} onClick={() => setStep(2)}>Continue <ChevR size={16} /></button>}
+          {step === 2 && <button className="er-btn er-btn-primary" disabled={!commValid || busy} onClick={finish}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
         </div>
       </div>
     </Modal>
@@ -526,9 +540,9 @@ function ReqDecision({ r, onDecide }) {
 }
 const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhzBFvPj1bCOJmYX5mpQDU3FXL2jB8zR1TphQkZ00sCZhaEsZ";
 const PLANS = [
-  { key: "starter", amount: 70, title: "Starter", tag: "Up to 1000 creators",
+  { key: "starter", amount: 70, title: "Starter", tag: "Up to 500 creators",
     points: [
-      { t: "Get your App/Website recommended by up to 1000+ influencers", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their recommendation list, which they put in their bio." },
+      { t: "Get your product recommended by up to 1000+ influencers", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "See influencer requests — approve or reject them" },
     ] },
   { key: "growth", amount: 159, title: "Growth", tag: "Up to 1,000 creators", featured: true,
@@ -772,6 +786,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const q = query.trim().toLowerCase();
   const match = (b) => !q || (b.name || "").toLowerCase().includes(q);
   const byCat = {}; approved.forEach((b) => { if (!(b && b.name && b.name.trim())) return; const c = ((b.categories || []).find((x) => CATS[x])) || "Other"; (byCat[c] = byCat[c] || []).push(b); });
+  Object.values(byCat).forEach((arr) => arr.sort((a, b) => (b.paid ? 1 : 0) - (a.paid ? 1 : 0)));
   const cats = CAT_LIST.filter((c) => byCat[c]);
   const noMatches = q && cats.every((c) => !byCat[c].filter(match).length);
 
@@ -819,10 +834,10 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
                 </button>
                 {open && <div style={{ borderTop: `1px solid ${C.line}` }}>
                   {list.map((b) => { const on = picked.includes(b.id); const bt = tintFor(b.id || b.name); const photo = (b.photos || [])[0];
-                    return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 13, textAlign: "left", padding: "14px 16px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : "#fff", cursor: "pointer" }}>
+                    return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 13, textAlign: "left", padding: "14px 16px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : (b.paid ? "#FBFAF6" : "#fff"), boxShadow: b.paid && !on ? `inset 3px 0 0 ${C.accent}` : "none", cursor: "pointer" }}>
                       <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center", border: `1.5px solid ${on ? C.accent : "#CFC8BA"}`, background: on ? C.accent : "#fff", color: "#fff" }}>{on && <Check size={15} />}</span>
                       <span style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, display: "grid", placeItems: "center", background: bt.bg, color: bt.color, overflow: "hidden" }}>{photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={16} />}</span>
-                      <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "block", fontWeight: 600, fontSize: 15, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span><span style={{ display: "block", fontSize: 13, color: C.muted, marginTop: 1 }}>{b.online ? "Online" : (b.city || "—")}</span></span>
+                      <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontWeight: 600, fontSize: 15, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>{b.paid && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 7px" }}>Promoted</span>}</span><span style={{ display: "block", fontSize: 13, color: C.muted, marginTop: 1 }}>{b.online ? "Online" : (b.city || "—")}</span></span>
                     </button>; })}
                 </div>}
               </div>; })}
@@ -987,7 +1002,7 @@ function BulkSms() {
       <p style={{ margin: "6px 0 14px", fontSize: 13.5, color: C.muted }}>Pick which businesses to text, and/or paste extra numbers below.</p>
       <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>Businesses on file</div>
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-        {[["approved", "Approved only"], ["pending", "Pending only"], ["all", "All businesses"], ["none", "None"]].map(([k, l]) => { const on = aud === k;
+        {[["approved", "Approved only"], ["pending", "Pending only"], ["paid", "Paid only"], ["free", "Free only"], ["all", "All businesses"], ["none", "None"]].map(([k, l]) => { const on = aud === k;
           return <button key={k} type="button" onClick={() => setAud(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "8px 13px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{l}</button>; })}
       </div>
       <textarea className="er-input" style={{ minHeight: 88 }} placeholder="Your message…" value={msg} onChange={(e) => setMsg(e.target.value)} />
@@ -1001,6 +1016,26 @@ function BulkSms() {
       {err && <p style={{ margin: "10px 0 0", fontSize: 13, color: "#C0392B" }}>{err}</p>}
       {res && <p style={{ margin: "10px 0 0", fontSize: 13, color: C.accent, fontWeight: 600 }}>{res}</p>}
       <button className="er-btn er-btn-primary er-btn-sm" style={{ marginTop: 12 }} disabled={busy} onClick={send}><Send size={14} /> {busy ? "Sending…" : "Send bulk SMS"}</button>
+    </div>
+  );
+}
+function PaidRow({ b, reload }) {
+  const [busy, setBusy] = useState(false);
+  const toggle = async () => {
+    setBusy(true);
+    try { await api(`/admin/business/${b._id}/set-paid`, { method: "POST", admin: true, body: { paid: !b.paid, plan: b.plan || "starter" } }); await reload(); }
+    catch (e) { alert(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <div className="er-card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 14 }}>
+      <span style={{ width: 40, height: 40, borderRadius: 10, display: "grid", placeItems: "center", background: C.panel, color: C.ink, flexShrink: 0 }}><Store size={18} /></span>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>{b.name || "Untitled"}</p>
+        <p style={{ margin: 0, fontSize: 12.5, color: b.paid ? C.accent : C.muted, fontWeight: 600 }}>{b.paid ? `Paid — ${b.plan || "starter"}${b.premium ? " · premium" : ""}` : "Not paid"}</p>
+      </div>
+      <button type="button" onClick={toggle} disabled={busy} title={b.paid ? "Turn paid off" : "Turn paid on"} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: busy ? "default" : "pointer", background: b.paid ? C.accent : "#CFC8BA", transition: "background .15s", flexShrink: 0, opacity: busy ? 0.6 : 1 }}>
+        <span style={{ position: "absolute", top: 3, left: b.paid ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
+      </button>
     </div>
   );
 }
@@ -1074,6 +1109,12 @@ function AdminPanel({ onBack, onRefresh }) {
         </div>
         <h2 style={{ margin: "32px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Live ({approved.length})</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{approved.map((b) => <AdminRow key={b._id} b={b} reload={reload} />)}</div>
+
+        <h2 style={{ margin: "36px 0 6px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Paid access ({(rows || []).filter((b) => b.paid).length} active)</h2>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: C.muted }}>Turn paid access on or off for any business. Paid unlocks the influencer requests tab.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {(rows || []).length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "24px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>No businesses yet.</p> : (rows || []).map((b) => <PaidRow key={b._id} b={b} reload={reload} />)}
+        </div>
 
         <h2 style={{ margin: "36px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Creators ({infs.length})</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1313,7 +1354,7 @@ function PageFooter({ onLegal }) {
         <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend</p>
         <div style={{ display: "flex", gap: 16 }}>
           <button onClick={onLegal} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: C.muted, fontWeight: 500 }}>Privacy &amp; Cookies</button>
-          <a href="mailto:ronak@retentionbase.com" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none", fontSize: 12.5 }}>Support@easyrecommend.co</a>
+          <a href="mailto:ronak@builderHQ.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none", fontSize: 12.5 }}>ronak@builderHQ.co</a>
         </div>
       </div>
     </footer>
@@ -1326,7 +1367,7 @@ function BusinessPage({ onHome, onList, onCreator, onLogin, onLegal }) {
       <section className="er-wrap" style={{ padding: "70px 22px 50px" }}>
         <div style={{ maxWidth: 760 }}>
           <span className="er-eyebrow">For businesses</span>
-          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(34px,5.5vw,56px)", lineHeight: 1.05, fontWeight: 500, letterSpacing: "-.02em" }}>Get your App/Website recommended by the right influencers.</h1>
+          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(34px,5.5vw,56px)", lineHeight: 1.05, fontWeight: 500, letterSpacing: "-.02em" }}>Get your product recommended by the right influencers.</h1>
           <p style={{ margin: "20px 0 0", fontSize: 17, lineHeight: 1.55, color: C.inkSoft, maxWidth: 560 }}>List your brand, product, or app and let vetted creators recommend it to their audience. You set the commission and only pay when a referral converts — no retainers, no upfront ad spend.</p>
           <div style={{ marginTop: 26, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
@@ -1423,8 +1464,8 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
       <section className="er-wrap" style={{ padding: "70px 22px 60px" }}>
         <div style={{ maxWidth: 760 }}>
           <span className="er-eyebrow">Commission-based influencer marketing</span>
-          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get your App/Website recommended by influencers.</h1>
-          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Built for indie builders, brands, and companies ranging from startups to the Fortune 500.</p>
+          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get your Website/App recommended by influencers.</h1>
+          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500.</p>
           <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button className="er-btn er-btn-primary" onClick={onBusinessPage}>For businesses <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" onClick={onInfluencerPage}>For creators</button>
@@ -1449,7 +1490,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
 
       <section style={{ background: C.ink }}>
         <div className="er-wrap" style={{ padding: "44px 22px", display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", textAlign: "center" }}>
-          {[["1,000+", "products using it"], ["$300,000", "in sales driven"], ["3000+", "creators earning"], ["4.9★", "average rating"]].map(([n, l]) => (
+          {[["1,000+", "products using it"], ["$300,000", "in sales driven"], ["300+", "creators earning"], ["4.9★", "average rating"]].map(([n, l]) => (
             <div key={l}>
               <div className="er-serif" style={{ fontSize: "clamp(30px,4.5vw,44px)", fontWeight: 500, color: C.paper, letterSpacing: "-.02em" }}>{n}</div>
               <div style={{ marginTop: 4, fontSize: 13, color: "rgba(253,252,250,.66)" }}>{l}</div>
@@ -1507,7 +1548,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <div style={{ minWidth: 180 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 18, fontWeight: 600 }}>Easy Recommend</span></div>
             <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.5, maxWidth: 260 }}>A network where creators earn on the businesses they actually trust.</p>
-            <a href="mailto:Support@easyrecommend.co" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> Support@easyrecommend.co</span></a>
+            <a href="mailto:ronak@builderHQ.co" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> ronak@builderHQ.co</span></a>
           </div>
           {[
             { h: "For creators", links: [["Join as a creator", onCreator], ["Creator log in", onLogin]] },
@@ -1526,7 +1567,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend · Recommendations worth passing on</p>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <button onClick={onLegal} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: C.muted, fontWeight: 500 }}>Privacy &amp; Cookies</button>
-            <a href="mailto:Support@easyrecommend.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>Support@easyrecommend.co</a>
+            <a href="mailto:ronak@builderHQ.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>ronak@builderHQ.co</a>
           </div>
         </div>
       </footer>
@@ -1774,14 +1815,14 @@ function LegalModal({ onClose }) {
     ["10. How we share information", ["Between users of the Service: when a creator requests a commission, the relevant brand sees the creator's username, follower count, and request details; public listings and creator profiles are visible to other users and visitors.", "Service providers: vendors who host our infrastructure, send SMS/email, and process payments, acting on our instructions.", "Legal and safety: when required by law, to respond to legal process, or to protect the rights, safety, and security of users, the public, or Easy Recommend.", "Business transfers: in connection with a merger, acquisition, financing, or sale of assets, subject to this policy.", "We do not sell your personal information."]],
     ["11. Data retention", "We keep personal data for as long as your account is active or as needed to provide the Service, then for any additional period required to comply with legal, tax, accounting, or dispute-resolution obligations. When you delete your account, we remove your profile and associated links, reviews, and commission requests, though some records (such as transaction logs) may be retained where required. Backups are purged on a rolling schedule."],
     ["12. Data security", "We use reasonable technical and organizational measures to protect personal data, including encrypted connections (HTTPS), access controls, and tokenized authentication. No method of transmission or storage is completely secure, so we cannot guarantee absolute security. Please keep your account and device credentials confidential and notify us of any suspected unauthorized access."],
-    ["13. Your rights and choices", ["Access, correct, or update most details from Account settings.", "Delete your account at any time from Account settings, which removes your profile and related data.", "Opt out of non-essential SMS (reply STOP) and manage cookies via our banner and your browser.", "Depending on where you live, you may also have rights to access, port, restrict, or object to processing, and to lodge a complaint with a supervisory authority. To exercise these, contact us at Support@easyrecommend.co; we may need to verify your identity before responding."]],
-    ["14. California privacy rights", "If you are a California resident, the CCPA/CPRA gives you rights to know what personal information we collect, to access and delete it, to correct inaccuracies, and to opt out of the \"sale\" or \"sharing\" of personal information. We do not sell or share personal information as those terms are defined, and we do not discriminate against you for exercising your rights. Submit requests to Support@easyrecommend.co."],
+    ["13. Your rights and choices", ["Access, correct, or update most details from Account settings.", "Delete your account at any time from Account settings, which removes your profile and related data.", "Opt out of non-essential SMS (reply STOP) and manage cookies via our banner and your browser.", "Depending on where you live, you may also have rights to access, port, restrict, or object to processing, and to lodge a complaint with a supervisory authority. To exercise these, contact us at ronak@builderHQ.co; we may need to verify your identity before responding."]],
+    ["14. California privacy rights", "If you are a California resident, the CCPA/CPRA gives you rights to know what personal information we collect, to access and delete it, to correct inaccuracies, and to opt out of the \"sale\" or \"sharing\" of personal information. We do not sell or share personal information as those terms are defined, and we do not discriminate against you for exercising your rights. Submit requests to ronak@builderHQ.co."],
     ["15. European & UK users", "If you are in the EEA, UK, or Switzerland, you have rights under the GDPR/UK GDPR described in Section 13, including access, rectification, erasure, restriction, portability, and objection. Where we transfer data outside your region, we rely on appropriate safeguards such as standard contractual clauses."],
     ["16. International data transfers", "We and our service providers may process and store information in countries other than the one in which you live, including the United States. Where required, we put safeguards in place to protect your information consistent with this policy and applicable law."],
     ["17. Children's privacy", "The Service is not directed to children, and we do not knowingly collect personal information from anyone under 18. If you believe a minor has provided us information, contact us and we will delete it."],
     ["18. Third-party links and services", "The Service may contain links to third-party sites and products (for example, a brand's website or a creator's social profiles). We are not responsible for the privacy practices of those third parties; review their policies before providing information."],
     ["19. Changes to this policy", "We may update this policy from time to time. When we make material changes, we will update the \"Last updated\" date and, where appropriate, provide additional notice. Your continued use of the Service after changes take effect constitutes acceptance of the updated policy."],
-    ["20. Contact us", "Questions, requests, or complaints about this policy or your data? Email us at Support@easyrecommend.co and we'll be glad to help."],
+    ["20. Contact us", "Questions, requests, or complaints about this policy or your data? Email us at ronak@builderHQ.co and we'll be glad to help."],
   ];
   return (
     <Modal onClose={onClose} wide>
