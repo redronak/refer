@@ -523,8 +523,8 @@ function ReqDecision({ r, onDecide }) {
         {decided && <span style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: badge.bg, color: badge.c }}>{badge.t}</span>}
       </div>
       <div style={{ marginTop: 12, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, padding: "10px 12px" }}>
-        <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>Requested commission</div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 2 }}>{r.requested}</div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>{r.reqType === "list" ? "Wants to be added to recommendation list" : r.reqType === "flat" ? "Promoted reel/story — flat price" : "Promoted reel/story — commission"}</div>
+        {r.requested && <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 2 }}>{r.requested}</div>}
         {r.note && <p style={{ margin: "8px 0 0", fontSize: 13.5, color: C.inkSoft, lineHeight: 1.4 }}>&ldquo;{r.note}&rdquo;</p>}
       </div>
       {decided ? (r.brandMessage ? <p style={{ margin: "10px 0 0", fontSize: 13, color: C.muted }}>Your reply: &ldquo;{r.brandMessage}&rdquo;</p> : null)
@@ -544,7 +544,7 @@ const PLANS = [
     points: [
       { t: "Get your product recommended by up to 1000+ influencers", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "Get on approx 100 recommendation lists" },
-      { t: "See influencer requests-approve or reject them" },
+      { t: "See influencer requests — approve or reject them" },
     ] },
   { key: "growth", amount: 159, title: "Growth", tag: "Up to 1,000 creators", featured: true,
     points: [
@@ -1161,34 +1161,46 @@ function EditProfileModal({ token, current, onClose, onSaved }) {
     </Modal>
   );
 }
+const REQ_TYPES = [
+  { k: "list", label: "Add me to your recommendation list", ph: "" },
+  { k: "commission", label: "Promoted reel/story — higher commission", ph: "e.g. 25%" },
+  { k: "flat", label: "Promoted reel/story — flat price", ph: "e.g. $150" },
+];
+const REQ_LABEL = { list: "Add to list", commission: "Promoted · commission", flat: "Promoted · flat price" };
 function CommissionRequest({ token, businessId, existing, onDone }) {
   const [open, setOpen] = useState(false);
-  const [val, setVal] = useState(existing ? existing.requested : "");
+  const [type, setType] = useState((existing && existing.reqType) || "list");
+  const [val, setVal] = useState((existing && existing.requested) || "");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const needsVal = type !== "list";
   const submit = async () => {
-    if (!val.trim()) { setErr("Enter the commission you'd like."); return; }
+    if (needsVal && !val.trim()) { setErr("Enter the amount you'd like."); return; }
     setBusy(true); setErr("");
-    try { await api("/creator/commission-request", { method: "POST", body: { token, businessId, requested: val, note } }); setOpen(false); setNote(""); await onDone(); }
+    try { await api("/creator/commission-request", { method: "POST", body: { token, businessId, reqType: type, requested: needsVal ? val : "", note } }); setOpen(false); setNote(""); await onDone(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   const badge = existing && (existing.status === "approved" ? { t: "Approved", c: C.accent, bg: C.accentSoft } : existing.status === "rejected" ? { t: "Rejected", c: "#9B3024", bg: "#FBE9E7" } : { t: "Pending", c: C.inkSoft, bg: C.panel });
   return (
     <div style={{ marginTop: 12, borderTop: `1px dashed ${C.line}`, paddingTop: 12 }}>
       {existing && <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: open ? 10 : 0 }}>
-        <span style={{ fontSize: 12.5, color: C.muted }}>Requested <b style={{ color: C.ink }}>{existing.requested}</b></span>
+        <span style={{ fontSize: 12.5, color: C.muted }}>{REQ_LABEL[existing.reqType] || "Request"}{existing.requested ? <>: <b style={{ color: C.ink }}>{existing.requested}</b></> : ""}</span>
         <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: badge.bg, color: badge.c }}>{badge.t}</span>
         {existing.status !== "pending" && existing.brandMessage && <span style={{ fontSize: 12, color: C.muted, width: "100%" }}>Brand: &ldquo;{existing.brandMessage}&rdquo;</span>}
       </div>}
       {open ? <div>
-        <input className="er-input" placeholder="e.g. 25% or $40 per sale" value={val} onChange={(e) => setVal(e.target.value)} />
-        <textarea className="er-input" style={{ marginTop: 8 }} placeholder="Why? (optional — e.g. a dedicated reel + story)" value={note} onChange={(e) => setNote(e.target.value)} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+          {REQ_TYPES.map((rt) => { const on = type === rt.k;
+            return <button key={rt.k} type="button" onClick={() => setType(rt.k)} style={{ textAlign: "left", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, padding: "10px 12px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{on ? "✓ " : ""}{rt.label}</button>; })}
+        </div>
+        {needsVal && <input className="er-input" placeholder={(REQ_TYPES.find((r) => r.k === type) || {}).ph} value={val} onChange={(e) => setVal(e.target.value)} />}
+        <textarea className="er-input" style={{ marginTop: 8 }} placeholder="Add a note (optional — e.g. a dedicated reel + story)" value={note} onChange={(e) => setNote(e.target.value)} />
         {err && <p style={{ margin: "8px 0 0", fontSize: 12.5, color: "#9B3024" }}>{err}</p>}
         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
           <button className="er-btn er-btn-primary er-btn-sm" disabled={busy} onClick={submit}>{busy ? "Sending…" : "Send request"}</button>
           <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setOpen(false)}>Cancel</button>
         </div>
-      </div> : <button className="er-btn er-btn-light er-btn-sm" onClick={() => setOpen(true)}><Spark size={13} /> {existing ? "Update commission request" : "Request higher commission"}</button>}
+      </div> : <button className="er-btn er-btn-light er-btn-sm" onClick={() => setOpen(true)}><Spark size={13} /> {existing ? "Update request" : "Send a request to this brand"}</button>}
     </div>
   );
 }
@@ -1228,13 +1240,13 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
       </div>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 22px 60px" }}>
         {isOwner && reqList.length > 0 && <div style={{ marginBottom: 36 }}>
-          <h2 style={{ margin: "0 0 16px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>My commission requests</h2>
+          <h2 style={{ margin: "0 0 16px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>My requests to brands</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {reqList.map((r) => { const badge = r.status === "approved" ? { t: "Approved", c: C.accent, bg: C.accentSoft } : r.status === "rejected" ? { t: "Rejected", c: "#9B3024", bg: "#FBE9E7" } : { t: "Pending", c: C.inkSoft, bg: C.panel };
               return <div key={r.id} className="er-card" style={{ padding: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <span style={{ fontWeight: 600, fontSize: 15, flex: 1, minWidth: 0 }}>{r.businessName || "Brand"}</span>
-                  <span style={{ fontSize: 13, color: C.muted }}>Requested <b style={{ color: C.ink }}>{r.requested}</b></span>
+                  <span style={{ fontSize: 13, color: C.muted }}>{REQ_LABEL[r.reqType] || "Request"}{r.requested ? <>: <b style={{ color: C.ink }}>{r.requested}</b></> : ""}</span>
                   <span style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: badge.bg, color: badge.c }}>{badge.t}</span>
                 </div>
                 {r.note && <p style={{ margin: "8px 0 0", fontSize: 13, color: C.inkSoft }}>You: &ldquo;{r.note}&rdquo;</p>}
@@ -1355,7 +1367,7 @@ function PageFooter({ onLegal }) {
         <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend</p>
         <div style={{ display: "flex", gap: 16 }}>
           <button onClick={onLegal} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: C.muted, fontWeight: 500 }}>Privacy &amp; Cookies</button>
-          <a href="mailto:ronak@builderHQ.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none", fontSize: 12.5 }}>ronak@builderHQ.co</a>
+          <a href="mailto:ronak@retentionbase.com" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none", fontSize: 12.5 }}>ronak@retentionbase.com</a>
         </div>
       </div>
     </footer>
@@ -1450,7 +1462,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
               {session.role === "creator"
                 ? <button className="er-btn er-btn-ghost er-btn-sm" onClick={onMyProfile}>My profile</button>
                 : <button className="er-btn er-btn-ghost er-btn-sm" onClick={onMyBiz}>My business</button>}
-              <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onSettings}>Settings</button>
+              <button className="er-btn er-btn-ghost er-btn-sm" onClick={onSettings}>Settings</button>
               <button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogout}>Log out</button>
             </> : <>
               <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onBusinessPage}>For business</button>
@@ -1472,6 +1484,23 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
             <button className="er-btn er-btn-ghost" onClick={onInfluencerPage}>For creators</button>
           </div>
           <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Trusted by 1,000+ products · you only pay commission on real, tracked sales.</p>
+        </div>
+      </section>
+
+      <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+        <div className="er-wrap" style={{ padding: "64px 22px" }}>
+          <div style={{ maxWidth: 640 }}>
+            <span className="er-eyebrow">For creators</span>
+            <h2 className="er-serif" style={{ margin: "10px 0 28px", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em" }}>How it works</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+              <HowStep n={1} title="Sign up free" body="Create your creator profile in under a minute — username, photo, and your follower count." />
+              <HowStep n={2} title="Build your recommendation list" body="Pick the brands and products you genuinely back. Each one gets its own tracked referral link." />
+              <HowStep n={3} title="Share it in your bio" body="One link to everything you recommend. Your audience taps through and shops." />
+              <HowStep n={4} title="Get paid commission" body="Earn on every sale that comes through your links — automatically tracked and attributed to you." />
+              <HowStep n={5} title="Promote for more" body="Create content or sponsored posts for brands to unlock higher commission or a sponsorship fee." />
+            </div>
+            <button className="er-btn er-btn-primary" style={{ marginTop: 30 }} onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
+          </div>
         </div>
       </section>
 
@@ -1549,7 +1578,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <div style={{ minWidth: 180 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 18, fontWeight: 600 }}>Easy Recommend</span></div>
             <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.5, maxWidth: 260 }}>A network where creators earn on the businesses they actually trust.</p>
-            <a href="mailto:ronak@builderHQ.co" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> ronak@builderHQ.co</span></a>
+            <a href="mailto:ronak@retentionbase.com" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> ronak@retentionbase.com</span></a>
           </div>
           {[
             { h: "For creators", links: [["Join as a creator", onCreator], ["Creator log in", onLogin]] },
@@ -1568,7 +1597,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend · Recommendations worth passing on</p>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <button onClick={onLegal} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: C.muted, fontWeight: 500 }}>Privacy &amp; Cookies</button>
-            <a href="mailto:ronak@builderHQ.co" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>ronak@builderHQ.co</a>
+            <a href="mailto:ronak@retentionbase.com" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>ronak@retentionbase.com</a>
           </div>
         </div>
       </footer>
@@ -1816,14 +1845,14 @@ function LegalModal({ onClose }) {
     ["10. How we share information", ["Between users of the Service: when a creator requests a commission, the relevant brand sees the creator's username, follower count, and request details; public listings and creator profiles are visible to other users and visitors.", "Service providers: vendors who host our infrastructure, send SMS/email, and process payments, acting on our instructions.", "Legal and safety: when required by law, to respond to legal process, or to protect the rights, safety, and security of users, the public, or Easy Recommend.", "Business transfers: in connection with a merger, acquisition, financing, or sale of assets, subject to this policy.", "We do not sell your personal information."]],
     ["11. Data retention", "We keep personal data for as long as your account is active or as needed to provide the Service, then for any additional period required to comply with legal, tax, accounting, or dispute-resolution obligations. When you delete your account, we remove your profile and associated links, reviews, and commission requests, though some records (such as transaction logs) may be retained where required. Backups are purged on a rolling schedule."],
     ["12. Data security", "We use reasonable technical and organizational measures to protect personal data, including encrypted connections (HTTPS), access controls, and tokenized authentication. No method of transmission or storage is completely secure, so we cannot guarantee absolute security. Please keep your account and device credentials confidential and notify us of any suspected unauthorized access."],
-    ["13. Your rights and choices", ["Access, correct, or update most details from Account settings.", "Delete your account at any time from Account settings, which removes your profile and related data.", "Opt out of non-essential SMS (reply STOP) and manage cookies via our banner and your browser.", "Depending on where you live, you may also have rights to access, port, restrict, or object to processing, and to lodge a complaint with a supervisory authority. To exercise these, contact us at ronak@builderHQ.co; we may need to verify your identity before responding."]],
-    ["14. California privacy rights", "If you are a California resident, the CCPA/CPRA gives you rights to know what personal information we collect, to access and delete it, to correct inaccuracies, and to opt out of the \"sale\" or \"sharing\" of personal information. We do not sell or share personal information as those terms are defined, and we do not discriminate against you for exercising your rights. Submit requests to ronak@builderHQ.co."],
+    ["13. Your rights and choices", ["Access, correct, or update most details from Account settings.", "Delete your account at any time from Account settings, which removes your profile and related data.", "Opt out of non-essential SMS (reply STOP) and manage cookies via our banner and your browser.", "Depending on where you live, you may also have rights to access, port, restrict, or object to processing, and to lodge a complaint with a supervisory authority. To exercise these, contact us at ronak@retentionbase.com; we may need to verify your identity before responding."]],
+    ["14. California privacy rights", "If you are a California resident, the CCPA/CPRA gives you rights to know what personal information we collect, to access and delete it, to correct inaccuracies, and to opt out of the \"sale\" or \"sharing\" of personal information. We do not sell or share personal information as those terms are defined, and we do not discriminate against you for exercising your rights. Submit requests to ronak@retentionbase.com."],
     ["15. European & UK users", "If you are in the EEA, UK, or Switzerland, you have rights under the GDPR/UK GDPR described in Section 13, including access, rectification, erasure, restriction, portability, and objection. Where we transfer data outside your region, we rely on appropriate safeguards such as standard contractual clauses."],
     ["16. International data transfers", "We and our service providers may process and store information in countries other than the one in which you live, including the United States. Where required, we put safeguards in place to protect your information consistent with this policy and applicable law."],
     ["17. Children's privacy", "The Service is not directed to children, and we do not knowingly collect personal information from anyone under 18. If you believe a minor has provided us information, contact us and we will delete it."],
     ["18. Third-party links and services", "The Service may contain links to third-party sites and products (for example, a brand's website or a creator's social profiles). We are not responsible for the privacy practices of those third parties; review their policies before providing information."],
     ["19. Changes to this policy", "We may update this policy from time to time. When we make material changes, we will update the \"Last updated\" date and, where appropriate, provide additional notice. Your continued use of the Service after changes take effect constitutes acceptance of the updated policy."],
-    ["20. Contact us", "Questions, requests, or complaints about this policy or your data? Email us at ronak@builderHQ.co and we'll be glad to help."],
+    ["20. Contact us", "Questions, requests, or complaints about this policy or your data? Email us at ronak@retentionbase.com and we'll be glad to help."],
   ];
   return (
     <Modal onClose={onClose} wide>
