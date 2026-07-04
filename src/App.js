@@ -1553,7 +1553,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
               </div>
               <div style={{ marginTop: 30, display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <button className="er-btn er-btn-primary" onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
-                <button className="er-btn er-btn-ghost" onClick={() => onProfile("nycdesihangouts")}>See a demo creator</button>
+                <a className="er-btn er-btn-ghost" href="https://www.instagram.com/nycdesihangouts/" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>See a demo creator</a>
               </div>
             </div>
             <div>
