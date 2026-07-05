@@ -281,8 +281,8 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
-  const valid = [f.name.trim() && f.phone.trim() && f.website.trim(), f.categories.length > 0 && (f.online || f.city.trim()), commValid, otp.length >= 6];
-  const titles = ["About your business", "Where to find you", "Your terms", "Verify your number"];
+  const valid = [f.website.trim() && f.categories.length > 0, f.name.trim() && f.phone.trim() && (f.online || f.city.trim()), commValid, otp.length >= 6];
+  const titles = ["Get discovered", "About your business", "Your terms", "Verify your number"];
 
   const sendCode = async () => { setErr(""); try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); } catch (e) { setErr(e.message); } };
   const submit = async () => {
@@ -303,17 +303,21 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
         <Stepper step={step} total={4} />
         <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           {step === 0 && <>
-            <Field label="Brand, product, or app name"><input className="er-input" placeholder="Lumière Skincare, Focusly app, etc." value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
-            <Field label="Mobile number" hint="We'll text a 6-digit code. You'll sign in with this number from now on."><PhoneInput value={f.phone} onChange={(v) => set("phone", v)} /></Field>
-            <Field label="Website" hint="The link customers visit — shown on your public page."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>
-          </>}
-          {step === 1 && <>
-            <Field label="Categories" hint="Pick all that apply.">
+            <div style={{ display: "flex", gap: 11, alignItems: "flex-start", background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 14, padding: "14px 16px" }}>
+              <span style={{ flexShrink: 0, color: C.accentD, marginTop: 1 }}><Spark size={20} /></span>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.accentD, lineHeight: 1.4 }}>500+ influencers ready to recommend your product on commission.</div>
+            </div>
+            <Field label="Website or app URL" hint="Where customers go to buy or sign up."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>
+            <Field label="Category" hint="Pick all that apply.">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {CAT_LIST.map((c) => { const on = f.categories.includes(c); const cc = CATS[c];
                   return <button key={c} type="button" onClick={() => toggleCat(c)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "9px 15px", borderRadius: 999, border: `1px solid ${on ? cc.color : C.line}`, background: on ? cc.bg : "#fff", color: on ? cc.color : C.inkSoft }}>{c}</button>; })}
               </div>
             </Field>
+          </>}
+          {step === 1 && <>
+            <Field label="Brand, product, or app name"><input className="er-input" placeholder="Lumière Skincare, Focusly app, etc." value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
+            <Field label="Mobile number" hint="We'll text a 6-digit code. You'll sign in with this number from now on."><PhoneInput value={f.phone} onChange={(v) => set("phone", v)} /></Field>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px" }}>
               <div><div style={{ fontSize: 14, fontWeight: 600 }}>Online business</div><div style={{ fontSize: 12.5, color: C.muted }}>Serve customers anywhere.</div></div>
               <button type="button" onClick={() => set("online", !f.online)} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: "pointer", background: f.online ? C.accent : "#CFC8BA", transition: "background .15s" }}>
@@ -1531,7 +1535,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get your Website/App recommended by influencers.</h1>
           <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500. Get seen by an audience of 800,000+.</p>
           <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <button className="er-btn er-btn-primary" onClick={onBusinessPage}>For businesses <Arrow size={16} /></button>
+            <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" onClick={onInfluencerPage}>For creators</button>
           </div>
           <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Trusted by 1,000+ products · you only pay commission on real, tracked sales.</p>
@@ -1552,7 +1556,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
                 <HowStep n={5} title="Create sponsored content" body="Create content or sponsored posts for brands for a sponsorship fee." />
               </div>
               <button className="er-btn er-btn-primary" style={{ marginTop: 30 }} onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
-              {/* <div style={{ marginTop: 26 }}>
+              <div style={{ marginTop: 26 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 11 }}>Recently joined creators</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {["nycdesihangouts", "nycbookclubs", "nycmovieclub", "nycsportsclub"].map((h) => (
@@ -1561,7 +1565,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
                     </a>
                   ))}
                 </div>
-              </div> */}
+              </div>
             </div>
             <div>
               <span className="er-eyebrow">For brands</span>
@@ -2001,6 +2005,22 @@ function EasyApp() {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [creatorPreselect, setCreatorPreselect] = useState(null);
   const [detailId, setDetailId] = useState(null);
+
+  // Nudge logged-out visitors on the home page to list their business after 20s (once per session).
+  useEffect(() => {
+    if (session || view !== "home") return;
+    let shown = false; try { shown = sessionStorage.getItem("er_bizprompt") === "1"; } catch (e) {}
+    if (shown) return;
+    const t = setTimeout(() => {
+      try {
+        if (getSession()) return;
+        if (window.location.pathname !== "/" && window.location.pathname !== "") return;
+        sessionStorage.setItem("er_bizprompt", "1");
+        setBrandOpen(true);
+      } catch (e) {}
+    }, 20000);
+    return () => clearTimeout(t);
+  }, [session, view]);
 
   const login = (s) => { saveSession(s); setSessionState(s); };
   const logout = () => { clearSession(); setSessionState(null); setView("home"); nav("/"); };
