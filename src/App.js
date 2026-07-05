@@ -278,11 +278,26 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [step, setStep] = useState(0);
   const [f, setF] = useState({ name: "", phone: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0 });
   const [otp, setOtp] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const [searching, setSearching] = useState(false); const [revealed, setRevealed] = useState(false);
+  const incentiveRef = useRef(null);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
   const valid = [f.website.trim() && f.categories.length > 0, f.name.trim() && f.phone.trim() && (f.online || f.city.trim()), commValid, otp.length >= 6];
   const titles = ["Get discovered", "About your business", "Your terms", "Verify your number"];
+
+  // When URL + category are filled, run a brief "searching" animation, then reveal the numbers.
+  useEffect(() => {
+    if (step !== 0) return;
+    if (valid[0]) {
+      if (revealed || searching) return;
+      setSearching(true);
+      const t = setTimeout(() => { setSearching(false); setRevealed(true); }, 1900);
+      return () => clearTimeout(t);
+    } else { setSearching(false); setRevealed(false); }
+  }, [valid[0], step]);
+  // Scroll the reveal into view once it appears.
+  useEffect(() => { if ((searching || revealed) && incentiveRef.current) { try { incentiveRef.current.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {} } }, [searching, revealed]);
 
   const sendCode = async () => { setErr(""); try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); } catch (e) { setErr(e.message); } };
   const submit = async () => {
@@ -303,10 +318,6 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
         <Stepper step={step} total={4} />
         <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           {step === 0 && <>
-            <div style={{ display: "flex", gap: 11, alignItems: "flex-start", background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 14, padding: "14px 16px" }}>
-              <span style={{ flexShrink: 0, color: C.accentD, marginTop: 1 }}><Spark size={20} /></span>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.accentD, lineHeight: 1.4 }}>500+ influencers ready to recommend your product on commission.</div>
-            </div>
             <Field label="Website or app URL" hint="Where customers go to buy or sign up."><input className="er-input" placeholder="brand.com" value={f.website} onChange={(e) => set("website", e.target.value)} /></Field>
             <Field label="Category" hint="Pick all that apply.">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -314,6 +325,20 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
                   return <button key={c} type="button" onClick={() => toggleCat(c)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "9px 15px", borderRadius: 999, border: `1px solid ${on ? cc.color : C.line}`, background: on ? cc.bg : "#fff", color: on ? cc.color : C.inkSoft }}>{c}</button>; })}
               </div>
             </Field>
+            {searching && <div ref={incentiveRef} style={{ background: C.ink, color: C.paper, borderRadius: 16, padding: "30px 20px", textAlign: "center" }}>
+              <span style={{ display: "inline-block", width: 30, height: 30, borderRadius: "50%", border: "3px solid rgba(253,252,250,.25)", borderTopColor: C.paper, animation: "er-spin .8s linear infinite" }} />
+              <p style={{ margin: "16px 0 0", fontSize: 15, fontWeight: 600, color: "rgba(253,252,250,.9)" }}>Finding influencers in {f.categories[0]}…</p>
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: "rgba(253,252,250,.55)" }}>Matching creators to your product</p>
+            </div>}
+            {revealed && <div ref={incentiveRef} style={{ background: C.ink, color: C.paper, borderRadius: 16, padding: "22px 20px", textAlign: "center", animation: "er-fade .4s ease" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "rgba(253,252,250,.6)" }}>Good news</div>
+              <div className="er-serif" style={{ fontSize: "clamp(30px,7vw,42px)", fontWeight: 500, lineHeight: 1.05, margin: "8px 0 2px" }}>500+ influencers</div>
+              <div style={{ fontSize: 15.5, color: "rgba(253,252,250,.82)" }}>available in {f.categories[0]} right now</div>
+              <div style={{ height: 1, background: "rgba(253,252,250,.14)", margin: "16px 0" }} />
+              <div style={{ fontSize: 15.5, color: "rgba(253,252,250,.82)" }}>Get your product seen by</div>
+              <div className="er-serif" style={{ fontSize: "clamp(26px,6vw,36px)", fontWeight: 500, lineHeight: 1.1 }}>20,000+ users</div>
+              <p style={{ margin: "14px 0 0", fontSize: 13, color: "rgba(253,252,250,.6)" }}>Finish signing up to start getting recommended on commission — you only pay on results.</p>
+            </div>}
           </>}
           {step === 1 && <>
             <Field label="Brand, product, or app name"><input className="er-input" placeholder="Lumière Skincare, Focusly app, etc." value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
@@ -1731,6 +1756,7 @@ const STYLES = `
 .er-vid-play{opacity:1;transition:opacity .15s ease}
 .er-vid-tile:hover .er-vid-play{opacity:0}
 @keyframes er-spin{to{transform:rotate(360deg)}}
+@keyframes er-fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .er-spin{animation:er-spin .9s linear infinite}
 @media(min-width:560px){.er-modal-overlay{align-items:center;padding:18px}.er-modal{border-radius:22px}}
 @media(max-width:559px){.er-nav{display:none}.er-hide-sm{display:none}}
