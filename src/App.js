@@ -1558,7 +1558,8 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         <div style={{ maxWidth: 760 }}>
           <span className="er-eyebrow">Commission-based influencer marketing</span>
           <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get your Website/App recommended by influencers.</h1>
-          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Get Your Product Featured on Our Influencer Recommendation List. Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500. Get seen by an audience of 800,000+.</p>
+          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Every influencer creates a recommendation list of products they love and shares it with their audience or through the link in their bio. Get your product featured on 100+ influencer recommendation lists.
+          . Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500. Get seen by an audience of 800,000+.</p>
           <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" onClick={onInfluencerPage}>For creators</button>
