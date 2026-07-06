@@ -1581,16 +1581,6 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
                 <HowStep n={5} title="Create sponsored content" body="Create content or sponsored posts for brands for a sponsorship fee." />
               </div>
               <button className="er-btn er-btn-primary" style={{ marginTop: 30 }} onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
-              <div style={{ marginTop: 26 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 11 }}>Recently joined creators</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {["nycdesihangouts", "nycbookclubs", "nycmovieclub", "nycsportsclub"].map((h) => (
-                    <a key={h} href={`https://www.instagram.com/${h}/`} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 13px 5px 5px", borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", textDecoration: "none", color: C.ink, fontSize: 13, fontWeight: 600 }}>
-                      <Avatar name={h} size={24} /> @{h}
-                    </a>
-                  ))}
-                </div>
-              </div>
             </div>
             <div>
               <span className="er-eyebrow">For brands</span>
