@@ -1527,6 +1527,7 @@ function InfluencerPage({ onHome, onCreator, onList, onLogin, onLegal }) {
 }
 function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage }) {
   const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
+  const seatsLeft = 8 - ((new Date().getDay() + 6) % 7); // Mon 8 → Sun 2, resets Monday
   const steps = [
     { t: "Businesses apply", d: "They add their details and a customer perk. We review every one before it's listed." },
     { t: "Creators curate", d: "A creator backs the businesses they trust and gets a tracked link." },
@@ -1534,6 +1535,9 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
   ];
   return (
     <div>
+      <button onClick={onList} style={{ display: "block", width: "100%", border: "none", cursor: "pointer", fontFamily: "inherit", background: C.ink, color: C.paper, textAlign: "center", fontSize: 13.5, fontWeight: 600, padding: "9px 16px", letterSpacing: ".01em" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap" }}><Spark size={14} /> Free limited signups! <b style={{ color: "#fff" }}>{seatsLeft} seat{seatsLeft === 1 ? "" : "s"} remaining</b> — claim yours →</span>
+      </button>
       <header style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(253,252,250,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
           <button onClick={top} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}><Seal size={20} /><span className="er-serif" style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-.01em", color: C.ink, whiteSpace: "nowrap" }}>Easy Recommend</span></button>
@@ -1558,8 +1562,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         <div style={{ maxWidth: 760 }}>
           <span className="er-eyebrow">Commission-based influencer marketing</span>
           <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get your Website/App recommended by influencers.</h1>
-          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Every influencer creates a recommendation list of products they love and shares it with their audience or through the link in their bio. Get your product featured on 100+ influencer recommendation lists.
-          . Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500. Get seen by an audience of 800,000+.</p>
+          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500. Get seen by an audience of 800,000+.</p>
           <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" onClick={onInfluencerPage}>For creators</button>
