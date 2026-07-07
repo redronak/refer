@@ -577,7 +577,7 @@ const PLANS = [
     ] },
   { key: "starter", amount: 70, title: "Starter", tag: "Up to 500 creators",
     points: [
-      { t: "Get your product recommended by up to 1000+ influencers", hint: "A recommendation means an influencer features your product with a testimonial and adds your link to their recommendation list, which they put in their bio." },
+      { t: "Get your product recommended by up to 1000+ influencers", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
       { t: "Get seen by 100,000 users" },
       { t: "See influencer requests — approve or reject them" },
     ] },
