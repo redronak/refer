@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 /* ============================================================================
-   Easy Recommend — wired to the Express backend (router mounted at /easyrecommend)
+   Easy Recommend, wired to the Express backend (router mounted at /easyrecommend)
    - Local dev (frontend on localhost) → http://localhost:9000
    - Anywhere else → Heroku
    - No external packages, no Tailwind (inline styles + injected <style>).
@@ -337,7 +337,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               <div style={{ height: 1, background: "rgba(253,252,250,.14)", margin: "16px 0" }} />
               <div style={{ fontSize: 15.5, color: "rgba(253,252,250,.82)" }}>Get your product seen by</div>
               <div className="er-serif" style={{ fontSize: "clamp(26px,6vw,36px)", fontWeight: 500, lineHeight: 1.1 }}>20,000+ users</div>
-              <p style={{ margin: "14px 0 0", fontSize: 13, color: "rgba(253,252,250,.6)" }}>Finish signing up to start getting recommended on commission — you only pay on results.</p>
+              <p style={{ margin: "14px 0 0", fontSize: 13, color: "rgba(253,252,250,.6)" }}>Finish signing up to start getting recommended on commission, you only pay on results.</p>
             </div>}
           </>}
           {step === 1 && <>
@@ -351,7 +351,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
             <Field label="City" hint={f.online ? "Optional for online businesses." : "Where customers visit you."}><input className="er-input" placeholder="San Francisco" value={f.city} onChange={(e) => set("city", e.target.value)} /></Field>
           </>}
           {step === 2 && <>
-            <Field label="How you'll reward creators" hint="Kept private — creators see it only when they generate a link.">
+            <Field label="How you'll reward creators" hint="Kept private, creators see it only when they generate a link.">
               <div style={{ display: "flex", gap: 8 }}>
                 {[["percent", "Percentage"], ["flat", "Flat cash"], ["both", "Both"]].map(([t, lbl]) => { const on = f.commissionType === t;
                   return <button key={t} type="button" onClick={() => set("commissionType", t)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, padding: "10px 8px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{lbl}</button>; })}
@@ -365,7 +365,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "11px 14px", maxWidth: 180 }}>
                 <span style={{ fontSize: 15, color: C.muted, marginRight: 2 }}>$</span>
                 <input type="number" min="0" value={f.commissionFlat} onChange={(e) => set("commissionFlat", Math.max(0, +e.target.value))} style={{ flex: 1, border: "none", outline: "none", background: "none", fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: C.ink, width: "100%" }} /></div></Field>}
-            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: C.inkSoft }}>Creators earn <b style={{ color: C.ink }}>{commValid ? commissionLabel(f) : "—"}</b> per sale.</div>
+            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: C.inkSoft }}>Creators earn <b style={{ color: C.ink }}>{commValid ? commissionLabel(f) : "-"}</b> per sale.</div>
             <Field label="Customer perk" hint="Optional discount shown on your public listing.">
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <input type="range" min="0" max="40" value={f.discount} onChange={(e) => set("discount", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
@@ -397,7 +397,7 @@ function BrandSuccess({ name, onClose }) {
   return <Modal onClose={onClose}><div style={{ padding: 32, textAlign: "center" }}>
     <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={52} /></div>
     <h2 className="er-serif" style={{ margin: "16px 0 0", fontSize: 24, fontWeight: 500 }}>You're in the queue</h2>
-    <p style={{ margin: "10px 0 0", fontSize: 14.5, color: C.inkSoft, lineHeight: 1.5 }}><b>{name}</b> was submitted for review. We approve every business before it's listed — you'll get a text once you're live.</p>
+    <p style={{ margin: "10px 0 0", fontSize: 14.5, color: C.inkSoft, lineHeight: 1.5 }}><b>{name}</b> was submitted for review. We approve every business before it's listed, you'll get a text once you're live.</p>
     <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 24 }} onClick={onClose}>Done</button></div></Modal>;
 }
 
@@ -487,7 +487,7 @@ function BizEditCard({ b, token, reload }) {
         <Field label="Name"><input className="er-input" value={d.name} onChange={(e) => set("name", e.target.value)} /></Field>
         <Field label="Description"><textarea className="er-input" value={d.blurb} onChange={(e) => set("blurb", e.target.value)} /></Field>
         <Field label="Website"><input className="er-input" placeholder="brand.com" value={d.website} onChange={(e) => set("website", e.target.value)} /></Field>
-        <Field label="Products" hint="List the products, apps, or services you want promoted — add as many as you like.">
+        <Field label="Products" hint="List the products, apps, or services you want promoted, add as many as you like.">
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {(d.products || []).map((p, i) => (
               <div key={i} style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, paddingRight: 34, display: "flex", flexDirection: "column", gap: 8, position: "relative", background: C.panel }}>
@@ -513,7 +513,7 @@ function BizEditCard({ b, token, reload }) {
           </label>
         </div>
         <Field label="Customer perk (%)"><input type="number" className="er-input" style={{ width: 120 }} value={d.discount} onChange={(e) => set("discount", +e.target.value)} /></Field>
-        <Field label="Creator reward" hint="Private — only creators see it.">
+        <Field label="Creator reward" hint="Private, only creators see it.">
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             {[["percent", "%"], ["flat", "$"], ["both", "Both"]].map(([t, l]) => { const on = d.commissionType === t;
               return <button key={t} type="button" onClick={() => set("commissionType", t)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "8px", borderRadius: 9, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{l}</button>; })}
@@ -553,7 +553,7 @@ function ReqDecision({ r, onDecide }) {
         {decided && <span style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: badge.bg, color: badge.c }}>{badge.t}</span>}
       </div>
       <div style={{ marginTop: 12, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 10, padding: "10px 12px" }}>
-        <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>{r.reqType === "list" ? "Wants to be added to recommendation list" : `${({ story: "Story", tweet: "Tweet", reel: "Reel", post: "Post" }[r.reqType] || "Promotion")} — ${r.pricing === "fixed" ? "fixed price" : "commission"}`}</div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>{r.reqType === "list" ? "Wants to be added to recommendation list" : `${({ story: "Story", tweet: "Tweet", reel: "Reel", post: "Post" }[r.reqType] || "Promotion")}, ${r.pricing === "fixed" ? "fixed price" : "commission"}`}</div>
         {r.requested && <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 2 }}>{r.requested}</div>}
         {r.note && <p style={{ margin: "8px 0 0", fontSize: 13.5, color: C.inkSoft, lineHeight: 1.4 }}>&ldquo;{r.note}&rdquo;</p>}
       </div>
@@ -578,7 +578,7 @@ const PLANS = [
   { key: "starter", amount: 70, title: "Starter", tag: "Get recommended",
     points: [
       { t: "Get added to the recommendation list by 1000+ influencers" },
-      { t: "See influencer requests — approve or reject them" },
+      { t: "See influencer requests, approve or reject them" },
     ] },
   { key: "growth", amount: 159, title: "Growth", tag: "Recommended + 1 sponsored reel", featured: true,
     points: [
@@ -618,7 +618,7 @@ async function payWithCheckout({ plan, business, sessionToken, onPaid, onErr }) 
     const StripeCheckout = await loadCheckout();
     const handler = StripeCheckout.configure({
       key: STRIPE_PK, locale: "auto", name: "Easy Recommend",
-      description: `${plan.title} — ${plan.tag}`, currency: "usd", amount: plan.amount * 100,
+      description: `${plan.title}, ${plan.tag}`, currency: "usd", amount: plan.amount * 100,
       email: business.email || "", panelLabel: "Pay {{amount}}",
       token: async (token) => {
         try {
@@ -648,7 +648,7 @@ function WhyOneTimeLink({ center }) {
         <div style={{ padding: "30px 28px" }}>
           <h2 className="er-serif" style={{ margin: "0 0 12px", fontSize: 23, fontWeight: 500 }}>Why we charge a one-time fee, not monthly</h2>
           <p style={{ margin: "0 0 12px", fontSize: 14.5, lineHeight: 1.6, color: C.inkSoft }}>Commissions and conversions don't happen overnight. Influencer marketing is a long game: it takes time for creators to discover your product, post about it, and for their audiences to act.</p>
-          <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: C.inkSoft }}>Because results compound over months rather than days, we charge a single one-time fee that covers your full 12-month campaign — no recurring bills and no pressure to cancel. You focus on the outcomes, not a monthly subscription.</p>
+          <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: C.inkSoft }}>Because results compound over months rather than days, we charge a single one-time fee that covers your full 12-month campaign, no recurring bills and no pressure to cancel. You focus on the outcomes, not a monthly subscription.</p>
           <button className="er-btn er-btn-primary er-btn-sm" style={{ marginTop: 22 }} onClick={() => setOpen(false)}>Got it</button>
         </div>
       </Modal>}
@@ -705,7 +705,7 @@ function VerifyNotice({ onClose }) {
     <Modal onClose={onClose}>
       <div style={{ padding: "30px 28px" }}>
         <span style={{ width: 48, height: 48, borderRadius: 14, display: "inline-grid", placeItems: "center", background: C.accentSoft, color: C.accentD }}><Check size={24} /></span>
-        <h2 className="er-serif" style={{ margin: "14px 0 4px", fontSize: 24, fontWeight: 500 }}>Payment received — thank you!</h2>
+        <h2 className="er-serif" style={{ margin: "14px 0 4px", fontSize: 24, fontWeight: 500 }}>Payment received, thank you!</h2>
         <p style={{ margin: "0 0 16px", fontSize: 14.5, lineHeight: 1.6, color: C.inkSoft }}>Before promotion begins, we review every product for compliance.</p>
         <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
           <li style={{ display: "flex", gap: 10, fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}><span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Seal size={16} /></span><span>For GDPR and consumer-protection compliance, we verify your product before creators are matched. This usually takes up to <b>24 hours</b>.</span></li>
@@ -836,7 +836,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       <div style={{ padding: "30px 28px" }}>
         {step < 3 && <><span className="er-eyebrow">For creators</span><div style={{ marginTop: 12 }}><Stepper step={step} total={3} /></div></>}
         {step === 0 && <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Set up your profile</h2><p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>A photo, a username, and your following — that's the whole profile.</p></div>
+          <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Set up your profile</h2><p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>A photo, a username, and your following, that's the whole profile.</p></div>
           <Field label="Profile photo">
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               {image ? <img src={image} alt="" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }} /> : <span style={{ width: 64, height: 64, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: C.paper }}><Spark size={24} /></span>}
@@ -860,7 +860,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
 
         {step === 1 && <div style={{ marginTop: 22 }}>
           <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Pick businesses to back</h2>
-          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Choose as many as you like — we generate a tracked link for each, so you earn on every sale.</p>
+          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Choose as many as you like, we generate a tracked link for each, so you earn on every sale.</p>
           <div style={{ marginTop: 16, position: "relative" }}>
             <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: C.muted, display: "flex" }}><Search size={16} /></span>
             <input className="er-input" style={{ paddingLeft: 38 }} placeholder="Search brands" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -892,11 +892,11 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
                     return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 13, textAlign: "left", padding: "14px 16px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : (b.paid ? "#FBFAF6" : "#fff"), boxShadow: b.paid && !on ? `inset 3px 0 0 ${C.accent}` : "none", cursor: "pointer" }}>
                       <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center", border: `1.5px solid ${on ? C.accent : "#CFC8BA"}`, background: on ? C.accent : "#fff", color: "#fff" }}>{on && <Check size={15} />}</span>
                       <span style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, display: "grid", placeItems: "center", background: bt.bg, color: bt.color, overflow: "hidden" }}>{photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={16} />}</span>
-                      <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontWeight: 600, fontSize: 15, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>{b.paid && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 7px" }}>Promoted</span>}</span><span style={{ display: "block", fontSize: 13, color: C.muted, marginTop: 1 }}>{b.online ? "Online" : (b.city || "—")}</span></span>
+                      <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontWeight: 600, fontSize: 15, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>{b.paid && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 7px" }}>Promoted</span>}</span><span style={{ display: "block", fontSize: 13, color: C.muted, marginTop: 1 }}>{b.online ? "Online" : (b.city || "-")}</span></span>
                     </button>; })}
                 </div>}
               </div>; })}
-            {!cats.length && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "24px 0" }}>No live businesses yet — check back soon.</p>}
+            {!cats.length && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "24px 0" }}>No live businesses yet, check back soon.</p>}
             {noMatches && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "20px 0" }}>No brands match &ldquo;{query}&rdquo;.</p>}
           </div>
           <div style={{ marginTop: 22, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -906,7 +906,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
 
         {step === 2 && <div style={{ marginTop: 22 }}>
           <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Add your reviews</h2>
-          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>A rating and a note for each brand show on your profile. All optional — but it's what builds trust.</p>
+          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>A rating and a note for each brand show on your profile. All optional, but it's what builds trust.</p>
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 380, overflowY: "auto" }}>
             {picked.map((id) => { const b = approved.find((x) => x.id === id); if (!b) return null; const r = reviews[id] || { stars: 0, text: "" }; const cc = catOf(b);
               return <div key={id} style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 }}>
@@ -978,7 +978,7 @@ function AdminRow({ b, reload }) {
     <div className="er-card" style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ width: 44, height: 44, borderRadius: 11, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0, overflow: "hidden" }}>{(b.photos || [])[0] ? <img src={b.photos[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={18} />}</span>
-        <div style={{ minWidth: 0, flex: 1 }}><p className="er-serif" style={{ margin: 0, fontSize: 17, fontWeight: 500 }}>{b.name}</p><p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>{(b.categories || []).join(", ") || "No category"} · {b.online ? "Online" : (b.city || "—")}</p></div>
+        <div style={{ minWidth: 0, flex: 1 }}><p className="er-serif" style={{ margin: 0, fontSize: 17, fontWeight: 500 }}>{b.name}</p><p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>{(b.categories || []).join(", ") || "No category"} · {b.online ? "Online" : (b.city || "-")}</p></div>
         {!editing && <><span style={{ fontSize: 12, fontWeight: 700, padding: "5px 9px", borderRadius: 8, background: C.accentSoft, color: C.accentD, whiteSpace: "nowrap" }}>{commissionLabel(b)}</span>{b.discount > 0 && <span style={{ fontSize: 12, fontWeight: 700, padding: "5px 9px", borderRadius: 8, background: C.panel, color: C.ink }}>{b.discount}% off</span>}</>}
       </div>
 
@@ -1062,7 +1062,7 @@ function BulkSms() {
       </div>
       <textarea className="er-input" style={{ minHeight: 88 }} placeholder="Your message…" value={msg} onChange={(e) => setMsg(e.target.value)} />
       <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, margin: "14px 0 8px" }}>Extra numbers (optional)</div>
-      <textarea className="er-input" style={{ minHeight: 60 }} placeholder="Phone numbers — separate by commas, spaces, or new lines (e.g. +15550102030)" value={nums} onChange={(e) => setNums(e.target.value)} />
+      <textarea className="er-input" style={{ minHeight: 60 }} placeholder="Phone numbers, separate by commas, spaces, or new lines (e.g. +15550102030)" value={nums} onChange={(e) => setNums(e.target.value)} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", marginTop: 14 }}>
         <div><div style={{ fontSize: 14, fontWeight: 600 }}>Rich countries only</div><div style={{ fontSize: 12.5, color: C.muted }}>Only send to numbers in high-income countries (US, UK, EU, Gulf, etc.).</div></div>
         <button type="button" onClick={() => setRichOnly(!richOnly)} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: "pointer", background: richOnly ? C.accent : "#CFC8BA", transition: "background .15s", flexShrink: 0 }}>
@@ -1086,7 +1086,7 @@ function PaidRow({ b, reload }) {
       <span style={{ width: 40, height: 40, borderRadius: 10, display: "grid", placeItems: "center", background: C.panel, color: C.ink, flexShrink: 0 }}><Store size={18} /></span>
       <div style={{ minWidth: 0, flex: 1 }}>
         <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>{b.name || "Untitled"}</p>
-        <p style={{ margin: 0, fontSize: 12.5, color: b.paid ? C.accent : C.muted, fontWeight: 600 }}>{b.paid ? `Paid — ${b.plan || "starter"}${b.premium ? " · premium" : ""}` : "Not paid"}</p>
+        <p style={{ margin: 0, fontSize: 12.5, color: b.paid ? C.accent : C.muted, fontWeight: 600 }}>{b.paid ? `Paid, ${b.plan || "starter"}${b.premium ? " · premium" : ""}` : "Not paid"}</p>
       </div>
       <button type="button" onClick={toggle} disabled={busy} title={b.paid ? "Turn paid off" : "Turn paid on"} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: busy ? "default" : "pointer", background: b.paid ? C.accent : "#CFC8BA", transition: "background .15s", flexShrink: 0, opacity: busy ? 0.6 : 1 }}>
         <span style={{ position: "absolute", top: 3, left: b.paid ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
@@ -1160,7 +1160,7 @@ function AdminPanel({ onBack, onRefresh }) {
       {rows && <>
         <h2 style={{ margin: "32px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft, display: "flex", alignItems: "center", gap: 8 }}>Pending {pending.length > 0 && <span style={{ background: "#D97706", color: "#fff", borderRadius: 999, fontSize: 11, padding: "1px 7px" }}>{pending.length}</span>}</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {pending.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "28px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>Nothing waiting — you're all caught up.</p> : pending.map((b) => <AdminRow key={b._id} b={b} reload={reload} />)}
+          {pending.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "28px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>Nothing waiting, you're all caught up.</p> : pending.map((b) => <AdminRow key={b._id} b={b} reload={reload} />)}
         </div>
         <h2 style={{ margin: "32px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Live ({approved.length})</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{approved.map((b) => <AdminRow key={b._id} b={b} reload={reload} />)}</div>
@@ -1268,7 +1268,7 @@ function CommissionRequest({ token, businessId, requests = [], onDone }) {
             {pricing === "commission" && <span style={{ fontSize: 15, color: C.muted, marginLeft: 2 }}>%</span>}
           </div>
         </>}
-        <textarea className="er-input" style={{ marginTop: 8 }} placeholder="Add a note (optional — e.g. a dedicated reel + story)" value={note} onChange={(e) => setNote(e.target.value)} />
+        <textarea className="er-input" style={{ marginTop: 8 }} placeholder="Add a note (optional, e.g. a dedicated reel + story)" value={note} onChange={(e) => setNote(e.target.value)} />
         {err && <p style={{ margin: "8px 0 0", fontSize: 12.5, color: "#9B3024" }}>{err}</p>}
         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
           <button className="er-btn er-btn-primary er-btn-sm" disabled={busy} onClick={submit}>{busy ? "Sending…" : "Send request"}</button>
@@ -1458,7 +1458,7 @@ function BusinessPage({ onHome, onList, onCreator, onLogin, onLegal }) {
         <div style={{ maxWidth: 760 }}>
           <span className="er-eyebrow">For businesses</span>
           <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(34px,5.5vw,56px)", lineHeight: 1.05, fontWeight: 500, letterSpacing: "-.02em" }}>Get your product recommended by the right influencers.</h1>
-          <p style={{ margin: "20px 0 0", fontSize: 17, lineHeight: 1.55, color: C.inkSoft, maxWidth: 560 }}>List your brand, product, or app and let vetted creators recommend it to their audience. You set the commission and only pay when a referral converts — no retainers, no upfront ad spend.</p>
+          <p style={{ margin: "20px 0 0", fontSize: 17, lineHeight: 1.55, color: C.inkSoft, maxWidth: 560 }}>List your brand, product, or app and let vetted creators recommend it to their audience. You set the commission and only pay when a referral converts, no retainers, no upfront ad spend.</p>
           <div style={{ marginTop: 26, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" onClick={onCreator}>I'm a creator</button>
@@ -1472,7 +1472,7 @@ function BusinessPage({ onHome, onList, onCreator, onLogin, onLegal }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <HowStep n={1} title="List your product" body="Add your brand, set your commission and any customer perk, and choose your categories." />
               <HowStep n={2} title="Influencers recommend you" body="Creators add your product to their recommendation list and share the link in their bio." />
-              <HowStep n={3} title="They create content" body="Influencers promote your product to their audience — testimonials, posts, and sponsored content." />
+              <HowStep n={3} title="They create content" body="Influencers promote your product to their audience, testimonials, posts, and sponsored content." />
               <HowStep n={4} title="You pay on results" body="Commission is paid only on tracked sales. Every click and conversion is attributed to the creator who drove it." />
             </div>
           </div>
@@ -1506,10 +1506,10 @@ function InfluencerPage({ onHome, onCreator, onList, onLogin, onLegal }) {
           <div style={{ maxWidth: 640 }}>
             <h2 className="er-serif" style={{ margin: "0 0 28px", fontSize: "clamp(24px,3.5vw,34px)", fontWeight: 500 }}>How it works</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-              <HowStep n={1} title="Sign up free" body="Create your creator profile in under a minute — username, photo, and your follower count." />
+              <HowStep n={1} title="Sign up free" body="Create your creator profile in under a minute, username, photo, and your follower count." />
               <HowStep n={2} title="Build your recommendation list" body="Pick the brands and products you genuinely back. Each one gets its own tracked referral link." />
               <HowStep n={3} title="Share it in your bio" body="One link to everything you recommend. Your audience taps through and shops." />
-              <HowStep n={4} title="Get paid commission" body="Earn on every sale that comes through your links — automatically tracked and attributed to you." />
+              <HowStep n={4} title="Get paid commission" body="Earn on every sale that comes through your links, automatically tracked and attributed to you." />
               <HowStep n={5} title="Promote for more" body="Create content or sponsored posts for brands to unlock higher commission or a sponsorship fee." />
             </div>
           </div>
@@ -1561,7 +1561,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
   return (
     <div>
       <button onClick={onList} style={{ display: "block", width: "100%", border: "none", cursor: "pointer", fontFamily: "inherit", background: C.ink, color: C.paper, textAlign: "center", fontSize: 13.5, fontWeight: 600, padding: "9px 16px", letterSpacing: ".01em" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap" }}><Spark size={14} /> Free limited signups! <b style={{ color: "#fff" }}>{seatsLeft} seat{seatsLeft === 1 ? "" : "s"} remaining</b> — claim yours →</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap" }}><Spark size={14} /> Free limited signups! <b style={{ color: "#fff" }}>{seatsLeft} seat{seatsLeft === 1 ? "" : "s"} remaining</b>, claim yours →</span>
       </button>
       <header style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(253,252,250,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
@@ -1605,10 +1605,10 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
               <span className="er-eyebrow">For creators</span>
               <h2 className="er-serif" style={{ margin: "10px 0 28px", fontSize: "clamp(24px,3.5vw,34px)", fontWeight: 500, letterSpacing: "-.01em" }}>How it works</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-                <HowStep n={1} title="Sign up free as a creator" body="Create your creator profile in under a minute — username, photo, follower count, social platform and username." />
+                <HowStep n={1} title="Sign up free as a creator" body="Create your creator profile in under a minute, username, photo, follower count, social platform and username." />
                 <HowStep n={2} title="Build your recommendation list" body="Pick the brands and products you genuinely back. Each one gets its own tracked referral link." />
                 <HowStep n={3} title="Share it in your bio" body="One link to everything you recommend. Your audience taps through and shops." />
-                <HowStep n={4} title="Get paid commission" body="Earn on every sale that comes through your links — automatically tracked and attributed to you." />
+                <HowStep n={4} title="Get paid commission" body="Earn on every sale that comes through your links, automatically tracked and attributed to you." />
                 <HowStep n={5} title="Create sponsored content" body="Create content or sponsored posts for brands for a sponsorship fee." />
               </div>
               <button className="er-btn er-btn-primary" style={{ marginTop: 30 }} onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
@@ -1620,7 +1620,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
                 <HowStep n={1} title="List your product" body="Add your brand, set your commission and any customer perk, and choose your categories." />
                 <HowStep n={2} title="Influencers recommend you" body="Creators add your product to their recommendation list and share the link in their bio." />
                 <HowStep n={3} title="You pay on results" body="Commission is paid only on tracked sales. Every click and conversion is attributed to the creator who drove it." />
-                <HowStep n={4} title="They create content" body="Influencers create content for your product — testimonials, posts, and sponsored content for a fee." />
+                <HowStep n={4} title="They create content" body="Influencers create content for your product, testimonials, posts, and sponsored content for a fee." />
               </div>
               <button className="er-btn er-btn-ghost" style={{ marginTop: 30 }} onClick={onBusinessPage}>List your business <Arrow size={16} /></button>
             </div>
@@ -1632,7 +1632,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         <div className="er-wrap" style={{ padding: "10px 22px 56px", textAlign: "center" }}>
           <span className="er-eyebrow">Watch it work</span>
           <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>See real creators in action</h2>
-          <p style={{ margin: "10px auto 14px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short clips of creators showing off apps, tools, and products — and earning on every signup.</p>
+          <p style={{ margin: "10px auto 14px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short clips of creators showing off apps, tools, and products, and earning on every signup.</p>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "7px 15px", fontSize: 12.5, fontWeight: 600, color: C.inkSoft, marginBottom: 26 }}>
             <Play size={13} /> Videos are high-definition, so they may take a few seconds to load.
           </div>
@@ -1690,9 +1690,9 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
       <section id="er-tracking" className="er-wrap" style={{ padding: "8px 22px 64px", scrollMarginTop: 70 }}>
         <span className="er-eyebrow">How tracking works</span>
         <div style={{ marginTop: 14, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", maxWidth: 900 }}>
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>A link for every recommendation.</b> When a creator backs a business, we mint a unique tracked link for that pairing — so each recommendation is measured on its own.</p>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>A link for every recommendation.</b> When a creator backs a business, we mint a unique tracked link for that pairing, so each recommendation is measured on its own.</p>
           <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>Clicks are attributed.</b> Tapping a creator's link records the click and tags the visit to that creator, then sends the customer to the business.</p>
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>Sales close the loop.</b> When a tagged visit becomes a purchase, the business confirms it and the creator earns the agreed commission — visible on their account.</p>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}><b style={{ color: C.ink }}>Sales close the loop.</b> When a tagged visit becomes a purchase, the business confirms it and the creator earns the agreed commission, visible on their account.</p>
         </div>
         <p style={{ margin: "16px 0 0", fontSize: 12, color: C.muted, maxWidth: 900 }}>Commission terms are set by each business and may run through their own affiliate program. Attribution windows and payout timing can vary by business.</p>
       </section>
@@ -1790,7 +1790,7 @@ const STYLES = `
 
 /* ---------- Root ---------- */
 /* ===========================================================================
-   RetentionBase — marketing site, rendered at "/". Reuses the shared tokens,
+   RetentionBase, marketing site, rendered at "/". Reuses the shared tokens,
    icons (Svg, Arrow, Check, Close, ChevR, Search, Spark, Seal, Mail) and
    API_BASE defined above. The EasyRecommend influencer app (EasyApp, below)
    is served at "/Commision".
@@ -1805,24 +1805,24 @@ const Play = (p) => <Svg {...p}><path d="M8 5.5l11 6.5-11 6.5v-13Z" /></Svg>;
 const RB_AGENTS = [
   { key: "influencer", tag: "Advocacy", name: "Influencer Agent", color: "#0F6B4F", bg: "#E4F0EA", icon: Users,
     line: "Commission-based influence, fully automated.",
-    body: "Recruits the right creators, hands each a tracked link, and pays only when a referral converts. No flat fees, no agencies — performance only.",
+    body: "Recruits the right creators, hands each a tracked link, and pays only when a referral converts. No flat fees, no agencies, performance only.",
     points: ["Finds + vets creators by niche", "Tracked links, per-sale attribution", "Pays on conversion, not posts"],
     link: SITE_URL + "/Commision", cta: "See Influencer" },
   { key: "messaging", tag: "Lifecycle", name: "Messaging Agent", color: "#2D5B8E", bg: "#E7EDF6", icon: Chat,
     line: "Extremely personalized SMS & email.",
-    body: "Writes and sends one-to-one messages that read like a human wrote them for that customer — timed to behavior, not a blast calendar.",
+    body: "Writes and sends one-to-one messages that read like a human wrote them for that customer, timed to behavior, not a blast calendar.",
     points: ["Per-customer copy, not templates", "Triggered by real behavior", "SMS + email in one thread"] },
   { key: "churn", tag: "Retention", name: "Churn Agent", color: "#B5572E", bg: "#F6E8DF", icon: Pulse,
-    line: "Detect churn early — by listening.",
+    line: "Detect churn early, by listening.",
     body: "Reads the quiet signals (usage dips, sentiment, support tone) and flags an at-risk customer before they leave, then steps in with a save.",
     points: ["Listens across product + support", "Risk scores days ahead", "Auto-launches save plays"] },
   { key: "answer", tag: "Discovery", name: "Answer-Engine Agent", color: "#6C3FA0", bg: "#EFE8F6", icon: Search,
     line: "Get featured on ChatGPT.",
-    body: "Optimizes how your brand is described across the web so AI assistants recommend you when buyers ask — the new front page of search.",
+    body: "Optimizes how your brand is described across the web so AI assistants recommend you when buyers ask, the new front page of search.",
     points: ["Structures your AI-readable story", "Targets assistant answers", "Tracks share-of-answer"] },
   { key: "referral", tag: "Growth", name: "Referral Agent", color: "#0E7C86", bg: "#E2F1F2", icon: Share,
     line: "AI-driven referrals on autopilot.",
-    body: "Spots your happiest customers, picks the perfect moment, and invites them to refer with an offer tuned to each person — then closes the loop.",
+    body: "Spots your happiest customers, picks the perfect moment, and invites them to refer with an offer tuned to each person, then closes the loop.",
     points: ["Finds advocates automatically", "Personalized invites + offers", "Reward only on success"] },
 ];
 // Videos for the homepage. Files in public/: /video1.mp4 … /video18.mp4, with
@@ -1874,7 +1874,7 @@ function RetentionPage() {
       <section className="rb-wrap" style={{ padding: "84px 22px 56px", textAlign: "center" }}>
         <span className="rb-eyebrow">We've changed our name</span>
         <h1 className="rb-serif" style={{ margin: "16px auto 0", maxWidth: 760, fontSize: "clamp(38px,6vw,64px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em", color: C.ink }}>RetentionBase is now Easy&nbsp;Recommend.</h1>
-        <p style={{ margin: "20px auto 0", maxWidth: 560, fontSize: "clamp(16px,2.2vw,19px)", lineHeight: 1.5, color: C.inkSoft }}>Same team, same product — new name and a new home. You can now find us at <b style={{ color: C.ink }}>easyrecommend.co</b>.</p>
+        <p style={{ margin: "20px auto 0", maxWidth: 560, fontSize: "clamp(16px,2.2vw,19px)", lineHeight: 1.5, color: C.inkSoft }}>Same team, same product, new name and a new home. You can now find us at <b style={{ color: C.ink }}>easyrecommend.co</b>.</p>
         <div style={{ marginTop: 30, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <RBtn kind="primary" as="a" href={SITE_URL}>Visit easyrecommend.co <Arrow size={17} /></RBtn>
         </div>
@@ -1965,7 +1965,7 @@ function LegalModal({ onClose }) {
     ["4. Information we collect automatically", ["Activity data: referral-link clicks, sales/conversion attribution, listings viewed, and actions taken on the Service.", "Device and log data: IP address, browser type, device and operating-system information, referring pages, and timestamps.", "Cookies and local storage: small data files and browser storage used to keep you signed in and remember preferences (see Section 8)."]],
     ["5. How we use your information", ["Create, operate, and secure your account and the Service.", "Match creators with brands and generate and track referral links and attribution.", "Process plan payments and prevent fraud and abuse.", "Send you service and transactional messages by SMS and email (for example, verification codes, commission requests, and account notices).", "Provide customer support and respond to your requests.", "Monitor, analyze, and improve the Service and develop new features.", "Comply with legal obligations and enforce our terms."]],
     ["6. Legal bases for processing", "Where applicable law (such as the EU/UK GDPR) requires it, we process personal data on these bases: performance of a contract (to provide the Service you sign up for); your consent (for example, SMS marketing, which you can withdraw at any time); our legitimate interests (to secure, improve, and promote the Service in a way that does not override your rights); and compliance with legal obligations."],
-    ["7. SMS / text-message program", "If you provide a mobile number, you consent to receive account and activity text messages from Easy Recommend — for example, one-time verification codes and notices when a creator requests a commission. Message frequency varies. Message and data rates may apply. Reply STOP to opt out of non-essential texts and HELP for help. Opting out of transactional messages such as verification codes may limit your ability to use parts of the Service. Carriers are not liable for delayed or undelivered messages."],
+    ["7. SMS / text-message program", "If you provide a mobile number, you consent to receive account and activity text messages from Easy Recommend, for example, one-time verification codes and notices when a creator requests a commission. Message frequency varies. Message and data rates may apply. Reply STOP to opt out of non-essential texts and HELP for help. Opting out of transactional messages such as verification codes may limit your ability to use parts of the Service. Carriers are not liable for delayed or undelivered messages."],
     ["8. Cookies, local storage & tracking", ["Strictly necessary: keep you signed in (we store a session token in your browser's local storage) and remember your cookie choice. The Service cannot function without these.", "Preference: remember settings and choices you make.", "Analytics: help us understand how the Service is used so we can improve it.", "We do not use cookies to sell your personal data. You can accept or decline non-essential cookies in our banner, and you can clear cookies and local storage in your browser at any time; doing so may sign you out or reset preferences."]],
     ["9. Payments", "One-time plan payments are processed by our third-party payment processor, Stripe. Card details are submitted directly to Stripe's secure checkout; we do not collect or store full card numbers on our servers. Stripe processes your payment information under its own privacy policy and security standards (PCI-DSS). We retain limited records of transactions (such as plan, amount, and a charge reference) for accounting and refund purposes."],
     ["10. How we share information", ["Between users of the Service: when a creator requests a commission, the relevant brand sees the creator's username, follower count, and request details; public listings and creator profiles are visible to other users and visitors.", "Service providers: vendors who host our infrastructure, send SMS/email, and process payments, acting on our instructions.", "Legal and safety: when required by law, to respond to legal process, or to protect the rights, safety, and security of users, the public, or Easy Recommend.", "Business transfers: in connection with a merger, acquisition, financing, or sale of assets, subject to this policy.", "We do not sell your personal information."]],
@@ -2025,7 +2025,7 @@ function AccountSettings({ session, onBack, onLogout, onEditProfile, onMyBiz, on
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>Account settings</h1>
       <p style={{ margin: "6px 0 24px", fontSize: 14.5, color: C.muted }}>Manage your {isCreator ? "creator" : "business"} account.</p>
       <SettingRow label="Account type" value={isCreator ? "Creator" : "Business"} />
-      <SettingRow label={isCreator ? "Username" : "Sign-in"} value={isCreator ? `@${session.username}` : (session.phone || session.email || "—")} />
+      <SettingRow label={isCreator ? "Username" : "Sign-in"} value={isCreator ? `@${session.username}` : (session.phone || session.email || "-")} />
       {isCreator
         ? <SettingRow label="Profile" value="Photo, bio, and follower count" action={<button className="er-btn er-btn-light er-btn-sm" onClick={onEditProfile}>Edit profile</button>} />
         : <SettingRow label="Listing & products" value="Edit your business and products" action={<button className="er-btn er-btn-light er-btn-sm" onClick={onMyBiz}>Edit listing</button>} />}
@@ -2136,7 +2136,7 @@ function EasyApp() {
 }
 
 /* ===========================================================================
-   Top-level router — Easy Recommend is the main site (the influencer landing).
+   Top-level router, Easy Recommend is the main site (the influencer landing).
    Visitors arriving on the old retentionbase.com domain see the rename notice.
    Preview the rename page anywhere with ?renamed=1.
    =========================================================================== */
