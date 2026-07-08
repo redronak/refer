@@ -1330,9 +1330,9 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}><h1 className="er-serif" style={{ margin: 0, fontSize: 30, fontWeight: 500 }}>@{data.username}</h1><Seal size={20} /></div>
               <p style={{ margin: "2px 0 0", fontSize: 14.5, color: C.muted }}>{data.bio || "Curating businesses worth trusting."}</p>
               <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{data.followers > 0 ? `${data.followersLabel} followers · ` : ""}{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
-              {data.social && (() => { const u = socialUrl(data.platform, data.social); const label = `${data.platform || "Social"} · @${String(data.social).replace(/^@/, "")}`;
+              {/* {data.social && (() => { const u = socialUrl(data.platform, data.social); const label = `${data.platform || "Social"} · @${String(data.social).replace(/^@/, "")}`;
                 return u ? <a href={u} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 12.5, fontWeight: 600, color: C.accentD, textDecoration: "none" }}>{label} <Arrow size={12} /></a>
-                        : <p style={{ margin: "6px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{label}</p>; })()}
+                        : <p style={{ margin: "6px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{label}</p>; })()} */}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", flexShrink: 0 }}>
               <button className="er-btn er-btn-light er-btn-sm" onClick={copyLink} style={{ color: copied ? C.accent : C.ink }}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}</button>
