@@ -1039,27 +1039,52 @@ function AdminRow({ b, reload }) {
     </div>
   );
 }
-function BulkSms() {
+function BulkSms({ businesses = [] }) {
   const [msg, setMsg] = useState(""); const [nums, setNums] = useState(""); const [aud, setAud] = useState("approved"); const [richOnly, setRichOnly] = useState(false);
+  const [picked, setPicked] = useState([]); const [showPick, setShowPick] = useState(false);
   const [busy, setBusy] = useState(false); const [res, setRes] = useState(""); const [err, setErr] = useState("");
+  const withPhone = businesses.filter((b) => b.phone);
   const send = async () => {
     if (!msg.trim()) { setErr("Write a message first."); return; }
-    if (aud === "none" && !nums.trim()) { setErr("Pick a business group or paste some numbers."); return; }
+    if (aud === "none" && !nums.trim() && picked.length === 0) { setErr("Pick a group, pick businesses, or paste some numbers."); return; }
     if (!window.confirm("Send this SMS now?")) return;
     setBusy(true); setErr(""); setRes("");
     try {
-      const r = await api("/admin/bulk-sms", { method: "POST", admin: true, body: { message: msg, numbers: nums, audience: aud === "none" ? "" : aud, richOnly } });
+      const pastedArr = nums.trim() ? nums.split(/[\s,;]+/) : [];
+      const pickedPhones = businesses.filter((b) => picked.includes(b._id)).map((b) => b.phone).filter(Boolean);
+      const r = await api("/admin/bulk-sms", { method: "POST", admin: true, body: { message: msg, numbers: [...pastedArr, ...pickedPhones], audience: aud === "none" ? "" : aud, richOnly } });
       setRes(`Sent to ${r.sent} of ${r.recipients} recipient(s).${r.skipped ? ` Skipped ${r.skipped} non-rich number(s).` : ""}`);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
+  const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: C.accentD };
   return (
     <div className="er-card" style={{ padding: 18, marginTop: 22 }}>
       <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Bulk SMS</h2>
       <p style={{ margin: "6px 0 14px", fontSize: 13.5, color: C.muted }}>Pick which businesses to text, and/or paste extra numbers below.</p>
       <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>Businesses on file</div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         {[["approved", "Approved only"], ["pending", "Pending only"], ["paid", "Paid only"], ["free", "Free only"], ["all", "All businesses"], ["none", "None"]].map(([k, l]) => { const on = aud === k;
           return <button key={k} type="button" onClick={() => setAud(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "8px 13px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{l}</button>; })}
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <button type="button" onClick={() => setShowPick(!showPick)} style={{ ...linkBtn, textDecoration: "underline" }}>{showPick ? "Hide business picker" : "Or pick specific businesses"}{picked.length ? ` (${picked.length} selected)` : ""}</button>
+        {showPick && <div style={{ marginTop: 8, border: `1px solid ${C.line}`, borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", background: C.panel, borderBottom: `1px solid ${C.line}` }}>
+            <span style={{ fontSize: 12.5, color: C.muted }}>{withPhone.length} with a phone number</span>
+            <div style={{ display: "flex", gap: 14 }}>
+              <button type="button" onClick={() => setPicked(withPhone.map((b) => b._id))} style={linkBtn}>Select all</button>
+              <button type="button" onClick={() => setPicked([])} style={{ ...linkBtn, color: C.muted }}>Clear</button>
+            </div>
+          </div>
+          <div style={{ maxHeight: 240, overflowY: "auto" }}>
+            {businesses.length === 0 ? <p style={{ margin: 0, padding: "18px 12px", textAlign: "center", fontSize: 13, color: C.muted }}>No businesses yet.</p> : businesses.map((b) => { const on = picked.includes(b._id); const noPhone = !b.phone;
+              return <label key={b._id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderTop: `1px solid ${C.line}`, cursor: noPhone ? "not-allowed" : "pointer", opacity: noPhone ? 0.5 : 1 }}>
+                <input type="checkbox" disabled={noPhone} checked={on} onChange={() => setPicked((p) => on ? p.filter((x) => x !== b._id) : [...p, b._id])} style={{ accentColor: C.accent }} />
+                <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>{b.name || "Untitled"}</span>
+                <span style={{ fontSize: 11.5, color: C.muted }}>{noPhone ? "no phone" : b.status}</span>
+              </label>; })}
+          </div>
+        </div>}
       </div>
       <textarea className="er-input" style={{ minHeight: 88 }} placeholder="Your message…" value={msg} onChange={(e) => setMsg(e.target.value)} />
       <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, margin: "14px 0 8px" }}>Extra numbers (optional)</div>
@@ -1155,7 +1180,7 @@ function AdminPanel({ onBack, onRefresh }) {
         <button className="er-btn er-btn-ghost er-btn-sm" onClick={seed} disabled={seeding}>{seeding ? "Loading…" : "Load demo data"}</button>
       </div>
       <p style={{ margin: "6px 0 0", fontSize: 14.5, color: C.muted }}>Approve businesses to list them under their category, or adjust their terms. Commission is admin-only.</p>
-      <BulkSms />
+      <BulkSms businesses={rows || []} />
       {err && <p style={{ marginTop: 14, background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>Couldn't reach the backend ({err}). API base: {API_BASE}</p>}
       {rows === null && !err && <p style={{ color: C.muted, marginTop: 20 }}>Loading…</p>}
       {rows && <>
