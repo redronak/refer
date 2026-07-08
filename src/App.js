@@ -697,6 +697,7 @@ function Paywall({ business, sessionToken, onPaid }) {
       </div>
       <div style={{ marginTop: 16 }}><WhyOneTimeLink center /></div>
       {err && <div style={{ marginTop: 14 }}><ErrBox msg={err} /></div>}
+      <div style={{ marginTop: 40, borderTop: `1px solid ${C.line}` }}><PlatformSteps /></div>
     </div>
   );
 }
