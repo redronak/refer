@@ -575,23 +575,20 @@ const PLANS = [
       { t: "Visible to 400+ influencers" },
       { t: "Influencers won't promote or add your product to their recommendation list", off: true },
     ] },
-  { key: "starter", amount: 70, title: "Starter", tag: "Up to 500 creators",
+  { key: "starter", amount: 70, title: "Starter", tag: "Get recommended",
     points: [
-      { t: "Get your product recommended by up to 1000+ influencers", hint: "A recommendation means an influencer features your product with a written testimonial and adds your link to their recommendation list, which they put in their bio." },
-      { t: "Get seen by 100,000 users" },
+      { t: "Get added to the recommendation list by 1000+ influencers" },
       { t: "See influencer requests — approve or reject them" },
     ] },
-  { key: "growth", amount: 159, title: "Growth", tag: "Up to 1,000 creators", featured: true,
+  { key: "growth", amount: 159, title: "Growth", tag: "Recommended + 1 sponsored reel", featured: true,
     points: [
-      { t: "Get your product recommended by up to 1,000+ influencers" },
-      { t: "Get your product promoted by up to 1,000+ influencers", hint: "A promotion means an influencer publishes an organic or sponsored post about your product." },
       { t: "Everything in Starter" },
+      { t: "An influencer with 20k+ followers (US audience) creates a sponsored reel" },
     ] },
-  { key: "premium", amount: 499, title: "Professional", tag: "Up to 2,000 creators", premium: true,
+  { key: "premium", amount: 499, title: "Professional", tag: "Recommended + 3 sponsored reels", premium: true,
     points: [
-      { t: "Get your product recommended by up to 2,000+ influencers" },
-      { t: "Get your product promoted by up to 1,000+ influencers", hint: "A promotion means an influencer publishes an organic or sponsored post about your product." },
-      { t: "Everything in Growth and Starter" },
+      { t: "Everything in Starter" },
+      { t: "3 influencers with 20k+ followers each (US audience) create sponsored reels" },
     ] },
 ];
 function loadCheckout() {
@@ -1484,6 +1481,7 @@ function BusinessPage({ onHome, onList, onCreator, onLogin, onLegal }) {
       <section className="er-wrap" style={{ padding: "10px 22px 64px", textAlign: "center" }}>
         <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
       </section>
+      <PlatformSteps />
       <PageFooter onLegal={onLegal} />
     </div>
   );
@@ -1523,6 +1521,33 @@ function InfluencerPage({ onHome, onCreator, onList, onLogin, onLegal }) {
       </section>
       <PageFooter onLegal={onLegal} />
     </div>
+  );
+}
+function PlatformSteps() {
+  const steps = [
+    ["Influencer joins the platform", "Creators sign up free and set up their profile in under a minute."],
+    ["Builds a recommendation list", "They add the apps and brands they genuinely find and love."],
+    ["Brands approve", "Each brand approves the request to be featured on the list."],
+    ["Shares with their audience", "The creator shares the list with their followers and in their bio."],
+  ];
+  return (
+    <section style={{ background: C.paper }}>
+      <div className="er-wrap" style={{ padding: "64px 22px" }}>
+        <div style={{ textAlign: "center", marginBottom: 38 }}>
+          <span className="er-eyebrow">How it works</span>
+          <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em" }}>From signup to shared in four steps</h2>
+        </div>
+        <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))" }}>
+          {steps.map(([t, d], i) => (
+            <div key={i} style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, padding: "22px 18px" }}>
+              <span style={{ width: 34, height: 34, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: C.paper, fontWeight: 700, fontSize: 15 }}>{i + 1}</span>
+              <h3 className="er-serif" style={{ margin: "14px 0 5px", fontSize: 18, fontWeight: 500, lineHeight: 1.2 }}>{t}</h3>
+              <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: C.inkSoft }}>{d}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage }) {
@@ -1570,6 +1595,8 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Trusted by 1,000+ products · you only pay commission on real, tracked sales.</p>
         </div>
       </section>
+
+      <PlatformSteps />
 
       <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ padding: "64px 22px" }}>
