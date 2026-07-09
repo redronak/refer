@@ -1470,7 +1470,7 @@ function PageFooter({ onLegal }) {
         <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend</p>
         <div style={{ display: "flex", gap: 16 }}>
           <button onClick={onLegal} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: C.muted, fontWeight: 500 }}>Privacy &amp; Cookies</button>
-          <a href="mailto:ronak@retentionbase.com" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none", fontSize: 12.5 }}>ronak@retentionbase.com</a>
+          <a href="mailto:" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none", fontSize: 12.5 }}></a>
         </div>
       </div>
     </footer>
@@ -1728,7 +1728,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <div style={{ minWidth: 180 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 18, fontWeight: 600 }}>Easy Recommend</span></div>
             <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.5, maxWidth: 260 }}>A network where creators earn on the businesses they actually trust.</p>
-            <a href="mailto:ronak@retentionbase.com" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> ronak@retentionbase.com</span></a>
+            <a href="mailto:" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> </span></a>
           </div>
           {[
             { h: "For creators", links: [["Join as a creator", onCreator], ["Creator log in", onLogin]] },
@@ -1747,7 +1747,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend · Recommendations worth passing on</p>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <button onClick={onLegal} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: C.muted, fontWeight: 500 }}>Privacy &amp; Cookies</button>
-            <a href="mailto:ronak@retentionbase.com" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>ronak@retentionbase.com</a>
+            <a href="mailto:" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}></a>
           </div>
         </div>
       </footer>
@@ -1997,14 +1997,14 @@ function LegalModal({ onClose }) {
     ["10. How we share information", ["Between users of the Service: when a creator requests a commission, the relevant brand sees the creator's username, follower count, and request details; public listings and creator profiles are visible to other users and visitors.", "Service providers: vendors who host our infrastructure, send SMS/email, and process payments, acting on our instructions.", "Legal and safety: when required by law, to respond to legal process, or to protect the rights, safety, and security of users, the public, or Easy Recommend.", "Business transfers: in connection with a merger, acquisition, financing, or sale of assets, subject to this policy.", "We do not sell your personal information."]],
     ["11. Data retention", "We keep personal data for as long as your account is active or as needed to provide the Service, then for any additional period required to comply with legal, tax, accounting, or dispute-resolution obligations. When you delete your account, we remove your profile and associated links, reviews, and commission requests, though some records (such as transaction logs) may be retained where required. Backups are purged on a rolling schedule."],
     ["12. Data security", "We use reasonable technical and organizational measures to protect personal data, including encrypted connections (HTTPS), access controls, and tokenized authentication. No method of transmission or storage is completely secure, so we cannot guarantee absolute security. Please keep your account and device credentials confidential and notify us of any suspected unauthorized access."],
-    ["13. Your rights and choices", ["Access, correct, or update most details from Account settings.", "Delete your account at any time from Account settings, which removes your profile and related data.", "Opt out of non-essential SMS (reply STOP) and manage cookies via our banner and your browser.", "Depending on where you live, you may also have rights to access, port, restrict, or object to processing, and to lodge a complaint with a supervisory authority. To exercise these, contact us at ronak@retentionbase.com; we may need to verify your identity before responding."]],
-    ["14. California privacy rights", "If you are a California resident, the CCPA/CPRA gives you rights to know what personal information we collect, to access and delete it, to correct inaccuracies, and to opt out of the \"sale\" or \"sharing\" of personal information. We do not sell or share personal information as those terms are defined, and we do not discriminate against you for exercising your rights. Submit requests to ronak@retentionbase.com."],
+    ["13. Your rights and choices", ["Access, correct, or update most details from Account settings.", "Delete your account at any time from Account settings, which removes your profile and related data.", "Opt out of non-essential SMS (reply STOP) and manage cookies via our banner and your browser.", "Depending on where you live, you may also have rights to access, port, restrict, or object to processing, and to lodge a complaint with a supervisory authority. To exercise these, contact us at ; we may need to verify your identity before responding."]],
+    ["14. California privacy rights", "If you are a California resident, the CCPA/CPRA gives you rights to know what personal information we collect, to access and delete it, to correct inaccuracies, and to opt out of the \"sale\" or \"sharing\" of personal information. We do not sell or share personal information as those terms are defined, and we do not discriminate against you for exercising your rights. Submit requests to ."],
     ["15. European & UK users", "If you are in the EEA, UK, or Switzerland, you have rights under the GDPR/UK GDPR described in Section 13, including access, rectification, erasure, restriction, portability, and objection. Where we transfer data outside your region, we rely on appropriate safeguards such as standard contractual clauses."],
     ["16. International data transfers", "We and our service providers may process and store information in countries other than the one in which you live, including the United States. Where required, we put safeguards in place to protect your information consistent with this policy and applicable law."],
     ["17. Children's privacy", "The Service is not directed to children, and we do not knowingly collect personal information from anyone under 18. If you believe a minor has provided us information, contact us and we will delete it."],
     ["18. Third-party links and services", "The Service may contain links to third-party sites and products (for example, a brand's website or a creator's social profiles). We are not responsible for the privacy practices of those third parties; review their policies before providing information."],
     ["19. Changes to this policy", "We may update this policy from time to time. When we make material changes, we will update the \"Last updated\" date and, where appropriate, provide additional notice. Your continued use of the Service after changes take effect constitutes acceptance of the updated policy."],
-    ["20. Contact us", "Questions, requests, or complaints about this policy or your data? Email us at ronak@retentionbase.com and we'll be glad to help."],
+    ["20. Contact us", "Questions, requests, or complaints about this policy or your data? Email us at  and we'll be glad to help."],
   ];
   return (
     <Modal onClose={onClose} wide>
