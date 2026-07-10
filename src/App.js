@@ -1169,6 +1169,7 @@ function AdminPanel({ onBack, onRefresh }) {
   const seed = async () => { setSeeding(true); try { await api("/admin/seed", { method: "POST", admin: true }); await reload(); } catch (e) { alert(e.message); } finally { setSeeding(false); } };
   const pending = (rows || []).filter((b) => b.status === "pending");
   const approved = (rows || []).filter((b) => b.status === "approved");
+  const stripePaid = (rows || []).filter((b) => b.paid && typeof b.chargeId === "string" && b.chargeId.startsWith("ch_"));
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 22px 80px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -1184,6 +1185,20 @@ function AdminPanel({ onBack, onRefresh }) {
       {err && <p style={{ marginTop: 14, background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>Couldn't reach the backend ({err}). API base: {API_BASE}</p>}
       {rows === null && !err && <p style={{ color: C.muted, marginTop: 20 }}>Loading…</p>}
       {rows && <>
+        <h2 style={{ margin: "32px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft, display: "flex", alignItems: "center", gap: 8 }}>Paying customers {stripePaid.length > 0 && <span style={{ background: C.accent, color: "#fff", borderRadius: 999, fontSize: 11, padding: "1px 7px" }}>{stripePaid.length}</span>}</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 4 }}>
+          {stripePaid.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "22px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>No Stripe payments yet.</p> : stripePaid.map((b) => (
+            <div key={b._id} className="er-card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 14, boxShadow: `inset 3px 0 0 ${C.accent}` }}>
+              <span style={{ width: 40, height: 40, borderRadius: 10, display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD, flexShrink: 0 }}><Store size={18} /></span>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>{b.name || "Untitled"}{b.premium ? " " : ""}{b.premium && <Seal size={14} />}</p>
+                {b.website && <a href={/^https?:\/\//i.test(b.website) ? b.website : `https://${b.website}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: C.accentD, fontWeight: 600, textDecoration: "none", wordBreak: "break-all" }}>{b.website}</a>}
+                <p style={{ margin: 0, fontSize: 12, color: C.muted }}>{(b.plan || "plan")}{b.paidAt ? ` · ${new Date(b.paidAt).toLocaleDateString()}` : ""} · {b.chargeId}</p>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: C.accentSoft, color: C.accentD }}>Paid</span>
+            </div>
+          ))}
+        </div>
         <h2 style={{ margin: "32px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft, display: "flex", alignItems: "center", gap: 8 }}>Pending {pending.length > 0 && <span style={{ background: "#D97706", color: "#fff", borderRadius: 999, fontSize: 11, padding: "1px 7px" }}>{pending.length}</span>}</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {pending.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "28px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>Nothing waiting, you're all caught up.</p> : pending.map((b) => <AdminRow key={b._id} b={b} reload={reload} />)}
@@ -1330,9 +1345,9 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}><h1 className="er-serif" style={{ margin: 0, fontSize: 30, fontWeight: 500 }}>@{data.username}</h1><Seal size={20} /></div>
               <p style={{ margin: "2px 0 0", fontSize: 14.5, color: C.muted }}>{data.bio || "Curating businesses worth trusting."}</p>
               <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{data.followers > 0 ? `${data.followersLabel} followers · ` : ""}{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
-              {/* {data.social && (() => { const u = socialUrl(data.platform, data.social); const label = `${data.platform || "Social"} · @${String(data.social).replace(/^@/, "")}`;
+              {data.social && (() => { const u = socialUrl(data.platform, data.social); const label = `${data.platform || "Social"} · @${String(data.social).replace(/^@/, "")}`;
                 return u ? <a href={u} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 12.5, fontWeight: 600, color: C.accentD, textDecoration: "none" }}>{label} <Arrow size={12} /></a>
-                        : <p style={{ margin: "6px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{label}</p>; })()} */}
+                        : <p style={{ margin: "6px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{label}</p>; })()}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", flexShrink: 0 }}>
               <button className="er-btn er-btn-light er-btn-sm" onClick={copyLink} style={{ color: copied ? C.accent : C.ink }}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}</button>
@@ -1470,7 +1485,7 @@ function PageFooter({ onLegal }) {
         <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend</p>
         <div style={{ display: "flex", gap: 16 }}>
           <button onClick={onLegal} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: C.muted, fontWeight: 500 }}>Privacy &amp; Cookies</button>
-          <a href="mailto:" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none", fontSize: 12.5 }}></a>
+          <a href="mailto:ronak@retentionbase.com" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none", fontSize: 12.5 }}>ronak@retentionbase.com</a>
         </div>
       </div>
     </footer>
@@ -1587,7 +1602,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
   return (
     <div>
       <button onClick={onList} style={{ display: "block", width: "100%", border: "none", cursor: "pointer", fontFamily: "inherit", background: C.ink, color: C.paper, textAlign: "center", fontSize: 13.5, fontWeight: 600, padding: "9px 16px", letterSpacing: ".01em" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap" }}><Spark size={14} /> Free limited signups! <b style={{ color: "#fff" }}>{seatsLeft} seat{seatsLeft === 1 ? "" : "s"} remaining</b>, claim yours →</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap" }}><Spark size={14} /> Free limited signups! Only <b style={{ color: "#fff" }}>{seatsLeft} seat{seatsLeft === 1 ? "" : "s"} left</b>. Claim yours →</span>
       </button>
       <header style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(253,252,250,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
@@ -1728,7 +1743,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <div style={{ minWidth: 180 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}><Seal size={18} /><span className="er-serif" style={{ fontSize: 18, fontWeight: 600 }}>Easy Recommend</span></div>
             <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.5, maxWidth: 260 }}>A network where creators earn on the businesses they actually trust.</p>
-            <a href="mailto:" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> </span></a>
+            <a href="mailto:ronak@retentionbase.com" className="er-link" style={{ display: "inline-block", marginTop: 12, fontSize: 13.5, color: C.inkSoft, fontWeight: 500, textDecoration: "none" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Mail size={14} /> ronak@retentionbase.com</span></a>
           </div>
           {[
             { h: "For creators", links: [["Join as a creator", onCreator], ["Creator log in", onLogin]] },
@@ -1747,7 +1762,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>© {new Date().getFullYear()} Easy Recommend · Recommendations worth passing on</p>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <button onClick={onLegal} className="er-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, color: C.muted, fontWeight: 500 }}>Privacy &amp; Cookies</button>
-            <a href="mailto:" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}></a>
+            <a href="mailto:ronak@retentionbase.com" className="er-link" style={{ color: C.muted, fontWeight: 500, textDecoration: "none" }}>ronak@retentionbase.com</a>
           </div>
         </div>
       </footer>
@@ -1997,14 +2012,14 @@ function LegalModal({ onClose }) {
     ["10. How we share information", ["Between users of the Service: when a creator requests a commission, the relevant brand sees the creator's username, follower count, and request details; public listings and creator profiles are visible to other users and visitors.", "Service providers: vendors who host our infrastructure, send SMS/email, and process payments, acting on our instructions.", "Legal and safety: when required by law, to respond to legal process, or to protect the rights, safety, and security of users, the public, or Easy Recommend.", "Business transfers: in connection with a merger, acquisition, financing, or sale of assets, subject to this policy.", "We do not sell your personal information."]],
     ["11. Data retention", "We keep personal data for as long as your account is active or as needed to provide the Service, then for any additional period required to comply with legal, tax, accounting, or dispute-resolution obligations. When you delete your account, we remove your profile and associated links, reviews, and commission requests, though some records (such as transaction logs) may be retained where required. Backups are purged on a rolling schedule."],
     ["12. Data security", "We use reasonable technical and organizational measures to protect personal data, including encrypted connections (HTTPS), access controls, and tokenized authentication. No method of transmission or storage is completely secure, so we cannot guarantee absolute security. Please keep your account and device credentials confidential and notify us of any suspected unauthorized access."],
-    ["13. Your rights and choices", ["Access, correct, or update most details from Account settings.", "Delete your account at any time from Account settings, which removes your profile and related data.", "Opt out of non-essential SMS (reply STOP) and manage cookies via our banner and your browser.", "Depending on where you live, you may also have rights to access, port, restrict, or object to processing, and to lodge a complaint with a supervisory authority. To exercise these, contact us at ; we may need to verify your identity before responding."]],
-    ["14. California privacy rights", "If you are a California resident, the CCPA/CPRA gives you rights to know what personal information we collect, to access and delete it, to correct inaccuracies, and to opt out of the \"sale\" or \"sharing\" of personal information. We do not sell or share personal information as those terms are defined, and we do not discriminate against you for exercising your rights. Submit requests to ."],
+    ["13. Your rights and choices", ["Access, correct, or update most details from Account settings.", "Delete your account at any time from Account settings, which removes your profile and related data.", "Opt out of non-essential SMS (reply STOP) and manage cookies via our banner and your browser.", "Depending on where you live, you may also have rights to access, port, restrict, or object to processing, and to lodge a complaint with a supervisory authority. To exercise these, contact us at ronak@retentionbase.com; we may need to verify your identity before responding."]],
+    ["14. California privacy rights", "If you are a California resident, the CCPA/CPRA gives you rights to know what personal information we collect, to access and delete it, to correct inaccuracies, and to opt out of the \"sale\" or \"sharing\" of personal information. We do not sell or share personal information as those terms are defined, and we do not discriminate against you for exercising your rights. Submit requests to ronak@retentionbase.com."],
     ["15. European & UK users", "If you are in the EEA, UK, or Switzerland, you have rights under the GDPR/UK GDPR described in Section 13, including access, rectification, erasure, restriction, portability, and objection. Where we transfer data outside your region, we rely on appropriate safeguards such as standard contractual clauses."],
     ["16. International data transfers", "We and our service providers may process and store information in countries other than the one in which you live, including the United States. Where required, we put safeguards in place to protect your information consistent with this policy and applicable law."],
     ["17. Children's privacy", "The Service is not directed to children, and we do not knowingly collect personal information from anyone under 18. If you believe a minor has provided us information, contact us and we will delete it."],
     ["18. Third-party links and services", "The Service may contain links to third-party sites and products (for example, a brand's website or a creator's social profiles). We are not responsible for the privacy practices of those third parties; review their policies before providing information."],
     ["19. Changes to this policy", "We may update this policy from time to time. When we make material changes, we will update the \"Last updated\" date and, where appropriate, provide additional notice. Your continued use of the Service after changes take effect constitutes acceptance of the updated policy."],
-    ["20. Contact us", "Questions, requests, or complaints about this policy or your data? Email us at  and we'll be glad to help."],
+    ["20. Contact us", "Questions, requests, or complaints about this policy or your data? Email us at ronak@retentionbase.com and we'll be glad to help."],
   ];
   return (
     <Modal onClose={onClose} wide>
