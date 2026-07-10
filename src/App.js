@@ -1325,7 +1325,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
   const isOwner = session && session.role === "creator" && session.username === handle;
   const profileUrl = `${window.location.origin}/@${handle}`;
   const copyLink = async () => { try { await navigator.clipboard.writeText(profileUrl); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
-  const load = () => api(`/creator/${handle}`).then(setData).catch((e) => setErr(e.message));
+  const load = () => api(`/creator/${handle}${session && session.role === "creator" && session.username === handle ? `?token=${encodeURIComponent(session.token)}` : ""}`).then(setData).catch((e) => setErr(e.message));
   const loadReqs = async () => { if (!(session && session.role === "creator" && session.username === handle)) return; try { const list = await api(`/creator/requests?token=${encodeURIComponent(session.token)}`); const m = {}; list.forEach((r) => { (m[String(r.businessId)] = m[String(r.businessId)] || []).push(r); }); setMyReqs(m); setReqList(list); } catch (e) {} };
   useEffect(() => { setData(null); setErr(""); load(); loadReqs(); }, [handle, dataVersion]);
   const removeBrand = async (businessId) => { try { await api("/creator/link", { method: "DELETE", body: { token: session.token, businessId } }); await load(); onRefresh(); } catch (e) { alert(e.message); } };
@@ -1384,7 +1384,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     {photo ? <img src={photo} alt="" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} /> : <span style={{ width: 48, height: 48, borderRadius: 12, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0 }}><Store size={19} /></span>}
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}><h3 className="er-serif" style={{ margin: 0, fontSize: 19, fontWeight: 500 }}>{b.name}</h3><span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 999, background: cc.bg, color: cc.color }}>{b.categories[0]}</span></div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}><h3 className="er-serif" style={{ margin: 0, fontSize: 19, fontWeight: 500 }}>{b.name}</h3><span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 999, background: cc.bg, color: cc.color }}>{b.categories[0]}</span>{isOwner && !b.listApproved && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 999, background: C.panel, color: C.inkSoft }}>Pending brand approval</span>}</div>
                       <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : b.city}</p></div>
                     {isOwner && <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => removeBrand(b.id)}><Close size={14} /> Remove</button>}
                   </div>
