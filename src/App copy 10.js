@@ -938,15 +938,6 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   Object.values(byCat).forEach((arr) => arr.sort((a, b) => (b.paid ? 1 : 0) - (a.paid ? 1 : 0)));
   const cats = CAT_LIST.filter((c) => byCat[c]);
   const noMatches = q && cats.every((c) => !byCat[c].filter(match).length);
-  const paidBrands = approved.filter((b) => (b.paid || b.premium) && match(b));
-  const recencyOf = (b) => new Date(b.approvedAt || b.createdAt || 0).getTime();
-  const recentBrands = approved.filter((b) => match(b) && recencyOf(b) > 0 && Date.now() - recencyOf(b) < 7 * 864e5).sort((a, b) => recencyOf(b) - recencyOf(a));
-  const brandRow = (b) => { const on = picked.includes(b.id); const bt = tintFor(b.id || b.name); const photo = (b.photos || [])[0];
-    return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 13, textAlign: "left", padding: "14px 16px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : (b.paid ? "#FBFAF6" : "#fff"), boxShadow: b.paid && !on ? `inset 3px 0 0 ${C.accent}` : "none", cursor: "pointer" }}>
-      <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center", border: `1.5px solid ${on ? C.accent : "#CFC8BA"}`, background: on ? C.accent : "#fff", color: "#fff" }}>{on && <Check size={15} />}</span>
-      <span style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, display: "grid", placeItems: "center", background: bt.bg, color: bt.color, overflow: "hidden" }}>{photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={16} />}</span>
-      <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontWeight: 600, fontSize: 15, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>{b.paid && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 7px" }}>Promoted</span>}</span><span style={{ display: "block", fontSize: 13, color: C.muted, marginTop: 1 }}>{(b.categories || [])[0] || (b.online ? "Online" : (b.city || "-"))}</span></span>
-    </button>; };
 
   return (
     <Modal onClose={onClose} wide>
@@ -991,14 +982,6 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
               return <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.ink, color: C.paper, borderRadius: 999, padding: "5px 6px 5px 12px", fontSize: 13, fontWeight: 600 }}>{b.name}<button onClick={() => toggle(id)} style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.22)", color: C.paper, cursor: "pointer" }}><Close size={11} /></button></span>; })}
           </div>}
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
-            {paidBrands.length > 0 && <div style={{ border: `1px solid ${C.accent}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: C.accentSoft }}>
-                <Spark size={16} style={{ color: C.accentD }} />
-                <span style={{ flex: 1, fontWeight: 700, fontSize: 15, color: C.accentD }}>Featured partners</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>{paidBrands.length}</span>
-              </div>
-              <div>{paidBrands.map(brandRow)}</div>
-            </div>}
             {cats.map((c) => { const all = byCat[c]; const list = all.filter(match); if (q && !list.length) return null; const open = q ? true : openCat === c; const x = CATS[c] || CATS.Beauty; const selCount = all.filter((b) => picked.includes(b.id)).length;
               return <div key={c} style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
                 <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 64, padding: "16px", background: open ? x.bg : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
@@ -1009,17 +992,14 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
                   <span style={{ color: C.muted, display: "flex", flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}><ChevR size={17} /></span>
                 </button>
                 {open && <div style={{ borderTop: `1px solid ${C.line}` }}>
-                  {list.map(brandRow)}
+                  {list.map((b) => { const on = picked.includes(b.id); const bt = tintFor(b.id || b.name); const photo = (b.photos || [])[0];
+                    return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 13, textAlign: "left", padding: "14px 16px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : (b.paid ? "#FBFAF6" : "#fff"), boxShadow: b.paid && !on ? `inset 3px 0 0 ${C.accent}` : "none", cursor: "pointer" }}>
+                      <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center", border: `1.5px solid ${on ? C.accent : "#CFC8BA"}`, background: on ? C.accent : "#fff", color: "#fff" }}>{on && <Check size={15} />}</span>
+                      <span style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, display: "grid", placeItems: "center", background: bt.bg, color: bt.color, overflow: "hidden" }}>{photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={16} />}</span>
+                      <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontWeight: 600, fontSize: 15, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>{b.paid && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 7px" }}>Promoted</span>}</span><span style={{ display: "block", fontSize: 13, color: C.muted, marginTop: 1 }}>{b.online ? "Online" : (b.city || "-")}</span></span>
+                    </button>; })}
                 </div>}
               </div>; })}
-            {recentBrands.length > 0 && <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: C.panel }}>
-                <span style={{ flex: 1, fontWeight: 700, fontSize: 15, color: C.ink }}>Recently approved</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>last 7 days</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}>{recentBrands.length}</span>
-              </div>
-              <div>{recentBrands.map(brandRow)}</div>
-            </div>}
             {!cats.length && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "24px 0" }}>No live businesses yet, check back soon.</p>}
             {noMatches && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "20px 0" }}>No brands match &ldquo;{query}&rdquo;.</p>}
           </div>
