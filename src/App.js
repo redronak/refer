@@ -149,6 +149,40 @@ const COUNTRY_CODES = [
   { c: "ZA", d: "+27", f: "🇿🇦" }, { c: "NG", d: "+234", f: "🇳🇬" }, { c: "IE", d: "+353", f: "🇮🇪" },
 ];
 // Combines a country code + local number into an E.164-ish string for `onChange`.
+function OffPlatformNotice({ url, platform, username, onClose }) {
+  return (
+    <Modal onClose={onClose}>
+      <div style={{ padding: "30px 28px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+          <span style={{ width: 40, height: 40, borderRadius: 11, display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD, flexShrink: 0 }}><Seal size={22} /></span>
+          <h2 className="er-serif" style={{ margin: 0, fontSize: 23, fontWeight: 500 }}>Hire through Easy Recommend</h2>
+        </div>
+        <p style={{ margin: "14px 0 0", fontSize: 14.5, color: C.inkSoft, lineHeight: 1.55 }}>
+          You're about to visit {username ? <b>@{String(username).replace(/^@/, "")}</b> : "this creator"} on {platform || "their social platform"}. Feel free to check out their content, but book the work here.
+        </p>
+        <div style={{ marginTop: 16, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px 16px" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 9 }}>Why it's safer here</div>
+          {[
+            "Your payment is held until the content goes live, so you're covered if a creator doesn't deliver what was agreed.",
+            "Every creator in our hire list is verified by our team before they can take work.",
+            "Deliverables, timing, and price are agreed in writing, so there's a record if something goes wrong.",
+            "We step in and mediate if the work doesn't match what was promised.",
+          ].map((t, i) => (
+            <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start", marginTop: i ? 9 : 0 }}>
+              <span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}><Check size={15} /></span>
+              <span style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.45 }}>{t}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ margin: "13px 0 0", fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>Deals arranged off-platform aren't covered by our protection and we can't help recover your money.</p>
+        <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 9 }}>
+          <button className="er-btn er-btn-primary er-btn-block" onClick={onClose}>Got it, hire here</button>
+          <a className="er-btn er-btn-ghost er-btn-block" href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} onClick={onClose}>Continue to {platform || "their profile"}</a>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 function socialUrl(platform, handle) {
   let h = String(handle || "").trim().replace(/^@/, "");
   if (!h) return "";
@@ -393,12 +427,13 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
     </Modal>
   );
 }
-function BrandSuccess({ name, onClose }) {
+function BrandSuccess({ name, onClose, onDashboard }) {
   return <Modal onClose={onClose}><div style={{ padding: 32, textAlign: "center" }}>
     <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={52} /></div>
     <h2 className="er-serif" style={{ margin: "16px 0 0", fontSize: 24, fontWeight: 500 }}>You're in the queue</h2>
     <p style={{ margin: "10px 0 0", fontSize: 14.5, color: C.inkSoft, lineHeight: 1.5 }}><b>{name}</b> was submitted for review. We approve every business before it's listed, you'll get a text once you're live.</p>
-    <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 24 }} onClick={onClose}>Done</button></div></Modal>;
+    <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 24 }} onClick={onDashboard}>Go to my dashboard <Arrow size={16} /></button>
+    <button className="er-btn er-btn-ghost er-btn-block" style={{ marginTop: 10 }} onClick={onClose}>Not now</button></div></Modal>;
 }
 
 /* ---------- Login ---------- */
@@ -579,7 +614,6 @@ const PLANS = [
     points: [
       { t: "Get added to the recommendation list by 1000+ influencers" },
       { t: "See influencer requests, approve or reject them" },
-      { t: "Hire influencers for sponsored posts, stories, and reels" },
     ] },
 ];
 function loadCheckout() {
@@ -731,7 +765,7 @@ function MyBusiness({ session, onBack, onRefresh }) {
   const [hireOn, setHireOn] = useState(false);
   useEffect(() => { api("/settings").then((s) => setHireOn(!!s.hireEnabled)).catch(() => {}); }, []);
   const loadCreators = async () => { try { setCreators(await api(`/business/me/creators?token=${t}`)); } catch (e) { setCreators([]); } };
-  useEffect(() => { if (paid && tab === "hire") loadCreators(); }, [paid, tab]);
+  useEffect(() => { if (tab === "hire" && hireOn) loadCreators(); }, [tab, hireOn]);
   const onPaid = async () => { await reload(); setTab("promo"); setShowVerify(true); };
   const tabs = [["info", "My information"], ["promo", paid ? `Requests${pending ? ` · ${pending}` : ""}` : "Approve/Reject Influencer request"], ...(hireOn ? [["hire", "Hire influencers"]] : [])];
   return (
@@ -741,7 +775,7 @@ function MyBusiness({ session, onBack, onRefresh }) {
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>My business</h1>
       <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>Edit your listing for free. Unlock creator promotion and requests with a one-time plan.</p>
       <div style={{ display: "flex", gap: 26, borderBottom: `1px solid ${C.line}`, marginBottom: 22, flexWrap: "wrap" }}>
-        {tabs.map(([k, lbl]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 17, fontWeight: 600, padding: "12px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2.5px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, display: "inline-flex", alignItems: "center", gap: 7 }}>{lbl}{(k === "promo" || k === "hire") && !paid && <Lock size={15} />}</button>)}
+        {tabs.map(([k, lbl]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 17, fontWeight: 600, padding: "12px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2.5px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, display: "inline-flex", alignItems: "center", gap: 7 }}>{lbl}{k === "promo" && !paid && <Lock size={15} />}</button>)}
       </div>
       {err && <p style={{ background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>{err}</p>}
 
@@ -767,14 +801,12 @@ function MyBusiness({ session, onBack, onRefresh }) {
 
       {tab === "hire" && hireOn && (rows === null
         ? <p style={{ color: C.muted }}>Loading…</p>
-        : paid
-          ? <>
-            <p style={{ margin: "0 0 18px", fontSize: 14, color: C.muted }}>Vetted creators, approved by our team. Hire one for a post, story, or reel and we'll set it up for you.</p>
+        : <>
+            <p style={{ margin: "0 0 18px", fontSize: 14, color: C.muted }}>Verified creators, hand-picked and approved by our team. Hire one for a post, story, or reel and we'll set it up for you.</p>
             {creators === null && <p style={{ color: C.muted }}>Loading…</p>}
-            {creators && creators.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No creators available to hire yet. Check back soon.</p>}
+            {creators && creators.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No verified creators available yet. Check back soon.</p>}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(creators || []).map((c) => <HireCard key={c.username} c={c} token={session.token} reload={loadCreators} />)}</div>
-          </>
-          : business ? <Paywall business={business} sessionToken={session.token} onPaid={onPaid} /> : <p style={{ color: C.muted }}>No business found.</p>)}
+          </>)}
     </div>
   );
 }
@@ -797,6 +829,7 @@ function HireCard({ c, token, reload }) {
         <Avatar name={c.username} image={c.image} size={44} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <a href={c.profileUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, fontSize: 15.5, color: C.ink, textDecoration: "none" }}>@{c.username}</a>
+          <span style={{ marginLeft: 7, fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 8px" }}>Verified</span>
           <div style={{ fontSize: 12.5, color: C.muted }}>{c.followersLabel} followers{c.bio ? ` · ${c.bio}` : ""}</div>
         </div>
       </div>
@@ -1361,13 +1394,13 @@ function AdminPanel({ onBack, onRefresh }) {
         </div>
 
         <h2 style={{ margin: "36px 0 6px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Creators ({infs.length})</h2>
-        <p style={{ margin: "0 0 12px", fontSize: 13, color: C.muted }}>Feature a creator to make them hireable by paid businesses.</p>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: C.muted }}>Verify a creator to make them hireable by paid businesses in the Hire tab.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {infs.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "24px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>No creators yet.</p> : infs.map((i) => (
             <div key={i.id} className="er-card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 14 }}>
               <Avatar name={i.username} image={i.image} size={40} />
               <div style={{ minWidth: 0, flex: 1 }}><p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>@{i.username}</p><p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>{i.followers > 0 ? `${i.followersLabel} followers · ` : ""}{i.count} recommendation{i.count !== 1 ? "s" : ""}</p></div>
-              <button type="button" title={i.featured ? "Featured (hireable)" : "Not featured"} onClick={() => (async () => { try { await api(`/admin/influencer/${i.username}/featured`, { method: "POST", admin: true, body: { featured: !i.featured } }); await reload(); } catch (e) { alert(e.message); } })()} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, padding: "6px 11px", borderRadius: 999, border: `1px solid ${i.featured ? C.accent : C.line}`, background: i.featured ? C.accentSoft : "#fff", color: i.featured ? C.accentD : C.muted, flexShrink: 0 }}>{i.featured ? "★ Featured" : "Feature"}</button>
+              <button type="button" title={i.featured ? "Verified for hire" : "Not verified for hire"} onClick={() => (async () => { try { await api(`/admin/influencer/${i.username}/featured`, { method: "POST", admin: true, body: { featured: !i.featured } }); await reload(); } catch (e) { alert(e.message); } })()} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, padding: "6px 11px", borderRadius: 999, border: `1px solid ${i.featured ? C.accent : C.line}`, background: i.featured ? C.accentSoft : "#fff", color: i.featured ? C.accentD : C.muted, flexShrink: 0 }}>{i.featured ? "★ Verified" : "Verify"}</button>
               <button className="er-btn er-btn-ghost er-btn-sm" style={{ color: "#C0392B" }} onClick={() => { if (window.confirm(`Delete @${i.username}? This removes their profile and all their recommendations. This can't be undone.`)) (async () => { try { await api(`/admin/influencer/${i.username}`, { method: "DELETE", admin: true }); await reload(); } catch (e) { alert(e.message); } })(); }}><Trash size={14} /> Delete</button>
             </div>
           ))}
@@ -1474,7 +1507,7 @@ function CommissionRequest({ token, businessId, requests = [], onDone }) {
   );
 }
 function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh }) {
-  const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false);
+  const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false); const [offsite, setOffsite] = useState(null);
   const [myReqs, setMyReqs] = useState({}); const [reqList, setReqList] = useState([]);
   const isOwner = session && session.role === "creator" && session.username === handle;
   const profileUrl = `${window.location.origin}/@${handle}`;
@@ -1490,6 +1523,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
   return (
     <div>
       {editing && <EditProfileModal token={session.token} current={data} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
+      {offsite && <OffPlatformNotice url={offsite.url} platform={offsite.platform} username={offsite.username} onClose={() => setOffsite(null)} />}
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.line}` }}>
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 22px 36px" }}>
           <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><ChevL size={15} /> Easy Recommend</button>
@@ -1503,11 +1537,11 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                 ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                     {data.channels.map((c, i) => { const u = socialUrl(c.platform, c.handle);
                       const inner = <><b style={{ color: C.ink }}>{c.platform}</b> @{c.handle}{c.followers > 0 ? ` · ${c.followersLabel}` : ""}</>;
-                      return u ? <a key={i} href={u} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, fontWeight: 600, color: C.inkSoft, textDecoration: "none", border: `1px solid ${C.line}`, background: "#fff", borderRadius: 999, padding: "4px 11px" }}>{inner}</a>
+                      return u ? <button key={i} type="button" onClick={() => setOffsite({ url: u, platform: c.platform, username: c.handle })} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: C.inkSoft, border: `1px solid ${C.line}`, background: "#fff", borderRadius: 999, padding: "4px 11px" }}>{inner}</button>
                                  : <span key={i} style={{ fontSize: 12.5, fontWeight: 600, color: C.inkSoft, border: `1px solid ${C.line}`, background: "#fff", borderRadius: 999, padding: "4px 11px" }}>{inner}</span>; })}
                   </div>
                 : data.social && (() => { const u = socialUrl(data.platform, data.social); const label = `${data.platform || "Social"} · @${String(data.social).replace(/^@/, "")}`;
-                    return u ? <a href={u} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 12.5, fontWeight: 600, color: C.accentD, textDecoration: "none" }}>{label} <Arrow size={12} /></a>
+                    return u ? <button type="button" onClick={() => setOffsite({ url: u, platform: data.platform, username: data.social })} style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 6, cursor: "pointer", fontFamily: "inherit", border: "none", background: "none", padding: 0, fontSize: 12.5, fontWeight: 600, color: C.accentD }}>{label} <Arrow size={12} /></button>
                             : <p style={{ margin: "6px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{label}</p>; })()}
               {data.rates && (data.rates.post > 0 || data.rates.story > 0 || data.rates.reel > 0) && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                 {[["post", "Post"], ["story", "Story"], ["reel", "Reel"]].filter(([k]) => data.rates[k] > 0).map(([k, l]) => (
@@ -2333,7 +2367,7 @@ function EasyApp() {
       {detailId != null && <BusinessDetail id={detailId} onClose={() => setDetailId(null)} onProfile={(h) => { setDetailId(null); goProfile(h); }} onRecommend={(id) => { setDetailId(null); setCreatorPreselect(id); setCreatorOpen(true); }} />}
       {loginOpen && <LoginModal onClose={() => setLoginOpen(false)} onLogin={login} onAfterCreator={(u) => { setLoginOpen(false); goProfile(u); }} onAfterBrand={() => { setLoginOpen(false); setView("mybiz"); nav("/my-business"); }} />}
       {brandOpen && <BrandModal onClose={() => setBrandOpen(false)} onDone={(name) => { setBrandOpen(false); setBrandDone(name); }} onRefresh={refresh} onLogin={login} />}
-      {brandDone && <BrandSuccess name={brandDone} onClose={() => setBrandDone(null)} />}
+      {brandDone && <BrandSuccess name={brandDone} onClose={() => setBrandDone(null)} onDashboard={() => { setBrandDone(null); setView("mybiz"); nav("/my-business"); }} />}
       {creatorOpen && <CreatorModal businesses={businesses} initialBusinessId={creatorPreselect} onClose={() => setCreatorOpen(false)} onRefresh={refresh} onLogin={login} onViewProfile={goProfile} />}
     </div>
   );
