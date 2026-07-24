@@ -430,7 +430,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
 function BrandSuccess({ name, onClose, onDashboard }) {
   return <Modal onClose={onClose}><div style={{ padding: 32, textAlign: "center" }}>
     <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={52} /></div>
-    <h2 className="er-serif" style={{ margin: "16px 0 0", fontSize: 24, fontWeight: 500 }}>You're in the queue</h2>
+    <h2 className="er-serif" style={{ margin: "16px 0 0", fontSize: 24, fontWeight: 500 }}>You're in the queue ( Current waitist count 800+)</h2>
     <p style={{ margin: "10px 0 0", fontSize: 14.5, color: C.inkSoft, lineHeight: 1.5 }}><b>{name}</b> was submitted for review. We approve every business before it's listed, you'll get a text once you're live.</p>
     <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 24 }} onClick={onDashboard}>Go to my dashboard <Arrow size={16} /></button>
     <button className="er-btn er-btn-ghost er-btn-block" style={{ marginTop: 10 }} onClick={onClose}>Not now</button></div></Modal>;
