@@ -1277,26 +1277,50 @@ function PaidRow({ b, reload }) {
     </div>
   );
 }
-function FeatureSwitches() {
-  const [hireOn, setHireOn] = useState(null); const [busy, setBusy] = useState(false);
-  useEffect(() => { api("/settings").then((s) => setHireOn(!!s.hireEnabled)).catch(() => setHireOn(false)); }, []);
-  const toggle = async () => {
+function VerifyToggle({ i, reload }) {
+  const [busy, setBusy] = useState(false);
+  const on = !!i.featured;
+  const click = async () => {
+    const next = !on;
     setBusy(true);
-    try { const r = await api("/admin/settings", { method: "POST", admin: true, body: { hireEnabled: !hireOn } }); setHireOn(!!r.hireEnabled); }
-    catch (e) { alert(e.message); } finally { setBusy(false); }
+    try {
+      const r = await api(`/admin/influencer/${i.username}/featured`, { method: "POST", admin: true, body: { featured: next } });
+      if (!!r.featured !== next) alert("The server didn't save that change. Is the latest backend deployed?");
+      await reload();
+    } catch (e) { alert(e.message || "Couldn't save."); } finally { setBusy(false); }
+  };
+  return (
+    <button type="button" disabled={busy} title={on ? "Verified for hire" : "Not verified for hire"} onClick={click}
+      style={{ cursor: busy ? "default" : "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, padding: "6px 11px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.muted, flexShrink: 0, opacity: busy ? 0.6 : 1 }}>
+      {busy ? "…" : on ? "★ Verified" : "Verify"}
+    </button>
+  );
+}
+function FeatureSwitches() {
+  const [hireOn, setHireOn] = useState(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  useEffect(() => { api("/settings").then((s) => setHireOn(!!s.hireEnabled)).catch((e) => { setHireOn(false); setErr(`Couldn't load settings: ${e.message}`); }); }, []);
+  const toggle = async () => {
+    const next = !hireOn;
+    setBusy(true); setErr("");
+    try {
+      const r = await api("/admin/settings", { method: "POST", admin: true, body: { hireEnabled: next } });
+      setHireOn(!!r.hireEnabled);
+      if (!!r.hireEnabled !== next) setErr("The server didn't save that change. Is the latest backend deployed?");
+    } catch (e) { setErr(e.message || "Couldn't save."); } finally { setBusy(false); }
   };
   return (
     <div className="er-card" style={{ padding: 18, marginTop: 22 }}>
       <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Features</h2>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>&ldquo;Hire influencers&rdquo; tab</div>
-          <div style={{ fontSize: 12.5, color: C.muted }}>Show the hire tab to paid businesses. Keep it off until you have enough featured creators.</div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>&ldquo;Hire influencers&rdquo; tab {hireOn !== null && <span style={{ fontSize: 11, fontWeight: 700, marginLeft: 4, padding: "2px 8px", borderRadius: 999, background: hireOn ? C.accentSoft : C.panel, color: hireOn ? C.accentD : C.muted }}>{hireOn ? "ON" : "OFF"}</span>}</div>
+          <div style={{ fontSize: 12.5, color: C.muted }}>Show the hire tab to businesses. Keep it off until you have enough verified creators.</div>
         </div>
-        <button type="button" disabled={busy || hireOn === null} onClick={toggle} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: busy ? "default" : "pointer", background: hireOn ? C.accent : "#CFC8BA", transition: "background .15s", flexShrink: 0, opacity: busy ? 0.6 : 1 }}>
+        <button type="button" disabled={busy || hireOn === null} onClick={toggle} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: busy || hireOn === null ? "default" : "pointer", background: hireOn ? C.accent : "#CFC8BA", transition: "background .15s", flexShrink: 0, opacity: busy ? 0.6 : 1 }}>
           <span style={{ position: "absolute", top: 3, left: hireOn ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
         </button>
       </div>
+      {err && <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "#9B3024" }}>{err}</p>}
     </div>
   );
 }
@@ -1400,7 +1424,7 @@ function AdminPanel({ onBack, onRefresh }) {
             <div key={i.id} className="er-card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 14 }}>
               <Avatar name={i.username} image={i.image} size={40} />
               <div style={{ minWidth: 0, flex: 1 }}><p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>@{i.username}</p><p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>{i.followers > 0 ? `${i.followersLabel} followers · ` : ""}{i.count} recommendation{i.count !== 1 ? "s" : ""}</p></div>
-              <button type="button" title={i.featured ? "Verified for hire" : "Not verified for hire"} onClick={() => (async () => { try { await api(`/admin/influencer/${i.username}/featured`, { method: "POST", admin: true, body: { featured: !i.featured } }); await reload(); } catch (e) { alert(e.message); } })()} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, padding: "6px 11px", borderRadius: 999, border: `1px solid ${i.featured ? C.accent : C.line}`, background: i.featured ? C.accentSoft : "#fff", color: i.featured ? C.accentD : C.muted, flexShrink: 0 }}>{i.featured ? "★ Verified" : "Verify"}</button>
+              <VerifyToggle i={i} reload={reload} />
               <button className="er-btn er-btn-ghost er-btn-sm" style={{ color: "#C0392B" }} onClick={() => { if (window.confirm(`Delete @${i.username}? This removes their profile and all their recommendations. This can't be undone.`)) (async () => { try { await api(`/admin/influencer/${i.username}`, { method: "DELETE", admin: true }); await reload(); } catch (e) { alert(e.message); } })(); }}><Trash size={14} /> Delete</button>
             </div>
           ))}
