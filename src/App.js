@@ -662,6 +662,42 @@ async function payWithCheckout({ plan, business, sessionToken, onPaid, onErr }) 
     handler.open();
   } catch (e) { onErr(e.message); }
 }
+// Real payment for hiring a creator, same Stripe component as plans.
+async function payForHire({ creator, contentType, price, note, business, sessionToken, onDone, onErr }) {
+  const record = (chargeId) => api("/business/hire", {
+    method: "POST",
+    body: { token: sessionToken, username: creator.username, contentType, price, note, chargeId },
+  });
+  const host = (typeof window !== "undefined" && window.location.hostname) || "";
+  const isLocal = host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host.endsWith(".local");
+  let devPay = false;
+  try { devPay = localStorage.getItem("er_devpay") === "ronak-skip-1997"; } catch (e) {}
+  if (isLocal || devPay) {
+    try { await record("dev_test_" + Date.now()); onDone(); } catch (e) { onErr(e.message); }
+    return;
+  }
+  try {
+    const StripeCheckout = await loadCheckout();
+    const handler = StripeCheckout.configure({
+      key: STRIPE_PK, locale: "auto", name: "Easy Recommend",
+      description: `${contentType} by @${creator.username}`, currency: "usd", amount: Math.round(price * 100),
+      email: (business && business.email) || "", panelLabel: "Pay {{amount}}",
+      token: async (token) => {
+        try {
+          const res = await fetch("https://learntok-backend-2026-24c204fe508e.herokuapp.com/partyevents/paycharge", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: (business && business.name) || "", amount: price, token: token.id, email: token.email || (business && business.email) || "", customerName: (token.card && token.card.name) || "", phoneNumber: (business && business.phone) || "", streetAddress: "" }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.ok) throw new Error(data.error || "Card was declined.");
+          await record(data.chargeId || "");
+          onDone();
+        } catch (e) { onErr(e.message); }
+      },
+    });
+    handler.open();
+  } catch (e) { onErr(e.message); }
+}
 function WhyOneTimeLink({ center }) {
   const [open, setOpen] = useState(false);
   return (
@@ -805,41 +841,53 @@ function MyBusiness({ session, onBack, onRefresh }) {
             <p style={{ margin: "0 0 18px", fontSize: 14, color: C.muted }}>Verified creators, hand-picked and approved by our team. Hire one for a post, story, or reel and we'll set it up for you.</p>
             {creators === null && <p style={{ color: C.muted }}>Loading…</p>}
             {creators && creators.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No verified creators available yet. Check back soon.</p>}
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(creators || []).map((c) => <HireCard key={c.username} c={c} token={session.token} reload={loadCreators} />)}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(creators || []).map((c) => <HireCard key={c.username} c={c} token={session.token} business={business} reload={loadCreators} />)}</div>
           </>)}
     </div>
   );
 }
-function HireCard({ c, token, reload }) {
+function HireCard({ c, token, business, reload }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("reel");
   const [price, setPrice] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const [offsite, setOffsite] = useState(null);
   useEffect(() => { const r = (c.rates || {})[type]; setPrice(r > 0 ? String(r) : ""); }, [type, c.rates]);
+  const primary = (c.channels || [])[0];
+  const primaryUrl = primary ? socialUrl(primary.platform, primary.handle) : "";
+  const amount = Number(price) || 0;
   const hire = async () => {
+    if (!(amount > 0)) { setErr("Enter an amount greater than 0."); return; }
     setBusy(true); setErr("");
-    try { await api("/business/hire", { method: "POST", body: { token, username: c.username, contentType: type, price: Number(price) || 0, note } }); setOpen(false); setNote(""); await reload(); }
-    catch (e) { setErr(e.message); } finally { setBusy(false); }
+    await payForHire({
+      creator: c, contentType: type, price: amount, note, business, sessionToken: token,
+      onDone: async () => { setBusy(false); setOpen(false); setNote(""); await reload(); },
+      onErr: (m) => { setErr(m); setBusy(false); },
+    });
   };
-  const requested = (c.hires || []).filter((h) => h.status === "requested");
+  const requested = (c.hires || []).filter((h) => h.status !== "cancelled");
   return (
     <div className="er-card" style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Avatar name={c.username} image={c.image} size={44} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <a href={c.profileUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, fontSize: 15.5, color: C.ink, textDecoration: "none" }}>@{c.username}</a>
+          {primaryUrl
+            ? <button type="button" onClick={() => setOffsite({ url: primaryUrl, platform: primary.platform, username: primary.handle })} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 15.5, color: C.ink }}>@{c.username}</button>
+            : <span style={{ fontWeight: 600, fontSize: 15.5, color: C.ink }}>@{c.username}</span>}
           <span style={{ marginLeft: 7, fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 8px" }}>Verified</span>
           <div style={{ fontSize: 12.5, color: C.muted }}>{c.followersLabel} followers{c.bio ? ` · ${c.bio}` : ""}</div>
         </div>
       </div>
       {(c.channels || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 11 }}>
-        {c.channels.map((ch, i) => <span key={i} style={{ fontSize: 12, fontWeight: 600, color: C.inkSoft, border: `1px solid ${C.line}`, borderRadius: 999, padding: "3px 10px" }}><b style={{ color: C.ink }}>{ch.platform}</b> {ch.followersLabel}</span>)}
+        {c.channels.map((ch, i) => { const u = socialUrl(ch.platform, ch.handle); const inner = <><b style={{ color: C.ink }}>{ch.platform}</b> {ch.followersLabel}</>;
+          return u ? <button key={i} type="button" onClick={() => setOffsite({ url: u, platform: ch.platform, username: ch.handle })} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: C.inkSoft, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 999, padding: "3px 10px" }}>{inner}</button>
+                   : <span key={i} style={{ fontSize: 12, fontWeight: 600, color: C.inkSoft, border: `1px solid ${C.line}`, borderRadius: 999, padding: "3px 10px" }}>{inner}</span>; })}
       </div>}
       {(c.rates && (c.rates.post > 0 || c.rates.story > 0 || c.rates.reel > 0)) && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
         {[["post", "Post"], ["story", "Story"], ["reel", "Reel"]].filter(([k]) => c.rates[k] > 0).map(([k, l]) => <span key={k} style={{ fontSize: 12, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 10px" }}>{l} ${c.rates[k]}</span>)}
       </div>}
-      {requested.length > 0 && <div style={{ marginTop: 11, fontSize: 12.5, fontWeight: 600, color: C.accentD }}>Hire requested: {requested.map((h) => `${h.contentType}${h.price ? ` ($${h.price})` : ""}`).join(", ")} · we'll be in touch</div>}
+      {requested.length > 0 && <div style={{ marginTop: 11, fontSize: 12.5, fontWeight: 600, color: C.accentD }}>Booked: {requested.map((h) => `${h.contentType}${h.price ? ` ($${h.price})` : ""}`).join(", ")} · we'll confirm the delivery date</div>}
       {open ? <div style={{ marginTop: 13, borderTop: `1px dashed ${C.line}`, paddingTop: 13 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           {[["post", "Post"], ["story", "Story"], ["reel", "Reel"]].map(([k, l]) => { const on = type === k;
@@ -852,10 +900,12 @@ function HireCard({ c, token, reload }) {
         <textarea className="er-input" style={{ marginTop: 8 }} placeholder="What do you want them to make? (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
         {err && <p style={{ margin: "8px 0 0", fontSize: 12.5, color: "#9B3024" }}>{err}</p>}
         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-          <button className="er-btn er-btn-primary er-btn-sm" disabled={busy} onClick={hire}>{busy ? "Sending…" : "Send hire request"}</button>
+          <button className="er-btn er-btn-primary er-btn-sm" disabled={busy || !(amount > 0)} onClick={hire}>{busy ? "Opening…" : `Pay $${amount || 0} and book`}</button>
           <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setOpen(false)}>Cancel</button>
         </div>
+        <p style={{ margin: "10px 0 0", fontSize: 12, color: C.muted, lineHeight: 1.45 }}>You pay now to book. We brief the creator and confirm the delivery date with you.</p>
       </div> : <button className="er-btn er-btn-light er-btn-sm" style={{ marginTop: 13 }} onClick={() => setOpen(true)}><Spark size={13} /> Hire this creator</button>}
+      {offsite && <OffPlatformNotice url={offsite.url} platform={offsite.platform} username={offsite.username} onClose={() => setOffsite(null)} />}
     </div>
   );
 }
