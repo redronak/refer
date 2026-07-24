@@ -46,6 +46,8 @@ const CATS = {
   Other: { color: "#6E675B", bg: "#EEEBE4" },
 };
 const CAT_LIST = Object.keys(CATS);
+// Shown to businesses awaiting approval.
+const WAITLIST_COUNT = "800+";
 const catOf = (b) => CATS[(b.categories || [])[0]] || CATS.Beauty;
 // Stable-but-varied light tint per brand (used when there's no cover photo).
 function hashStr(s) { let h = 0; const str = String(s || ""); for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; return h; }
@@ -430,8 +432,9 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
 function BrandSuccess({ name, onClose, onDashboard }) {
   return <Modal onClose={onClose}><div style={{ padding: 32, textAlign: "center" }}>
     <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={52} /></div>
-    <h2 className="er-serif" style={{ margin: "16px 0 0", fontSize: 24, fontWeight: 500 }}>You're in the queue ( Current waitist count 800+)</h2>
-    <p style={{ margin: "10px 0 0", fontSize: 14.5, color: C.inkSoft, lineHeight: 1.5 }}><b>{name}</b> was submitted for review. We approve every business before it's listed, you'll get a text once you're live.</p>
+    <h2 className="er-serif" style={{ margin: "16px 0 0", fontSize: 24, fontWeight: 500 }}>You've joined the waitlist</h2>
+    <p style={{ margin: "10px 0 0", fontSize: 14.5, color: C.inkSoft, lineHeight: 1.5 }}><b>{name}</b> is on the waitlist for review. We approve every business before it's listed, you'll get a text once you're live.</p>
+    <div style={{ marginTop: 16, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 12, padding: "11px 14px", fontSize: 13.5, fontWeight: 600, color: C.accentD }}>{WAITLIST_COUNT} businesses have joined the waitlist</div>
     <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 24 }} onClick={onDashboard}>Go to my dashboard <Arrow size={16} /></button>
     <button className="er-btn er-btn-ghost er-btn-block" style={{ marginTop: 10 }} onClick={onClose}>Not now</button></div></Modal>;
 }
@@ -515,7 +518,7 @@ function BizEditCard({ b, token, reload }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ width: 44, height: 44, borderRadius: 11, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0, overflow: "hidden" }}>{(b.photos || [])[0] ? <img src={b.photos[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={18} />}</span>
         <div style={{ flex: 1, minWidth: 0 }}><p className="er-serif" style={{ margin: 0, fontSize: 17, fontWeight: 500 }}>{b.name}</p>
-          <p style={{ margin: 0, fontSize: 12.5, color: b.status === "approved" ? C.accent : "#B26A00", fontWeight: 600 }}>{b.status === "approved" ? "Live" : "Pending review"}</p></div>
+          <p style={{ margin: 0, fontSize: 12.5, color: b.status === "approved" ? C.accent : "#B26A00", fontWeight: 600 }}>{b.status === "approved" ? "Live" : `On the waitlist · ${WAITLIST_COUNT} joined`}</p></div>
         {!edit && <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setEdit(true)}><Edit size={14} /> Edit</button>}
       </div>
       {edit && <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1890,13 +1893,14 @@ function PlatformSteps() {
     ["Builds a recommendation list", "They add the apps and brands they genuinely find and love."],
     ["Brands approve", "Each brand approves the request to be featured on the list."],
     ["Shares with their audience", "The creator shares the list with their followers and in their bio."],
+    ["Hire influencers to create content", "Book a verified creator for a post, story, or reel at their listed rate."],
   ];
   return (
     <section style={{ background: C.paper }}>
       <div className="er-wrap" style={{ padding: "64px 22px" }}>
         <div style={{ textAlign: "center", marginBottom: 38 }}>
           <span className="er-eyebrow">How it works</span>
-          <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em" }}>From signup to shared in four steps</h2>
+          <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em" }}>From signup to shared in five steps</h2>
         </div>
         <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))" }}>
           {steps.map(([t, d], i) => (
@@ -1959,38 +1963,6 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
 
       <PlatformSteps />
 
-      <LockedPreview onList={onList} />
-
-      <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
-        <div className="er-wrap" style={{ padding: "64px 22px" }}>
-          <div className="er-how2">
-            <div>
-              <span className="er-eyebrow">For creators</span>
-              <h2 className="er-serif" style={{ margin: "10px 0 28px", fontSize: "clamp(24px,3.5vw,34px)", fontWeight: 500, letterSpacing: "-.01em" }}>How it works</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-                <HowStep n={1} title="Sign up free as a creator" body="Create your creator profile in under a minute, username, photo, follower count, social platform and username." />
-                <HowStep n={2} title="Build your recommendation list" body="Pick the brands and products you genuinely back. Each one gets its own tracked referral link." />
-                <HowStep n={3} title="Share it in your bio" body="One link to everything you recommend. Your audience taps through and shops." />
-                <HowStep n={4} title="Get paid commission" body="Earn on every sale that comes through your links, automatically tracked and attributed to you." />
-                <HowStep n={5} title="Create sponsored content" body="Create content or sponsored posts for brands for a sponsorship fee." />
-              </div>
-              <button className="er-btn er-btn-primary" style={{ marginTop: 30 }} onClick={onCreator}>Join as a creator <Arrow size={16} /></button>
-            </div>
-            <div>
-              <span className="er-eyebrow">For brands</span>
-              <h2 className="er-serif" style={{ margin: "10px 0 28px", fontSize: "clamp(24px,3.5vw,34px)", fontWeight: 500, letterSpacing: "-.01em" }}>How it works</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-                <HowStep n={1} title="List your product" body="Add your brand, set your commission and any customer perk, and choose your categories." />
-                <HowStep n={2} title="Influencers recommend you" body="Creators add your product to their recommendation list and share the link in their bio." />
-                <HowStep n={3} title="You pay on results" body="Commission is paid only on tracked sales. Every click and conversion is attributed to the creator who drove it." />
-                <HowStep n={4} title="They create content" body="Influencers create content for your product, testimonials, posts, and sponsored content for a fee." />
-              </div>
-              <button className="er-btn er-btn-ghost" style={{ marginTop: 30 }} onClick={onBusinessPage}>List your business <Arrow size={16} /></button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section style={{ background: C.paper }}>
         <div className="er-wrap" style={{ padding: "10px 22px 56px", textAlign: "center" }}>
           <span className="er-eyebrow">Watch it work</span>
@@ -2004,6 +1976,8 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           </div>
         </div>
       </section>
+
+      <LockedPreview onList={onList} />
 
       <section style={{ background: C.ink }}>
         <div className="er-wrap" style={{ padding: "44px 22px", display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", textAlign: "center" }}>
@@ -2413,22 +2387,6 @@ function EasyApp() {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [creatorPreselect, setCreatorPreselect] = useState(null);
   const [detailId, setDetailId] = useState(null);
-
-  // Nudge logged-out visitors on the home page to list their business after 20s (once per session).
-  useEffect(() => {
-    if (session || view !== "home") return;
-    let shown = false; try { shown = sessionStorage.getItem("er_bizprompt") === "1"; } catch (e) {}
-    if (shown) return;
-    const t = setTimeout(() => {
-      try {
-        if (getSession()) return;
-        if (window.location.pathname !== "/" && window.location.pathname !== "") return;
-        sessionStorage.setItem("er_bizprompt", "1");
-        setBrandOpen(true);
-      } catch (e) {}
-    }, 20000);
-    return () => clearTimeout(t);
-  }, [session, view]);
 
   const login = (s) => { saveSession(s); setSessionState(s); };
   const logout = () => { clearSession(); setSessionState(null); setView("home"); nav("/"); };
