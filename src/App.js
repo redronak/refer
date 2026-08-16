@@ -972,9 +972,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const sess = getSession();
   const loggedIn = sess && sess.role === "creator";
   const [step, setStep] = useState(loggedIn ? 1 : 0);
-  const [username, setUsername] = useState(loggedIn ? sess.username : ""); const [image, setImage] = useState("");
-  const [channels, setChannels] = useState([{ platform: "Instagram", handle: "", followers: "" }]);
-  const [rates, setRates] = useState({ post: "", story: "", reel: "" });
+  const [username, setUsername] = useState(loggedIn ? sess.username : "");
   const [token, setToken] = useState(loggedIn ? sess.token : "");
   const [picked, setPicked] = useState(initialBusinessId ? [initialBusinessId] : []);
   const [reviews, setReviews] = useState({});
@@ -995,11 +993,10 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const toggle = (id) => setPicked((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
   const [bulkCat, setBulkCat] = useState("");
   const setReview = (id, patch) => setReviews((prev) => ({ ...prev, [id]: { stars: 0, text: "", ...prev[id], ...patch } }));
-  const onPhoto = async (e) => { const file = e.target.files && e.target.files[0]; if (!file) return; try { setImage(await fileToDataURL(file, 400, 0.85)); } catch (x) {} };
   const join = async () => {
     setBusy(true); setErr("");
     try {
-      const r = await api("/influencer", { method: "POST", body: { username: handle, image, channels: channels.filter((c) => c.handle.trim()), rates } });
+      const r = await api("/influencer", { method: "POST", body: { username: handle } });
       setToken(r.token); onLogin({ role: "creator", token: r.token, username: r.username }); setStep(1);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -1039,21 +1036,13 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       <div style={{ padding: "30px 28px" }}>
         {step < 3 && <><span className="er-eyebrow">For creators</span><div style={{ marginTop: 12 }}><Stepper step={step} total={3} /></div></>}
         {step === 0 && <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Set up your profile</h2><p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>A photo, a username, and your following, that's the whole profile.</p></div>
-          <Field label="Profile photo">
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              {image ? <img src={image} alt="" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover" }} /> : <span style={{ width: 64, height: 64, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: C.paper }}><Spark size={24} /></span>}
-              <label className="er-btn er-btn-light er-btn-sm" style={{ cursor: "pointer" }}>{image ? "Change photo" : "Upload photo"}<input type="file" accept="image/*" style={{ display: "none" }} onChange={onPhoto} /></label>
-            </div></Field>
+          <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Claim your username</h2><p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Pick a name and you're in. You can add a photo and your platforms anytime after.</p></div>
           <Field label="Username" hint="This becomes your public profile link.">
-            <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "11px 14px" }}>
-              <span style={{ fontSize: 14.5, color: C.muted }}>easyrecommend.co/@</span>
-              <input style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 14.5, fontFamily: "inherit", color: C.ink }} placeholder="yourname" value={username} onChange={(e) => setUsername(e.target.value)} /></div></Field>
-          <Field label="Your platforms" hint="Add each platform with its own follower count. Brands see these when you send a request.">
-            <ChannelsEditor channels={channels} setChannels={setChannels} /></Field>
-          <Field label="Your rates" hint="What you charge per piece of sponsored content. Leave blank if you'd rather negotiate.">
-            <RatesEditor rates={rates} setRates={setRates} /></Field>
-          <button className="er-btn er-btn-primary er-btn-block" disabled={!handle || busy} onClick={join}>{busy ? "Checking…" : <>Continue <Arrow size={16} /></>}</button>
+            <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "13px 14px" }}>
+              <span style={{ fontSize: 15, color: C.muted }}>easyrecommend.co/@</span>
+              <input autoFocus style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 15, fontFamily: "inherit", color: C.ink }} placeholder="yourname" value={username} onChange={(e) => setUsername(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && handle && !busy) join(); }} /></div></Field>
+          <button className="er-btn er-btn-primary er-btn-block" disabled={!handle || busy} onClick={join}>{busy ? "Creating…" : <>Create my profile <Arrow size={16} /></>}</button>
+          <p style={{ margin: 0, fontSize: 12.5, color: C.muted, textAlign: "center" }}>Free forever. No email or password needed.</p>
           <ErrBox msg={err} />
         </div>}
 
@@ -1520,66 +1509,38 @@ function EditProfileModal({ token, current, onClose, onSaved }) {
     </Modal>
   );
 }
-const REQ_TYPES = [
-  { k: "list", label: "Add me to your recommendation list", needsPrice: false },
-  { k: "story", label: "Post a story", needsPrice: true },
-  { k: "tweet", label: "Make a tweet", needsPrice: true },
-  { k: "reel", label: "Make a reel", needsPrice: true },
-  { k: "post", label: "Make a post", needsPrice: true },
-];
 const REQ_LABEL = { list: "Add to list", story: "Story", tweet: "Tweet", reel: "Reel", post: "Post" };
 function CommissionRequest({ token, businessId, requests = [], onDone }) {
-  const [open, setOpen] = useState(false);
-  const [type, setType] = useState("story");
-  const [pricing, setPricing] = useState("commission");
-  const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
-  const needsPrice = type !== "list";
   const submit = async () => {
-    if (needsPrice && !(Number(amount) > 0)) { setErr("Enter a value greater than 0."); return; }
     setBusy(true); setErr("");
-    try { await api("/creator/commission-request", { method: "POST", body: { token, businessId, reqType: type, pricing, amount: Number(amount) || 0, note } }); setOpen(false); setNote(""); setAmount(""); await onDone(); }
+    try { await api("/creator/commission-request", { method: "POST", body: { token, businessId, reqType: "list", note } }); setOpen(false); setNote(""); await onDone(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   const cancel = async (id) => { if (!window.confirm("Cancel this request?")) return; try { await api(`/creator/request/${id}`, { method: "DELETE", body: { token } }); await onDone(); } catch (e) { alert(e.message); } };
   const badgeFor = (s) => s === "approved" ? { t: "Approved", c: C.accent, bg: C.accentSoft } : s === "rejected" ? { t: "Rejected", c: "#9B3024", bg: "#FBE9E7" } : { t: "Pending", c: C.inkSoft, bg: C.panel };
+  const listReq = requests.find((r) => r.reqType === "list");
   return (
     <div style={{ marginTop: 12, borderTop: `1px dashed ${C.line}`, paddingTop: 12 }}>
-      {requests.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-        {requests.map((r) => { const bd = badgeFor(r.status);
-          return <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 12.5, color: C.muted }}>{REQ_LABEL[r.reqType] || "Request"}{r.requested ? <>: <b style={{ color: C.ink }}>{r.requested}</b></> : ""}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: bd.bg, color: bd.c }}>{bd.t}</span>
-            {r.status === "pending" && <button onClick={() => cancel(r.id)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 12, color: C.muted, textDecoration: "underline", padding: 0 }}>Cancel</button>}
-            {r.status !== "pending" && r.brandMessage && <span style={{ fontSize: 12, color: C.muted, width: "100%" }}>Brand: &ldquo;{r.brandMessage}&rdquo;</span>}
-          </div>; })}
+      {listReq && <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: open ? 12 : 0 }}>
+        {(() => { const bd = badgeFor(listReq.status); return <>
+          <span style={{ fontSize: 12.5, color: C.muted }}>Add to recommendation list</span>
+          <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: bd.bg, color: bd.c }}>{bd.t}</span>
+          {listReq.status === "pending" && <button onClick={() => cancel(listReq.id)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 12, color: C.muted, textDecoration: "underline", padding: 0 }}>Cancel</button>}
+          {listReq.status !== "pending" && listReq.brandMessage && <span style={{ fontSize: 12, color: C.muted, width: "100%" }}>Brand: &ldquo;{listReq.brandMessage}&rdquo;</span>}
+        </>; })()}
       </div>}
       {open ? <div>
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.muted, marginBottom: 6 }}>What are you offering?</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-          {REQ_TYPES.map((rt) => { const on = type === rt.k;
-            return <button key={rt.k} type="button" onClick={() => setType(rt.k)} style={{ textAlign: "left", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, padding: "10px 12px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{on ? "✓ " : ""}{rt.label}</button>; })}
-        </div>
-        {needsPrice && <>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.muted, marginBottom: 6 }}>How do you want to be paid?</div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-            {[["commission", "Commission %"], ["fixed", "Fixed price $"]].map(([k, l]) => { const on = pricing === k;
-              return <button key={k} type="button" onClick={() => setPricing(k)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "9px 8px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{l}</button>; })}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "11px 14px", maxWidth: 200 }}>
-            {pricing === "fixed" && <span style={{ fontSize: 15, color: C.muted, marginRight: 2 }}>$</span>}
-            <input type="number" min="0" placeholder={pricing === "commission" ? "25" : "150"} value={amount} onChange={(e) => setAmount(e.target.value)} style={{ flex: 1, border: "none", outline: "none", background: "none", fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: C.ink, width: "100%" }} />
-            {pricing === "commission" && <span style={{ fontSize: 15, color: C.muted, marginLeft: 2 }}>%</span>}
-          </div>
-        </>}
-        <textarea className="er-input" style={{ marginTop: 8 }} placeholder="Add a note (optional, e.g. a dedicated reel + story)" value={note} onChange={(e) => setNote(e.target.value)} />
+        <p style={{ margin: "0 0 8px", fontSize: 13, color: C.inkSoft }}>Ask this brand to confirm you featuring them on your recommendation list.</p>
+        <textarea className="er-input" placeholder="Add a note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
         {err && <p style={{ margin: "8px 0 0", fontSize: 12.5, color: "#9B3024" }}>{err}</p>}
         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
           <button className="er-btn er-btn-primary er-btn-sm" disabled={busy} onClick={submit}>{busy ? "Sending…" : "Send request"}</button>
           <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setOpen(false)}>Cancel</button>
         </div>
-      </div> : <button className="er-btn er-btn-light er-btn-sm" onClick={() => setOpen(true)}><Spark size={13} /> {requests.length ? "Send another request" : "Send a request to this brand"}</button>}
+      </div> : !listReq && <button className="er-btn er-btn-light er-btn-sm" onClick={() => setOpen(true)}><Spark size={13} /> Ask brand to confirm</button>}
     </div>
   );
 }
@@ -1671,7 +1632,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                     {b.email && <a href={`mailto:${b.email}`} onClick={() => trackClick(data.username, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Mail size={14} /> {b.email}</a>}
                     {b.phone && <a href={`tel:${b.phone}`} onClick={() => trackClick(data.username, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Phone size={14} /> {b.phone}</a>}
                   </div>}
-                  {!isOwner && !hasContact && <p style={{ margin: "12px 0 0", fontSize: 12.5, color: C.muted }}>Contact details coming soon.</p>}
+                  {!isOwner && !hasContact && <button className="er-btn er-btn-light er-btn-sm" style={{ marginTop: 13 }} onClick={() => { trackClick(data.username, b.id); onOpenBusiness(b.id); }}><Store size={14} /> View {b.name}</button>}
                   {isOwner && <CommissionRequest token={session.token} businessId={b.id} requests={myReqs[String(b.id)] || []} onDone={loadReqs} />}
                 </div>
                 {b.review && <div style={{ borderTop: `1px solid ${C.line}`, background: C.panel, padding: "13px 16px" }}>
