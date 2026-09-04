@@ -53,6 +53,7 @@ const catOf = (b) => CATS[(b.categories || [])[0]] || CATS.Beauty;
 function hashStr(s) { let h = 0; const str = String(s || ""); for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; return h; }
 function tintFor(seed) { const h = hashStr(seed) % 360; return { bg: `hsl(${h}, 64%, 93%)`, color: `hsl(${h}, 42%, 52%)` }; }
 const slugify = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const emailOk = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || "").trim());
 const commissionLabel = (b) => b.commissionType === "flat" ? `$${b.commissionFlat}` : b.commissionType === "both" ? `${b.commissionPct}% + $${b.commissionFlat}` : `${b.commissionPct}%`;
 
 // Downscale an uploaded image to a small JPEG data URL (keeps payloads light).
@@ -973,9 +974,10 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const loggedIn = sess && sess.role === "creator";
   const [step, setStep] = useState(loggedIn ? 1 : 0);
   const [username, setUsername] = useState(loggedIn ? sess.username : "");
+  const [signupEmail, setSignupEmail] = useState("");
   const [token, setToken] = useState(loggedIn ? sess.token : "");
   const [payShown, setPayShown] = useState(false);
-  const [payEmail, setPayEmail] = useState(""); const [payMethod, setPayMethod] = useState("venmo"); const [payHandle, setPayHandle] = useState(""); const [savingPay, setSavingPay] = useState(false);
+  const [payMethod, setPayMethod] = useState("venmo"); const [payHandle, setPayHandle] = useState(""); const [savingPay, setSavingPay] = useState(false);
   const [picked, setPicked] = useState(initialBusinessId ? [initialBusinessId] : []);
   const [reviews, setReviews] = useState({});
   const [query, setQuery] = useState("");
@@ -998,7 +1000,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const join = async () => {
     setBusy(true); setErr("");
     try {
-      const r = await api("/influencer", { method: "POST", body: { username: handle } });
+      const r = await api("/influencer", { method: "POST", body: { username: handle, email: signupEmail.trim() } });
       setToken(r.token); onLogin({ role: "creator", token: r.token, username: r.username }); setStep(1);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -1038,13 +1040,15 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       <div style={{ padding: "30px 28px" }}>
         {step < 3 && <><span className="er-eyebrow">For creators</span><div style={{ marginTop: 12 }}><Stepper step={step} total={3} /></div></>}
         {step === 0 && <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Claim your username</h2><p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Pick a name and you're in. You can add a photo and your platforms anytime after.</p></div>
+          <div><h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Create your creator account</h2><p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Pick a username and add your email, that's it. You can add a photo and platforms anytime after.</p></div>
           <Field label="Username" hint="This becomes your public profile link.">
             <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "13px 14px" }}>
               <span style={{ fontSize: 15, color: C.muted }}>easyrecommend.co/@</span>
-              <input autoFocus style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 15, fontFamily: "inherit", color: C.ink }} placeholder="yourname" value={username} onChange={(e) => setUsername(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && handle && !busy) join(); }} /></div></Field>
-          <button className="er-btn er-btn-primary er-btn-block" disabled={!handle || busy} onClick={join}>{busy ? "Creating…" : <>Create my profile <Arrow size={16} /></>}</button>
-          <p style={{ margin: 0, fontSize: 12.5, color: C.muted, textAlign: "center" }}>Free forever. No email or password needed.</p>
+              <input autoFocus style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 15, fontFamily: "inherit", color: C.ink }} placeholder="yourname" value={username} onChange={(e) => setUsername(e.target.value)} /></div></Field>
+          <Field label="Email" hint="So you can log back in and get paid. No password needed.">
+            <input className="er-input" type="email" placeholder="you@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && handle && emailOk(signupEmail) && !busy) join(); }} /></Field>
+          <button className="er-btn er-btn-primary er-btn-block" disabled={!handle || !emailOk(signupEmail) || busy} onClick={join}>{busy ? "Creating…" : <>Create my profile <Arrow size={16} /></>}</button>
+          <p style={{ margin: 0, fontSize: 12.5, color: C.muted, textAlign: "center" }}>Free forever. Sign in with your email, no password.</p>
           <ErrBox msg={err} />
         </div>}
 
@@ -1135,7 +1139,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             if (!skip) {
               if (!payHandle.trim()) { setErr("Add your payout detail, or skip for now."); return; }
               setSavingPay(true); setErr("");
-              try { await api("/creator/me", { method: "PATCH", body: { token, email: payEmail.trim(), payMethod, payHandle: payHandle.trim() } }); }
+              try { await api("/creator/me", { method: "PATCH", body: { token, email: signupEmail.trim(), payMethod, payHandle: payHandle.trim() } }); }
               catch (e) { setErr(e.message); setSavingPay(false); return; }
               setSavingPay(false);
             }
@@ -1148,7 +1152,6 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
               <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Your links are ready. Add where to send your earnings, you can change this anytime.</p>
             </div>
             <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
-              <Field label="Email" hint="Where we send payout updates."><input className="er-input" type="email" placeholder="you@email.com" value={payEmail} onChange={(e) => setPayEmail(e.target.value)} /></Field>
               <Field label="Payout method">
                 <div style={{ display: "flex", gap: 8 }}>
                   {Object.entries(PM).map(([k, v]) => { const on = payMethod === k;
