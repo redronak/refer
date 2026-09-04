@@ -974,6 +974,8 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const [step, setStep] = useState(loggedIn ? 1 : 0);
   const [username, setUsername] = useState(loggedIn ? sess.username : "");
   const [token, setToken] = useState(loggedIn ? sess.token : "");
+  const [payShown, setPayShown] = useState(false);
+  const [payEmail, setPayEmail] = useState(""); const [payMethod, setPayMethod] = useState("venmo"); const [payHandle, setPayHandle] = useState(""); const [savingPay, setSavingPay] = useState(false);
   const [picked, setPicked] = useState(initialBusinessId ? [initialBusinessId] : []);
   const [reviews, setReviews] = useState({});
   const [query, setQuery] = useState("");
@@ -1127,7 +1129,41 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             <button className="er-btn er-btn-primary" onClick={finish} disabled={busy}><Spark size={16} /> {busy ? "Generating…" : `Generate ${picked.length > 1 ? `${picked.length} links` : "my link"}`}</button></div>
         </div>}
 
-        {step === 3 && results && <div style={{ paddingTop: 6 }}>
+        {step === 3 && results && !payShown && (() => {
+          const PM = { venmo: { label: "Venmo", ph: "@your-venmo" }, zelle: { label: "Zelle", ph: "Email or phone for Zelle" }, paypal: { label: "PayPal", ph: "PayPal email" } };
+          const savePay = async (skip) => {
+            if (!skip) {
+              if (!payHandle.trim()) { setErr("Add your payout detail, or skip for now."); return; }
+              setSavingPay(true); setErr("");
+              try { await api("/creator/me", { method: "PATCH", body: { token, email: payEmail.trim(), payMethod, payHandle: payHandle.trim() } }); }
+              catch (e) { setErr(e.message); setSavingPay(false); return; }
+              setSavingPay(false);
+            }
+            setPayShown(true);
+          };
+          return <div style={{ paddingTop: 6 }}>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ margin: "0 auto", width: 52, height: 52, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD }}><Spark size={24} /></div>
+              <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 25, fontWeight: 500 }}>One last step: get paid</h2>
+              <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Your links are ready. Add where to send your earnings, you can change this anytime.</p>
+            </div>
+            <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
+              <Field label="Email" hint="Where we send payout updates."><input className="er-input" type="email" placeholder="you@email.com" value={payEmail} onChange={(e) => setPayEmail(e.target.value)} /></Field>
+              <Field label="Payout method">
+                <div style={{ display: "flex", gap: 8 }}>
+                  {Object.entries(PM).map(([k, v]) => { const on = payMethod === k;
+                    return <button key={k} type="button" onClick={() => setPayMethod(k)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, padding: "10px 8px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{v.label}</button>; })}
+                </div>
+              </Field>
+              <Field label={`Your ${PM[payMethod].label} details`}><input className="er-input" placeholder={PM[payMethod].ph} value={payHandle} onChange={(e) => setPayHandle(e.target.value)} /></Field>
+              <ErrBox msg={err} />
+              <button className="er-btn er-btn-primary er-btn-block" disabled={savingPay} onClick={() => savePay(false)}>{savingPay ? "Saving…" : "Save and finish"}</button>
+              <button className="er-btn er-btn-ghost er-btn-block" onClick={() => savePay(true)}>Skip for now</button>
+            </div>
+          </div>;
+        })()}
+
+        {step === 3 && results && payShown && <div style={{ paddingTop: 6 }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={50} /></div>
             <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 24, fontWeight: 500 }}>{results.length > 1 ? `You're backing ${results.length} brands` : "Your link is live"}</h2>
