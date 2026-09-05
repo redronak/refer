@@ -1891,7 +1891,7 @@ function LockedPreview({ onList }) {
     </section>
   );
 }
-function BioMock({ onOpen }) {
+function BioMock() {
   const items = [["Everlane", "Fashion", "12%"], ["Notion", "Software", "$10"], ["AG1", "Wellness", "$30"], ["Allbirds", "Fashion", "$15"]];
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
@@ -1901,9 +1901,10 @@ function BioMock({ onOpen }) {
             <div style={{ width: 52, height: 52, borderRadius: "50%", background: "linear-gradient(135deg,#C9847A,#7E9C74)", flexShrink: 0 }} />
             <div><div style={{ fontWeight: 700, fontSize: 15 }}>@yourhandle</div><div style={{ fontSize: 12.5, color: "rgba(253,252,250,.7)" }}>Sharing things I actually use</div></div>
           </div>
-          <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 7, background: "rgba(253,252,250,.12)", borderRadius: 9, padding: "9px 11px", fontSize: 12.5, fontWeight: 600 }}>
-            <span style={{ opacity: .7 }}>🔗</span> easyrecommend.co/@yourhandle
-            <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 700, background: C.accent, color: "#fff", borderRadius: 999, padding: "2px 7px" }}>in bio</span>
+          <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, background: "rgba(253,252,250,.12)", borderRadius: 10, padding: "10px 11px" }}>
+            <span style={{ fontSize: 13, opacity: .7, flexShrink: 0 }}>🔗</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>easyrecommend.co/@yourhandle</span>
+            <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", background: C.accent, color: "#fff", borderRadius: 999, padding: "3px 8px" }}>in bio</span>
           </div>
         </div>
         <div style={{ padding: "6px 0" }}>
@@ -1917,7 +1918,7 @@ function BioMock({ onOpen }) {
         </div>
         <div style={{ padding: "12px 16px", borderTop: `1px solid ${C.line}`, textAlign: "center", fontSize: 12, color: C.muted }}>Tap a brand, they shop, you get paid.</div>
       </div>
-      <button className="er-btn er-btn-light er-btn-sm" onClick={() => onOpen("nycdesihangouts")}>See a real creator's page <Arrow size={14} /></button>
+      <a className="er-btn er-btn-light er-btn-sm" href="https://www.instagram.com/nycdesihangouts/" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>See a real creator's page <Arrow size={14} /></a>
     </div>
   );
 }
@@ -2033,7 +2034,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
             </div>
             <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Set up in under a minute · you keep every commission you earn.</p>
           </div>
-          <BioMock onOpen={onProfile} />
+          <BioMock />
         </div>
       </section>
 
