@@ -445,13 +445,15 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
   const [mode, setMode] = useState(null); // null | creator | brand
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   // creator
-  const [cName, setCName] = useState("");
+  const [cName, setCName] = useState(""); const [cPass, setCPass] = useState("");
   // brand
   const [phone, setPhone] = useState(""); const [otp, setOtp] = useState(""); const [sent, setSent] = useState(false);
 
   const creatorLogin = async () => {
     setBusy(true); setErr("");
-    try { const r = await api("/creator/login", { method: "POST", body: { username: cName } }); onLogin({ role: "creator", token: r.token, username: r.username }); onAfterCreator(r.username); }
+    const id = cName.trim();
+    const body = id.includes("@") ? { email: id, password: cPass } : { username: id, password: cPass };
+    try { const r = await api("/creator/login", { method: "POST", body }); onLogin({ role: "creator", token: r.token, username: r.username }); onAfterCreator(r.username); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   const sendCode = async () => { setErr(""); try { await api("/otp/send", { method: "POST", body: { phone } }); setSent(true); } catch (e) { setErr(e.message); } };
@@ -479,7 +481,8 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
         </div>}
 
         {mode === "creator" && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Field label="Username"><input className="er-input" placeholder="miaglow" value={cName} onChange={(e) => setCName(e.target.value)} /></Field>
+          <Field label="Email or username"><input className="er-input" placeholder="you@email.com" value={cName} onChange={(e) => setCName(e.target.value)} /></Field>
+          <Field label="Password"><input className="er-input" type="password" placeholder="Your password" value={cPass} onChange={(e) => setCPass(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && cName && !busy) creatorLogin(); }} /></Field>
           <ErrBox msg={err} />
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <button className="er-btn er-btn-ghost" onClick={() => setMode(null)}><ChevL size={16} /> Back</button>
@@ -974,7 +977,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const loggedIn = sess && sess.role === "creator";
   const [step, setStep] = useState(loggedIn ? 1 : 0);
   const [username, setUsername] = useState(loggedIn ? sess.username : "");
-  const [signupEmail, setSignupEmail] = useState("");
+  const [signupEmail, setSignupEmail] = useState(""); const [signupPass, setSignupPass] = useState("");
   const [token, setToken] = useState(loggedIn ? sess.token : "");
   const [payShown, setPayShown] = useState(false);
   const [payMethod, setPayMethod] = useState("venmo"); const [payHandle, setPayHandle] = useState(""); const [savingPay, setSavingPay] = useState(false);
@@ -1000,7 +1003,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const join = async () => {
     setBusy(true); setErr("");
     try {
-      const r = await api("/influencer", { method: "POST", body: { username: handle, email: signupEmail.trim() } });
+      const r = await api("/influencer", { method: "POST", body: { username: handle, email: signupEmail.trim(), password: signupPass } });
       setToken(r.token); onLogin({ role: "creator", token: r.token, username: r.username }); setStep(1);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -1045,10 +1048,12 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "13px 14px" }}>
               <span style={{ fontSize: 15, color: C.muted }}>easyrecommend.co/@</span>
               <input autoFocus style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 15, fontFamily: "inherit", color: C.ink }} placeholder="yourname" value={username} onChange={(e) => setUsername(e.target.value)} /></div></Field>
-          <Field label="Email" hint="So you can log back in and get paid. No password needed.">
-            <input className="er-input" type="email" placeholder="you@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && handle && emailOk(signupEmail) && !busy) join(); }} /></Field>
-          <button className="er-btn er-btn-primary er-btn-block" disabled={!handle || !emailOk(signupEmail) || busy} onClick={join}>{busy ? "Creating…" : <>Create my profile <Arrow size={16} /></>}</button>
-          <p style={{ margin: 0, fontSize: 12.5, color: C.muted, textAlign: "center" }}>Free forever. Sign in with your email, no password.</p>
+          <Field label="Email" hint="So you can log back in and get paid.">
+            <input className="er-input" type="email" placeholder="you@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} /></Field>
+          <Field label="Password" hint="At least 6 characters.">
+            <input className="er-input" type="password" placeholder="Create a password" value={signupPass} onChange={(e) => setSignupPass(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && handle && emailOk(signupEmail) && signupPass.length >= 6 && !busy) join(); }} /></Field>
+          <button className="er-btn er-btn-primary er-btn-block" disabled={!handle || !emailOk(signupEmail) || signupPass.length < 6 || busy} onClick={join}>{busy ? "Creating…" : <>Create my profile <Arrow size={16} /></>}</button>
+          <p style={{ margin: 0, fontSize: 12.5, color: C.muted, textAlign: "center" }}>Free forever. Log in anytime with your email and password.</p>
           <ErrBox msg={err} />
         </div>}
 
@@ -1584,7 +1589,7 @@ function CommissionRequest({ token, businessId, requests = [], onDone }) {
   );
 }
 function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh }) {
-  const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false); const [offsite, setOffsite] = useState(null);
+  const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false);
   const [myReqs, setMyReqs] = useState({}); const [reqList, setReqList] = useState([]);
   const isOwner = session && session.role === "creator" && session.username === handle;
   const profileUrl = `${window.location.origin}/@${handle}`;
@@ -1600,7 +1605,6 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
   return (
     <div>
       {editing && <EditProfileModal token={session.token} current={data} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
-      {offsite && <OffPlatformNotice url={offsite.url} platform={offsite.platform} username={offsite.username} onClose={() => setOffsite(null)} />}
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.line}` }}>
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 22px 36px" }}>
           <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><ChevL size={15} /> Easy Recommend</button>
@@ -1614,11 +1618,11 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                 ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                     {data.channels.map((c, i) => { const u = socialUrl(c.platform, c.handle);
                       const inner = <><b style={{ color: C.ink }}>{c.platform}</b> @{c.handle}{c.followersLabel ? ` · ${c.followersLabel}` : ""}</>;
-                      return u ? <button key={i} type="button" onClick={() => setOffsite({ url: u, platform: c.platform, username: c.handle })} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: C.inkSoft, border: `1px solid ${C.line}`, background: "#fff", borderRadius: 999, padding: "4px 11px" }}>{inner}</button>
+                      return u ? <a key={i} href={u} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: C.inkSoft, border: `1px solid ${C.line}`, background: "#fff", borderRadius: 999, padding: "4px 11px" }}>{inner}</a>
                                  : <span key={i} style={{ fontSize: 12.5, fontWeight: 600, color: C.inkSoft, border: `1px solid ${C.line}`, background: "#fff", borderRadius: 999, padding: "4px 11px" }}>{inner}</span>; })}
                   </div>
                 : data.social && (() => { const u = socialUrl(data.platform, data.social); const label = `${data.platform || "Social"} · @${String(data.social).replace(/^@/, "")}`;
-                    return u ? <button type="button" onClick={() => setOffsite({ url: u, platform: data.platform, username: data.social })} style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 6, cursor: "pointer", fontFamily: "inherit", border: "none", background: "none", padding: 0, fontSize: 12.5, fontWeight: 600, color: C.accentD }}>{label} <Arrow size={12} /></button>
+                    return u ? <a href={u} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 6, textDecoration: "none", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: C.accentD }}>{label} <Arrow size={12} /></a>
                             : <p style={{ margin: "6px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{label}</p>; })()}
               {data.rates && (data.rates.post > 0 || data.rates.story > 0 || data.rates.reel > 0) && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                 {[["post", "Post"], ["story", "Story"], ["reel", "Reel"]].filter(([k]) => data.rates[k] > 0).map(([k, l]) => (
@@ -1887,6 +1891,75 @@ function LockedPreview({ onList }) {
     </section>
   );
 }
+function BioMock({ onOpen }) {
+  const items = [["Everlane", "Fashion", "12%"], ["Notion", "Software", "$10"], ["AG1", "Wellness", "$30"], ["Allbirds", "Fashion", "$15"]];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+      <div style={{ width: 300, maxWidth: "100%", border: `1px solid ${C.line}`, borderRadius: 26, overflow: "hidden", background: "#fff", boxShadow: "0 24px 60px -30px rgba(0,0,0,.35)" }}>
+        <div style={{ background: C.ink, color: C.paper, padding: "18px 18px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 52, height: 52, borderRadius: "50%", background: "linear-gradient(135deg,#C9847A,#7E9C74)", flexShrink: 0 }} />
+            <div><div style={{ fontWeight: 700, fontSize: 15 }}>@yourhandle</div><div style={{ fontSize: 12.5, color: "rgba(253,252,250,.7)" }}>Sharing things I actually use</div></div>
+          </div>
+          <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 7, background: "rgba(253,252,250,.12)", borderRadius: 9, padding: "9px 11px", fontSize: 12.5, fontWeight: 600 }}>
+            <span style={{ opacity: .7 }}>🔗</span> easyrecommend.co/@yourhandle
+            <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 700, background: C.accent, color: "#fff", borderRadius: 999, padding: "2px 7px" }}>in bio</span>
+          </div>
+        </div>
+        <div style={{ padding: "6px 0" }}>
+          {items.map(([n, cat, earn], i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 16px", borderTop: i ? `1px solid ${C.line}` : "none" }}>
+              <span style={{ width: 34, height: 34, borderRadius: 9, background: C.panel, display: "grid", placeItems: "center", flexShrink: 0, color: C.inkSoft }}><Store size={15} /></span>
+              <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 14 }}>{n}</div><div style={{ fontSize: 11.5, color: C.muted }}>{cat}</div></div>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>you earn {earn}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: "12px 16px", borderTop: `1px solid ${C.line}`, textAlign: "center", fontSize: 12, color: C.muted }}>Tap a brand, they shop, you get paid.</div>
+      </div>
+      <button className="er-btn er-btn-light er-btn-sm" onClick={() => onOpen("nycdesihangouts")}>See a real creator's page <Arrow size={14} /></button>
+    </div>
+  );
+}
+
+function BigPayouts({ onCreator }) {
+  const rows = [
+    { brand: "Apple", cat: "Tech", note: "MacBook referral", payout: "$120", bar: 96 },
+    { brand: "Peloton", cat: "Fitness", note: "Bike + membership", payout: "$90", bar: 74 },
+    { brand: "SoFi", cat: "Finance", note: "New account", payout: "$75", bar: 62 },
+    { brand: "AG1", cat: "Wellness", note: "Subscription", payout: "$30", bar: 26 },
+  ];
+  return (
+    <section style={{ background: C.ink, color: C.paper }}>
+      <div className="er-wrap" style={{ padding: "64px 22px" }}>
+        <div className="er-how2" style={{ alignItems: "center" }}>
+          <div>
+            <span className="er-eyebrow" style={{ color: C.accent }}>The big-brand upside</span>
+            <h2 className="er-serif" style={{ margin: "10px 0 12px", fontSize: "clamp(26px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em" }}>Recommend the brands you already love, earn real payouts.</h2>
+            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.55, color: "rgba(253,252,250,.8)", maxWidth: 460 }}>Big-ticket products pay big commissions. One recommendation of a laptop, a bike, or a finance app can be worth more than a hundred small clicks. Stack a few of these on your list and it adds up fast.</p>
+            <button className="er-btn er-btn-primary" style={{ marginTop: 26 }} onClick={onCreator}>Start earning free <Arrow size={16} /></button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {rows.map((r, i) => (
+              <div key={i} style={{ background: "rgba(253,252,250,.06)", border: "1px solid rgba(253,252,250,.12)", borderRadius: 14, padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontWeight: 700, fontSize: 15.5 }}>{r.brand}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(253,252,250,.6)" }}>{r.cat} · {r.note}</span>
+                  <span style={{ marginLeft: "auto", fontSize: 17, fontWeight: 700, color: C.accent }}>{r.payout}</span>
+                </div>
+                <div style={{ marginTop: 9, height: 7, borderRadius: 99, background: "rgba(253,252,250,.1)", overflow: "hidden" }}>
+                  <div style={{ width: `${r.bar}%`, height: "100%", borderRadius: 99, background: C.accent }} />
+                </div>
+              </div>
+            ))}
+            <p style={{ margin: "4px 0 0", fontSize: 11.5, color: "rgba(253,252,250,.45)", textAlign: "center" }}>Illustrative payouts. Actual commission is set by each brand and shown when you add them.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PlatformSteps() {
   const steps = [
     ["Influencer joins the platform", "Creators sign up free and set up their profile in under a minute."],
@@ -1949,17 +2022,22 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
       </header>
 
       <section className="er-wrap" style={{ padding: "70px 22px 60px" }}>
-        <div style={{ maxWidth: 760 }}>
-          <span className="er-eyebrow">Commission-based influencer marketing</span>
-          <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Get your Website/App recommended by influencers.</h1>
-          <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Built for indie builders, ecommerce brands, and companies ranging from startups to the Fortune 500. Get seen by an audience of 800,000+.</p>
-          <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
-            <button className="er-btn er-btn-ghost" onClick={onInfluencerPage}>For creators</button>
+        <div className="er-hero-2col">
+          <div style={{ maxWidth: 640 }}>
+            <span className="er-eyebrow">For creators, free forever</span>
+            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Recommend what you love. Get paid for every sale.</h1>
+            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Build a list of the apps and brands you back, drop one link in your bio, and earn a commission every time your audience buys. No inventory, no ads, no waiting on brand deals.</p>
+            <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <button className="er-btn er-btn-primary" onClick={onCreator}>Create my list free <Arrow size={16} /></button>
+              <button className="er-btn er-btn-ghost" onClick={onList}>I'm a business</button>
+            </div>
+            <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Set up in under a minute · you keep every commission you earn.</p>
           </div>
-          <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Trusted by 1,000+ products · you only pay commission on real, tracked sales.</p>
+          <BioMock onOpen={onProfile} />
         </div>
       </section>
+
+      <BigPayouts onCreator={onCreator} />
 
       <PlatformSteps />
 
@@ -2104,6 +2182,7 @@ const STYLES = `
 .er-close:hover{color:${C.ink}}
 .er-hero{display:grid;grid-template-columns:1fr;gap:48px;align-items:center}
 .er-how2{display:grid;grid-template-columns:1fr;gap:48px}
+.er-hero-2col{display:grid;grid-template-columns:1fr;gap:44px;align-items:center}
 .er-cards{display:grid;grid-template-columns:1fr;gap:18px}
 .er-creators{display:grid;grid-template-columns:1fr;gap:14px}
 .er-stepwork{display:grid;grid-template-columns:1fr;gap:0}
@@ -2118,7 +2197,7 @@ const STYLES = `
 @media(max-width:559px){.er-nav{display:none}.er-hide-sm{display:none}}
 @media(max-width:400px){.er-hide-xs{display:none}}
 @media(min-width:680px){.er-cards{grid-template-columns:1fr 1fr}.er-creators{grid-template-columns:1fr 1fr}.er-videos-grid{grid-template-columns:1fr 1fr}}
-@media(min-width:1000px){.er-cards{grid-template-columns:1fr 1fr 1fr}.er-hero{grid-template-columns:1.05fr .95fr;gap:60px}.er-stepwork{grid-template-columns:1fr 1fr 1fr}.er-videos-grid{grid-template-columns:1fr 1fr 1fr}.er-how2{grid-template-columns:1fr 1fr;gap:64px}}
+@media(min-width:1000px){.er-cards{grid-template-columns:1fr 1fr 1fr}.er-hero{grid-template-columns:1.05fr .95fr;gap:60px}.er-stepwork{grid-template-columns:1fr 1fr 1fr}.er-videos-grid{grid-template-columns:1fr 1fr 1fr}.er-how2{grid-template-columns:1fr 1fr;gap:64px}.er-hero-2col{grid-template-columns:1.1fr .9fr;gap:56px}}
 .er-root button:focus-visible,.er-root input:focus-visible,.er-root a:focus-visible{outline:2px solid ${C.accent};outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.er-root *{transition:none!important}}
 `;
