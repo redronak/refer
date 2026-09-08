@@ -118,6 +118,7 @@ const Lock = (p) => <Svg {...p}><rect x="5" y="11" width="14" height="9" rx="2" 
 const Trash = (p) => <Svg {...p}><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" /></Svg>;
 const Phone = (p) => <Svg {...p}><path d="M6.6 10.8a11 11 0 0 0 6.6 6.6l1.6-1.6a1 1 0 0 1 1-.24 9 9 0 0 0 2.8.45 1 1 0 0 1 1 1V19a1 1 0 0 1-1 1A16 16 0 0 1 4 6a1 1 0 0 1 1-1h2.3a1 1 0 0 1 1 1 9 9 0 0 0 .45 2.8 1 1 0 0 1-.24 1z" /></Svg>;
 const Mail = (p) => <Svg {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M4 7.5l8 5.5 8-5.5" /></Svg>;
+const IgIcon = (p) => <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17" cy="7" r="1" fill="currentColor" stroke="none" /></Svg>;
 const Spark = (p) => <Svg {...p}><path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z" /></Svg>;
 const Star = ({ size = 16, on = true }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={on ? C.gold : "none"} stroke={on ? C.gold : "#D9D2C5"} strokeWidth="1.2" strokeLinejoin="round" style={{ display: "block" }}>
@@ -1892,18 +1893,24 @@ function LockedPreview({ onList }) {
   );
 }
 function BioMock() {
-  const items = [["Everlane", "Fashion", "12%"], ["Notion", "Software", "$10"], ["AG1", "Wellness", "$30"], ["Allbirds", "Fashion", "$15"]];
+  const IG = "https://www.instagram.com/nycdesihangouts/";
+  const items = [["Sweetgreen", "Food & Drink", "$240"], ["Airbnb", "Travel", "$290"], ["HelloFresh", "Food & Drink", "$210"], ["Everlane", "Fashion", "$260"]];
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
       <div style={{ width: 300, maxWidth: "100%", border: `1px solid ${C.line}`, borderRadius: 26, overflow: "hidden", background: "#fff", boxShadow: "0 24px 60px -30px rgba(0,0,0,.35)" }}>
         <div style={{ background: C.ink, color: C.paper, padding: "18px 18px 20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 52, height: 52, borderRadius: "50%", background: "linear-gradient(135deg,#C9847A,#7E9C74)", flexShrink: 0 }} />
-            <div><div style={{ fontWeight: 700, fontSize: 15 }}>@yourhandle</div><div style={{ fontSize: 12.5, color: "rgba(253,252,250,.7)" }}>Sharing things I actually use</div></div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 15 }}>@nycdesihangouts
+                <a href={IG} target="_blank" rel="noopener noreferrer" style={{ color: C.paper, opacity: .85, display: "inline-flex" }}><IgIcon size={15} /></a>
+              </div>
+              <div style={{ fontSize: 12.5, color: "rgba(253,252,250,.7)" }}>NYC food, events & culture</div>
+            </div>
           </div>
           <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, background: "rgba(253,252,250,.12)", borderRadius: 10, padding: "10px 11px" }}>
             <span style={{ fontSize: 13, opacity: .7, flexShrink: 0 }}>🔗</span>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>easyrecommend.co/@yourhandle</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>easyrecommend.co/@nycdesihangouts</span>
             <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", background: C.accent, color: "#fff", borderRadius: 999, padding: "3px 8px" }}>in bio</span>
           </div>
         </div>
@@ -1918,17 +1925,17 @@ function BioMock() {
         </div>
         <div style={{ padding: "12px 16px", borderTop: `1px solid ${C.line}`, textAlign: "center", fontSize: 12, color: C.muted }}>Tap a brand, they shop, you get paid.</div>
       </div>
-      <a className="er-btn er-btn-light er-btn-sm" href="https://www.instagram.com/nycdesihangouts/" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>See a real creator's page <Arrow size={14} /></a>
+      <a className="er-btn er-btn-light er-btn-sm" href={IG} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}><IgIcon size={14} /> See this creator on Instagram</a>
     </div>
   );
 }
 
 function BigPayouts({ onCreator }) {
   const rows = [
-    { brand: "Apple", cat: "Tech", note: "MacBook referral", payout: "$120", bar: 96 },
-    { brand: "Peloton", cat: "Fitness", note: "Bike + membership", payout: "$90", bar: 74 },
-    { brand: "SoFi", cat: "Finance", note: "New account", payout: "$75", bar: 62 },
-    { brand: "AG1", cat: "Wellness", note: "Subscription", payout: "$30", bar: 26 },
+    { brand: "Apple", cat: "Tech", note: "MacBook referral", payout: "$480", bar: 96 },
+    { brand: "Peloton", cat: "Fitness", note: "Bike + membership", payout: "$360", bar: 74 },
+    { brand: "SoFi", cat: "Finance", note: "New account", payout: "$290", bar: 60 },
+    { brand: "AG1", cat: "Wellness", note: "Subscription", payout: "$220", bar: 44 },
   ];
   return (
     <section style={{ background: C.ink, color: C.paper }}>
@@ -1937,7 +1944,7 @@ function BigPayouts({ onCreator }) {
           <div>
             <span className="er-eyebrow" style={{ color: C.accent }}>The big-brand upside</span>
             <h2 className="er-serif" style={{ margin: "10px 0 12px", fontSize: "clamp(26px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em" }}>Recommend the brands you already love, earn real payouts.</h2>
-            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.55, color: "rgba(253,252,250,.8)", maxWidth: 460 }}>Big-ticket products pay big commissions. One recommendation of a laptop, a bike, or a finance app can be worth more than a hundred small clicks. Stack a few of these on your list and it adds up fast.</p>
+            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.55, color: "rgba(253,252,250,.8)", maxWidth: 460 }}>Big-ticket products pay big commissions, often more than $200 on a single sale. One recommendation of a laptop, a bike, or a finance app can be worth more than a hundred small clicks. Stack a few on your list and it adds up fast.</p>
             <button className="er-btn er-btn-primary" style={{ marginTop: 26 }} onClick={onCreator}>Start earning free <Arrow size={16} /></button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -2035,6 +2042,20 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
             <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Set up in under a minute · you keep every commission you earn.</p>
           </div>
           <BioMock />
+        </div>
+      </section>
+
+      <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+        <div className="er-wrap" style={{ padding: "64px 22px" }}>
+          <div style={{ textAlign: "center", marginBottom: 34, maxWidth: 600, marginLeft: "auto", marginRight: "auto" }}>
+            <span className="er-eyebrow">Real creator page</span>
+            <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em" }}>One link in your bio. Every recommendation pays.</h2>
+            <p style={{ margin: 0, fontSize: 16, color: C.muted, lineHeight: 1.55 }}>Build a list of the brands you love and share it wherever you post. Here's a live creator page.</p>
+          </div>
+          <BioMock />
+          <div style={{ textAlign: "center", marginTop: 32 }}>
+            <button className="er-btn er-btn-primary" onClick={onCreator}>Create my page free <Arrow size={16} /></button>
+          </div>
         </div>
       </section>
 
