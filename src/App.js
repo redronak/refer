@@ -2556,7 +2556,7 @@ function EasyApp() {
 }
 
 /* ===========================================================================
-   Top-level router, Easy Recommend is the main site (the influencer landing).
+   Top-level router, Easy Recommend eeee the main site (the influencer landing).
    Visitors arriving on the old retentionbase.com domain see the rename notice.
    Preview the rename page anywhere with ?renamed=1.
    =========================================================================== */
