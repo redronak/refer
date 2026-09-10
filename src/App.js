@@ -1974,7 +1974,7 @@ function PlatformSteps() {
     ["Builds a recommendation list", "They add the apps and brands they genuinely find and love."],
     ["Brands approve", "Each brand approves the request to be featured on the list."],
     ["Shares with their audience", "The creator shares the list with their followers and in their bio."],
-    ["Hire influencers to create content", "Book a verified creator for a post, story, or reel at their listed rate."],
+    ["Earn when people click on your recommendations", "Earn commissions when your audience shops through your recommendations"],
   ];
   return (
     <section style={{ background: C.paper }}>
