@@ -54,6 +54,22 @@ function hashStr(s) { let h = 0; const str = String(s || ""); for (let i = 0; i 
 function tintFor(seed) { const h = hashStr(seed) % 360; return { bg: `hsl(${h}, 64%, 93%)`, color: `hsl(${h}, 42%, 52%)` }; }
 const slugify = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const emailOk = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || "").trim());
+// Country → local payout methods. Each method: [key, label, placeholder].
+const PAYOUT_BY_COUNTRY = {
+  "United States": [["venmo", "Venmo", "@your-venmo"], ["zelle", "Zelle", "Email or phone"], ["paypal", "PayPal", "PayPal email"], ["cashapp", "Cash App", "$cashtag"], ["bank", "Bank (ACH)", "Routing + account"]],
+  "India": [["upi", "UPI", "yourname@upi"], ["paytm", "Paytm", "Paytm number"], ["bank", "Bank (IMPS/NEFT)", "Account + IFSC"], ["paypal", "PayPal", "PayPal email"]],
+  "United Kingdom": [["bank", "Bank transfer", "Sort code + account"], ["paypal", "PayPal", "PayPal email"], ["wise", "Wise", "Wise email"], ["revolut", "Revolut", "@revtag"]],
+  "Canada": [["interac", "Interac e-Transfer", "Email or phone"], ["paypal", "PayPal", "PayPal email"], ["bank", "Bank (EFT)", "Transit + account"]],
+  "Australia": [["payid", "PayID", "Email or phone"], ["bank", "Bank (BSB)", "BSB + account"], ["paypal", "PayPal", "PayPal email"]],
+  "United Arab Emirates": [["bank", "Bank transfer", "IBAN"], ["paypal", "PayPal", "PayPal email"], ["wise", "Wise", "Wise email"]],
+  "Singapore": [["paynow", "PayNow", "Phone or NRIC"], ["bank", "Bank transfer", "Account number"], ["paypal", "PayPal", "PayPal email"]],
+  "Germany": [["bank", "SEPA transfer", "IBAN"], ["paypal", "PayPal", "PayPal email"], ["wise", "Wise", "Wise email"]],
+  "Nigeria": [["bank", "Bank transfer", "Account + bank"], ["paystack", "Paystack", "Paystack email"], ["paypal", "PayPal", "PayPal email"]],
+  "Brazil": [["pix", "Pix", "Pix key"], ["bank", "Bank transfer", "Account details"], ["paypal", "PayPal", "PayPal email"]],
+  "Mexico": [["spei", "SPEI", "CLABE"], ["bank", "Bank transfer", "Account details"], ["paypal", "PayPal", "PayPal email"]],
+  "Other": [["paypal", "PayPal", "PayPal email"], ["wise", "Wise", "Wise email"], ["bank", "Bank transfer", "Account details"]],
+};
+const PAYOUT_COUNTRIES = Object.keys(PAYOUT_BY_COUNTRY);
 const commissionLabel = (b) => b.commissionType === "flat" ? `$${b.commissionFlat}` : b.commissionType === "both" ? `${b.commissionPct}% + $${b.commissionFlat}` : `${b.commissionPct}%`;
 
 // Downscale an uploaded image to a small JPEG data URL (keeps payloads light).
@@ -981,11 +997,14 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const [signupEmail, setSignupEmail] = useState(""); const [signupPass, setSignupPass] = useState("");
   const [token, setToken] = useState(loggedIn ? sess.token : "");
   const [payShown, setPayShown] = useState(false);
+  const [payCountry, setPayCountry] = useState("United States"); const [payCountryQ, setPayCountryQ] = useState("");
   const [payMethod, setPayMethod] = useState("venmo"); const [payHandle, setPayHandle] = useState(""); const [savingPay, setSavingPay] = useState(false);
   const [picked, setPicked] = useState(initialBusinessId ? [initialBusinessId] : []);
   const [reviews, setReviews] = useState({});
   const [query, setQuery] = useState("");
-  const approved = businesses;
+  const [enriched, setEnriched] = useState(null);
+  useEffect(() => { const t = loggedIn ? sess.token : token; if (!t) return; api(`/businesses?token=${encodeURIComponent(t)}`).then((r) => Array.isArray(r) && setEnriched(r)).catch(() => {}); }, [token]);
+  const approved = enriched || businesses;
   const initialCat = initialBusinessId ? ((approved.find((b) => b.id === initialBusinessId)?.categories || [])[0] || null) : null;
   const [openCat, setOpenCat] = useState(initialCat);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [results, setResults] = useState(null);
@@ -1031,12 +1050,21 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const noMatches = q && cats.every((c) => !byCat[c].filter(match).length);
   const paidBrands = approved.filter((b) => (b.paid || b.premium) && match(b));
   const recencyOf = (b) => new Date(b.approvedAt || b.createdAt || 0).getTime();
-  const recentBrands = approved.filter((b) => match(b) && recencyOf(b) > 0 && Date.now() - recencyOf(b) < 7 * 864e5).sort((a, b) => recencyOf(b) - recencyOf(a));
+  // "Recently added" = the newest brands, always shown (not gated to 7 days), so
+  // anything we add surfaces at the top. Ones added by us (admin_grant / no signup
+  // phone) are prioritized, then by newest.
+  const addedByUs = (b) => b.chargeId === "admin_grant" || b.paid;
+  const recentBrands = approved.filter(match).slice().sort((a, b) => {
+    const au = addedByUs(a) ? 1 : 0, bu = addedByUs(b) ? 1 : 0;
+    if (au !== bu) return bu - au;
+    return recencyOf(b) - recencyOf(a);
+  }).slice(0, 10);
   const brandRow = (b) => { const on = picked.includes(b.id); const bt = tintFor(b.id || b.name); const photo = (b.photos || [])[0];
     return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 13, textAlign: "left", padding: "14px 16px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : (b.paid ? "#FBFAF6" : "#fff"), boxShadow: b.paid && !on ? `inset 3px 0 0 ${C.accent}` : "none", cursor: "pointer" }}>
       <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center", border: `1.5px solid ${on ? C.accent : "#CFC8BA"}`, background: on ? C.accent : "#fff", color: "#fff" }}>{on && <Check size={15} />}</span>
       <span style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, display: "grid", placeItems: "center", background: bt.bg, color: bt.color, overflow: "hidden" }}>{photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={16} />}</span>
       <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontWeight: 600, fontSize: 15, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>{b.paid && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 7px" }}>Promoted</span>}</span><span style={{ display: "block", fontSize: 13, color: C.muted, marginTop: 1 }}>{(b.categories || [])[0] || (b.online ? "Online" : (b.city || "-"))}</span></span>
+      {b.earns && b.earns !== "0%" && b.earns !== "$0" && <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "4px 10px" }}>earn {b.earns}</span>}
     </button>; };
 
   return (
@@ -1078,11 +1106,19 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
               return <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.ink, color: C.paper, borderRadius: 999, padding: "5px 6px 5px 12px", fontSize: 13, fontWeight: 600 }}>{b.name}<button onClick={() => toggle(id)} style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.22)", color: C.paper, cursor: "pointer" }}><Close size={11} /></button></span>; })}
           </div>}
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
-            {paidBrands.length > 0 && <div style={{ border: `1px solid ${C.accent}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
+            {recentBrands.length > 0 && <div style={{ border: `1px solid ${C.accent}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: C.accentSoft }}>
                 <Spark size={16} style={{ color: C.accentD }} />
-                <span style={{ flex: 1, fontWeight: 700, fontSize: 15, color: C.accentD }}>Featured partners</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>{paidBrands.length}</span>
+                <span style={{ flex: 1, fontWeight: 700, fontSize: 15, color: C.accentD }}>Recently added</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.accentD }}>newest first</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>{recentBrands.length}</span>
+              </div>
+              <div>{recentBrands.map(brandRow)}</div>
+            </div>}
+            {paidBrands.length > 0 && <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: C.panel }}>
+                <span style={{ flex: 1, fontWeight: 700, fontSize: 15, color: C.ink }}>Featured partners</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}>{paidBrands.length}</span>
               </div>
               <div>{paidBrands.map(brandRow)}</div>
             </div>}
@@ -1099,14 +1135,6 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
                   {list.map(brandRow)}
                 </div>}
               </div>; })}
-            {recentBrands.length > 0 && <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: C.panel }}>
-                <span style={{ flex: 1, fontWeight: 700, fontSize: 15, color: C.ink }}>Recently approved</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>last 7 days</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}>{recentBrands.length}</span>
-              </div>
-              <div>{recentBrands.map(brandRow)}</div>
-            </div>}
             {!cats.length && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "24px 0" }}>No live businesses yet, check back soon.</p>}
             {noMatches && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "20px 0" }}>No brands match &ldquo;{query}&rdquo;.</p>}
           </div>
@@ -1140,12 +1168,15 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
         </div>}
 
         {step === 3 && results && !payShown && (() => {
-          const PM = { venmo: { label: "Venmo", ph: "@your-venmo" }, zelle: { label: "Zelle", ph: "Email or phone for Zelle" }, paypal: { label: "PayPal", ph: "PayPal email" } };
+          const methods = PAYOUT_BY_COUNTRY[payCountry] || PAYOUT_BY_COUNTRY.Other;
+          const cur = methods.find((m) => m[0] === payMethod) || methods[0];
+          const countryList = PAYOUT_COUNTRIES.filter((c) => c.toLowerCase().includes(payCountryQ.trim().toLowerCase()));
+          const pickCountry = (c) => { setPayCountry(c); setPayCountryQ(""); const ms = PAYOUT_BY_COUNTRY[c] || PAYOUT_BY_COUNTRY.Other; setPayMethod(ms[0][0]); setPayHandle(""); };
           const savePay = async (skip) => {
             if (!skip) {
               if (!payHandle.trim()) { setErr("Add your payout detail, or skip for now."); return; }
               setSavingPay(true); setErr("");
-              try { await api("/creator/me", { method: "PATCH", body: { token, email: signupEmail.trim(), payMethod, payHandle: payHandle.trim() } }); }
+              try { await api("/creator/me", { method: "PATCH", body: { token, email: signupEmail.trim(), payCountry, payMethod, payHandle: payHandle.trim() } }); }
               catch (e) { setErr(e.message); setSavingPay(false); return; }
               setSavingPay(false);
             }
@@ -1155,16 +1186,25 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             <div style={{ textAlign: "center" }}>
               <div style={{ margin: "0 auto", width: 52, height: 52, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD }}><Spark size={24} /></div>
               <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 25, fontWeight: 500 }}>One last step: get paid</h2>
-              <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Your links are ready. Add where to send your earnings, you can change this anytime.</p>
+              <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Your links are ready. Tell us your country so we can show the right payout options.</p>
             </div>
             <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
-              <Field label="Payout method">
-                <div style={{ display: "flex", gap: 8 }}>
-                  {Object.entries(PM).map(([k, v]) => { const on = payMethod === k;
-                    return <button key={k} type="button" onClick={() => setPayMethod(k)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, padding: "10px 8px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{v.label}</button>; })}
+              <Field label="Country">
+                <div style={{ position: "relative" }}>
+                  <input className="er-input" placeholder="Search your country…" value={payCountryQ || payCountry} onChange={(e) => setPayCountryQ(e.target.value)} onFocus={() => setPayCountryQ(" ")} />
+                  {payCountryQ && <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 5, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: "0 12px 30px -12px rgba(0,0,0,.25)", maxHeight: 200, overflowY: "auto" }}>
+                    {countryList.length ? countryList.map((c) => <button key={c} type="button" onClick={() => pickCountry(c)} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", border: "none", borderBottom: `1px solid ${C.line}`, background: c === payCountry ? C.accentSoft : "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: C.ink }}>{c}</button>)
+                      : <p style={{ margin: 0, padding: "12px 14px", fontSize: 13, color: C.muted }}>No match, pick "Other".</p>}
+                  </div>}
                 </div>
               </Field>
-              <Field label={`Your ${PM[payMethod].label} details`}><input className="er-input" placeholder={PM[payMethod].ph} value={payHandle} onChange={(e) => setPayHandle(e.target.value)} /></Field>
+              <Field label={`Payout method in ${payCountry}`}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {methods.map(([k, label]) => { const on = payMethod === k;
+                    return <button key={k} type="button" onClick={() => { setPayMethod(k); setPayHandle(""); }} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "9px 13px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{label}</button>; })}
+                </div>
+              </Field>
+              <Field label={`Your ${cur[1]} details`}><input className="er-input" placeholder={cur[2]} value={payHandle} onChange={(e) => setPayHandle(e.target.value)} /></Field>
               <ErrBox msg={err} />
               <button className="er-btn er-btn-primary er-btn-block" disabled={savingPay} onClick={() => savePay(false)}>{savingPay ? "Saving…" : "Save and finish"}</button>
               <button className="er-btn er-btn-ghost er-btn-block" onClick={() => savePay(true)}>Skip for now</button>
@@ -1175,16 +1215,20 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
         {step === 3 && results && payShown && <div style={{ paddingTop: 6 }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={50} /></div>
-            <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 24, fontWeight: 500 }}>{results.length > 1 ? `You're backing ${results.length} brands` : "Your link is live"}</h2>
-            <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Share each referral link to earn, and drop your profile in your bio.</p>
+            <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 24, fontWeight: 500 }}>You're all set</h2>
+            <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Here's your one link. Put it in your bio, and every brand on your list earns you a commission.</p>
           </div>
-          <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 14, textAlign: "left", maxHeight: 300, overflowY: "auto" }}>
-            {results.map((r, i) => <CopyRow key={i} label={`${r.name} · earn ${r.earns}`} value={r.referralUrl} />)}
-            <CopyRow label="Your profile · add to bio" value={results[0].profileUrl} />
+          <div style={{ marginTop: 20, textAlign: "left" }}>
+            <CopyRow label="Your page · add this to your bio" value={results[0].profileUrl} />
+            <div style={{ marginTop: 12, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 15px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 4 }}>Where do I put it?</div>
+              <p style={{ margin: 0, fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>Drop it in your Instagram or TikTok bio, or add it to your Linktree. When your audience taps it, they see your whole list.</p>
+              <a href="https://www.instagram.com/nycdesihangouts/" target="_blank" rel="noopener noreferrer" className="er-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 13, fontWeight: 600, color: C.accentD, textDecoration: "none" }}><IgIcon size={14} /> See how a creator uses theirs</a>
+            </div>
           </div>
           <div style={{ marginTop: 22, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
             <button className="er-btn er-btn-ghost" onClick={onClose}>Close</button>
-            <button className="er-btn er-btn-primary" onClick={() => { onViewProfile(handle); onClose(); }}>View my profile <Arrow size={16} /></button></div>
+            <button className="er-btn er-btn-primary" onClick={() => { onViewProfile(handle); onClose(); }}>View my page <Arrow size={16} /></button></div>
         </div>}
       </div>
     </Modal>
@@ -1590,12 +1634,13 @@ function CommissionRequest({ token, businessId, requests = [], onDone }) {
   );
 }
 function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh }) {
-  const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false);
+  const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false); const [photoBusy, setPhotoBusy] = useState(false);
   const [myReqs, setMyReqs] = useState({}); const [reqList, setReqList] = useState([]);
   const isOwner = session && session.role === "creator" && session.username === handle;
   const profileUrl = `${window.location.origin}/@${handle}`;
   const copyLink = async () => { try { await navigator.clipboard.writeText(profileUrl); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
   const load = () => api(`/creator/${handle}${session && session.role === "creator" && session.username === handle ? `?token=${encodeURIComponent(session.token)}` : ""}`).then(setData).catch((e) => setErr(e.message));
+  const onProfilePhoto = async (e) => { const file = e.target.files && e.target.files[0]; e.target.value = ""; if (!file) return; setPhotoBusy(true); try { const img = await fileToDataURL(file, 400, 0.85); await api("/creator/me", { method: "PATCH", body: { token: session.token, image: img } }); await load(); } catch (x) { alert(x.message || "Couldn't update photo"); } finally { setPhotoBusy(false); } };
   const loadReqs = async () => { if (!(session && session.role === "creator" && session.username === handle)) return; try { const list = await api(`/creator/requests?token=${encodeURIComponent(session.token)}`); const m = {}; list.forEach((r) => { (m[String(r.businessId)] = m[String(r.businessId)] || []).push(r); }); setMyReqs(m); setReqList(list); } catch (e) {} };
   useEffect(() => { setData(null); setErr(""); load(); loadReqs(); }, [handle, dataVersion]);
   const removeBrand = async (businessId) => { try { await api("/creator/link", { method: "DELETE", body: { token: session.token, businessId } }); await load(); onRefresh(); } catch (e) { alert(e.message); } };
@@ -1610,7 +1655,13 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 22px 36px" }}>
           <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><ChevL size={15} /> Easy Recommend</button>
           <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 18 }}>
-            <Avatar name={data.username} image={data.image} size={76} />
+            {isOwner
+              ? <label style={{ position: "relative", cursor: "pointer", flexShrink: 0, display: "inline-block" }} title="Change photo">
+                  <Avatar name={data.username} image={data.image} size={76} />
+                  <span style={{ position: "absolute", inset: 0, borderRadius: "50%", display: "grid", placeItems: "center", background: "rgba(0,0,0,.42)", color: "#fff", opacity: photoBusy ? 1 : 0, transition: "opacity .15s" }} onMouseEnter={(e) => e.currentTarget.style.opacity = 1} onMouseLeave={(e) => e.currentTarget.style.opacity = photoBusy ? 1 : 0}>{photoBusy ? "…" : <Edit size={18} />}</span>
+                  <input type="file" accept="image/*" style={{ display: "none" }} onChange={onProfilePhoto} />
+                </label>
+              : <Avatar name={data.username} image={data.image} size={76} />}
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}><h1 className="er-serif" style={{ margin: 0, fontSize: 30, fontWeight: 500 }}>@{data.username}</h1><Seal size={20} /></div>
               <p style={{ margin: "2px 0 0", fontSize: 14.5, color: C.muted }}>{data.bio || "Curating businesses worth trusting."}</p>
@@ -1633,6 +1684,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", flexShrink: 0 }}>
               <button className="er-btn er-btn-light er-btn-sm" onClick={copyLink} style={{ color: copied ? C.accent : C.ink }}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}</button>
+              <a href="https://www.instagram.com/nycdesihangouts/" target="_blank" rel="noopener noreferrer" className="er-link" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: C.muted, textDecoration: "none", textAlign: "right", lineHeight: 1.3 }}><IgIcon size={12} /> See how creators add this to Linktree or bio</a>
               {isOwner && <button className="er-btn er-btn-light er-btn-sm" onClick={() => setEditing(true)}><Edit size={14} /> Edit profile</button>}
             </div>
           </div>
@@ -1974,7 +2026,7 @@ function PlatformSteps() {
     ["Builds a recommendation list", "They add the apps and brands they genuinely find and love."],
     ["Brands approve", "Each brand approves the request to be featured on the list."],
     ["Shares with their audience", "The creator shares the list with their followers and in their bio."],
-    ["Earn when people click on your recommendations", "Earn commissions when your audience shops through your recommendations"],
+    ["You earn on every sale", "When anyone in your audience taps a link and shops within 6 months, you earn a commission, tracked and paid automatically."],
   ];
   return (
     <section style={{ background: C.paper }}>
@@ -2556,7 +2608,7 @@ function EasyApp() {
 }
 
 /* ===========================================================================
-   Top-level router, Easy Recommend eeee the main site (the influencer landing).
+   Top-level router, Easy Recommend is the main site (the influencer landing).
    Visitors arriving on the old retentionbase.com domain see the rename notice.
    Preview the rename page anywhere with ?renamed=1.
    =========================================================================== */
