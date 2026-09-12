@@ -997,7 +997,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const [signupEmail, setSignupEmail] = useState(""); const [signupPass, setSignupPass] = useState("");
   const [token, setToken] = useState(loggedIn ? sess.token : "");
   const [payShown, setPayShown] = useState(false);
-  const [payCountry, setPayCountry] = useState("United States"); const [payCountryQ, setPayCountryQ] = useState("");
+  const [payCountry, setPayCountry] = useState("United States"); const [payCountryQ, setPayCountryQ] = useState(""); const [countryOpen, setCountryOpen] = useState(false);
   const [payMethod, setPayMethod] = useState("venmo"); const [payHandle, setPayHandle] = useState(""); const [savingPay, setSavingPay] = useState(false);
   const [picked, setPicked] = useState(initialBusinessId ? [initialBusinessId] : []);
   const [reviews, setReviews] = useState({});
@@ -1171,7 +1171,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
           const methods = PAYOUT_BY_COUNTRY[payCountry] || PAYOUT_BY_COUNTRY.Other;
           const cur = methods.find((m) => m[0] === payMethod) || methods[0];
           const countryList = PAYOUT_COUNTRIES.filter((c) => c.toLowerCase().includes(payCountryQ.trim().toLowerCase()));
-          const pickCountry = (c) => { setPayCountry(c); setPayCountryQ(""); const ms = PAYOUT_BY_COUNTRY[c] || PAYOUT_BY_COUNTRY.Other; setPayMethod(ms[0][0]); setPayHandle(""); };
+          const pickCountry = (c) => { setPayCountry(c); setPayCountryQ(""); setCountryOpen(false); const ms = PAYOUT_BY_COUNTRY[c] || PAYOUT_BY_COUNTRY.Other; setPayMethod(ms[0][0]); setPayHandle(""); };
           const savePay = async (skip) => {
             if (!skip) {
               if (!payHandle.trim()) { setErr("Add your payout detail, or skip for now."); return; }
@@ -1191,10 +1191,14 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
               <Field label="Country">
                 <div style={{ position: "relative" }}>
-                  <input className="er-input" placeholder="Search your country…" value={payCountryQ || payCountry} onChange={(e) => setPayCountryQ(e.target.value)} onFocus={() => setPayCountryQ(" ")} />
-                  {payCountryQ && <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 5, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: "0 12px 30px -12px rgba(0,0,0,.25)", maxHeight: 200, overflowY: "auto" }}>
-                    {countryList.length ? countryList.map((c) => <button key={c} type="button" onClick={() => pickCountry(c)} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", border: "none", borderBottom: `1px solid ${C.line}`, background: c === payCountry ? C.accentSoft : "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: C.ink }}>{c}</button>)
-                      : <p style={{ margin: 0, padding: "12px 14px", fontSize: 13, color: C.muted }}>No match, pick "Other".</p>}
+                  <input className="er-input" placeholder="Search your country…"
+                    value={countryOpen ? payCountryQ : payCountry}
+                    onChange={(e) => { setPayCountryQ(e.target.value); setCountryOpen(true); }}
+                    onFocus={() => { setPayCountryQ(""); setCountryOpen(true); }}
+                    onBlur={() => setTimeout(() => setCountryOpen(false), 150)} />
+                  {countryOpen && <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 5, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: "0 12px 30px -12px rgba(0,0,0,.25)", maxHeight: 220, overflowY: "auto" }}>
+                    {countryList.length ? countryList.map((c) => <button key={c} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pickCountry(c)} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 14px", border: "none", borderBottom: `1px solid ${C.line}`, background: c === payCountry ? C.accentSoft : "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: c === payCountry ? C.accentD : C.ink }}>{c}</button>)
+                      : <p style={{ margin: 0, padding: "12px 14px", fontSize: 13, color: C.muted }}>No match, pick &ldquo;Other&rdquo;.</p>}
                   </div>}
                 </div>
               </Field>
@@ -2448,7 +2452,7 @@ function CookieBar({ onLearnMore }) {
 function LegalModal({ onClose }) {
   const sections = [
     ["1. Introduction", "Easy Recommend (\"Easy Recommend,\" \"we,\" \"us,\" or \"our\") operates the website easyrecommend.co and related services (the \"Service\"), a commission-based marketing platform that connects brands, products, and apps with creators and influencers who promote them. This Privacy & Cookie Policy explains what information we collect, how we use and share it, and the rights and choices you have. By using the Service, you agree to the practices described here. If you do not agree, please do not use the Service."],
-    ["2. Who this applies to", "This policy applies to everyone who uses the Service, including businesses that list a brand, product, or app; creators and influencers who join to promote them; and visitors who browse the site. Some sections apply only to a specific group and are noted where relevant"],
+    ["2. Who this applies to", "This policy applies to everyone who uses the Service, including businesses that list a brand, product, or app; creators and influencers who join to promote them; and visitors who browse the site. Some sections apply only to a specific group and are noted where relevant."],
     ["3. Information you provide to us", ["Business accounts: brand/product/app name, mobile number (used for sign-in and verification), optional contact email and website, listing description, categories, products, commission terms, customer discounts, and uploaded images.", "Creator accounts: username, profile photo, bio, and self-reported follower count.", "Commission requests and messages: the commission you request from a brand, any note you add, and a brand's approval/rejection reply.", "Payments: when a business purchases a plan, billing details are entered directly into our payment processor's secure checkout (see Section 9).", "Communications: information you include when you contact support or respond to our messages."]],
     ["4. Information we collect automatically", ["Activity data: referral-link clicks, sales/conversion attribution, listings viewed, and actions taken on the Service.", "Device and log data: IP address, browser type, device and operating-system information, referring pages, and timestamps.", "Cookies and local storage: small data files and browser storage used to keep you signed in and remember preferences (see Section 8)."]],
     ["5. How we use your information", ["Create, operate, and secure your account and the Service.", "Match creators with brands and generate and track referral links and attribution.", "Process plan payments and prevent fraud and abuse.", "Send you service and transactional messages by SMS and email (for example, verification codes, commission requests, and account notices).", "Provide customer support and respond to your requests.", "Monitor, analyze, and improve the Service and develop new features.", "Comply with legal obligations and enforce our terms."]],
