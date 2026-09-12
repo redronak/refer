@@ -634,10 +634,11 @@ const PLANS = [
       { t: "Visible to 400+ influencers" },
       { t: "Influencers won't promote or add your product to their recommendation list", off: true },
     ] },
-  { key: "starter", amount: 49, title: "Starter", tag: "Get recommended", featured: true,
+  { key: "starter", amount: 29, title: "Get recommended", tag: "One-time fee", featured: true,
     points: [
-      { t: "Get added to the recommendation list by 1000+ influencers" },
-      { t: "See influencer requests, approve or reject them" },
+      { t: "See and approve influencer requests" },
+      { t: "Get added to 1000+ influencers' recommendation lists" },
+      { t: "Set the reward you give influencers" },
     ] },
 ];
 function loadCheckout() {
@@ -789,6 +790,51 @@ function Paywall({ business, sessionToken, onPaid }) {
     </div>
   );
 }
+function RewardPrompt({ business, token, onClose, onSaved }) {
+  const [type, setType] = useState(business.commissionType || "percent");
+  const [pct, setPct] = useState(business.commissionPct || 15);
+  const [flat, setFlat] = useState(business.commissionFlat || 25);
+  const [discount, setDiscount] = useState(business.discount || 0);
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const valid = (type === "percent" && pct > 0) || (type === "flat" && flat > 0) || (type === "both" && pct > 0 && flat > 0);
+  const save = async () => {
+    if (!valid) { setErr("Set a reward greater than 0."); return; }
+    setBusy(true); setErr("");
+    try { await api(`/business/me/${business.id}`, { method: "PATCH", body: { token, commissionType: type, commissionPct: pct, commissionFlat: flat, discount } }); await onSaved(); }
+    catch (e) { setErr(e.message); setBusy(false); }
+  };
+  return (
+    <Modal onClose={onClose}>
+      <div style={{ padding: "30px 28px" }}>
+        <span className="er-eyebrow">You're unlocked</span>
+        <h2 className="er-serif" style={{ margin: "8px 0 4px", fontSize: 25, fontWeight: 500 }}>What do you offer influencers?</h2>
+        <p style={{ margin: "0 0 18px", fontSize: 14, color: C.muted }}>This is the reward creators earn per sale. It's private, they see it only when they add you.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <Field label="Reward type">
+            <div style={{ display: "flex", gap: 8 }}>
+              {[["percent", "Percentage"], ["flat", "Flat cash"], ["both", "Both"]].map(([t, lbl]) => { const on = type === t;
+                return <button key={t} type="button" onClick={() => setType(t)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, padding: "10px 8px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{lbl}</button>; })}
+            </div>
+          </Field>
+          {(type === "percent" || type === "both") && <Field label="Percentage of each sale">
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <input type="range" min="1" max="40" value={pct} onChange={(e) => setPct(+e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
+              <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.accentSoft, color: C.accentD }}>{pct}%</span></div></Field>}
+          {(type === "flat" || type === "both") && <Field label="Flat cash per sale">
+            <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "11px 14px", maxWidth: 180 }}>
+              <span style={{ fontSize: 15, color: C.muted, marginRight: 2 }}>$</span>
+              <input type="number" min="0" value={flat} onChange={(e) => setFlat(Math.max(0, +e.target.value))} style={{ flex: 1, border: "none", outline: "none", background: "none", fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: C.ink, width: "100%" }} /></div></Field>}
+          <Field label="Customer discount" hint="Optional, shown to shoppers who use a creator's link.">
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <input type="range" min="0" max="40" value={discount} onChange={(e) => setDiscount(+e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
+              <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.panel, color: C.ink }}>{discount}%</span></div></Field>
+          <ErrBox msg={err} />
+          <button className="er-btn er-btn-primary er-btn-block" disabled={busy || !valid} onClick={save}><Check size={16} /> {busy ? "Saving…" : "Save reward"}</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 function VerifyNotice({ onClose }) {
   return (
     <Modal onClose={onClose}>
@@ -820,16 +866,17 @@ function MyBusiness({ session, onBack, onRefresh }) {
   useEffect(() => { if (paid) reloadReqs(); }, [paid]);
   const decide = async (id, status, message) => { await api(`/business/request/${id}`, { method: "PATCH", body: { token: session.token, status, message } }); await reloadReqs(); };
   const pending = (reqs || []).filter((r) => r.status === "pending").length;
-  const [showVerify, setShowVerify] = useState(false);
+  const [showVerify, setShowVerify] = useState(false); const [showReward, setShowReward] = useState(false);
   const [creators, setCreators] = useState(null);
   const [hireOn, setHireOn] = useState(false);
   useEffect(() => { api("/settings").then((s) => setHireOn(!!s.hireEnabled)).catch(() => {}); }, []);
   const loadCreators = async () => { try { setCreators(await api(`/business/me/creators?token=${t}`)); } catch (e) { setCreators([]); } };
   useEffect(() => { if (tab === "hire" && hireOn) loadCreators(); }, [tab, hireOn]);
-  const onPaid = async () => { await reload(); setTab("promo"); setShowVerify(true); };
+  const onPaid = async () => { await reload(); setTab("promo"); setShowReward(true); };
   const tabs = [["info", "My information"], ["promo", paid ? `Requests${pending ? ` · ${pending}` : ""}` : "Approve/Reject Influencer request"], ...(hireOn ? [["hire", "Hire influencers"]] : [])];
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 22px 80px" }}>
+      {showReward && business && <RewardPrompt business={business} token={session.token} onClose={() => { setShowReward(false); setShowVerify(true); }} onSaved={async () => { await reload(); setShowReward(false); setShowVerify(true); }} />}
       {showVerify && <VerifyNotice onClose={() => setShowVerify(false)} />}
       <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>My business</h1>
@@ -1017,7 +1064,8 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const handle = loggedIn ? sess.username : slugify(username);
   const RATING = ["", "Poor", "Fair", "Good", "Great", "Exceptional"];
 
-  const toggle = (id) => setPicked((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+  const ADD_LIMIT = 15;
+  const toggle = (id) => setPicked((p) => p.includes(id) ? p.filter((x) => x !== id) : (p.length >= ADD_LIMIT ? p : [...p, id]));
   const [bulkCat, setBulkCat] = useState("");
   const setReview = (id, patch) => setReviews((prev) => ({ ...prev, [id]: { stars: 0, text: "", ...prev[id], ...patch } }));
   const join = async () => {
@@ -1029,15 +1077,21 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   };
   const finish = async () => {
     setBusy(true); setErr("");
+    const out = []; let capped = false;
     try {
-      const out = [];
       for (const id of picked) {
         const r = reviews[id] || {}; const body = { token, businessId: id };
         if (r.stars > 0) { body.stars = r.stars; body.text = r.text || ""; }
-        const res = await api("/creator/link", { method: "POST", body });
-        const b = approved.find((x) => x.id === id);
-        out.push({ ...res, name: b ? b.name : "" });
+        try {
+          const res = await api("/creator/link", { method: "POST", body });
+          const b = approved.find((x) => x.id === id);
+          out.push({ ...res, name: b ? b.name : "" });
+        } catch (e) {
+          if (/day|429/i.test(e.message || "")) { capped = true; break; }
+          throw e;
+        }
       }
+      if (!out.length && capped) { setErr(`You've hit the ${ADD_LIMIT}-a-day limit. Come back tomorrow to add more.`); setBusy(false); return; }
       setResults(out); setStep(3); onRefresh();
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -1099,7 +1153,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
               <option value="">Choose a category…</option>
               {cats.map((c) => <option key={c} value={c}>{c} ({byCat[c].length})</option>)}
             </select>
-            <button type="button" className="er-btn er-btn-light er-btn-sm" disabled={!bulkCat} onClick={() => { const ids = (byCat[bulkCat] || []).map((b) => b.id); setPicked((p) => Array.from(new Set([...p, ...ids]))); }}>Add all</button>
+            <button type="button" className="er-btn er-btn-light er-btn-sm" disabled={!bulkCat} onClick={() => { const ids = (byCat[bulkCat] || []).map((b) => b.id); setPicked((p) => Array.from(new Set([...p, ...ids])).slice(0, ADD_LIMIT)); }}>Add all</button>
           </div>
           {picked.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
             {picked.map((id) => { const b = approved.find((x) => x.id === id); if (!b) return null;
@@ -1139,8 +1193,9 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             {noMatches && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "20px 0" }}>No brands match &ldquo;{query}&rdquo;.</p>}
           </div>
           <div style={{ marginTop: 22, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            {loggedIn ? <span /> : <button className="er-btn er-btn-ghost" onClick={() => setStep(0)}><ChevL size={16} /> Back</button>}
+            {loggedIn ? <span style={{ fontSize: 12.5, color: C.muted }}>{picked.length}/{ADD_LIMIT} today</span> : <button className="er-btn er-btn-ghost" onClick={() => setStep(0)}><ChevL size={16} /> Back</button>}
             <button className="er-btn er-btn-primary" disabled={!picked.length} onClick={() => setStep(2)}>Continue{picked.length ? ` · ${picked.length}` : ""} <ChevR size={16} /></button></div>
+          <p style={{ margin: "8px 0 0", fontSize: 12, color: C.muted, textAlign: "center" }}>You can add up to {ADD_LIMIT} brands a day.</p>
         </div>}
 
         {step === 2 && <div style={{ marginTop: 22 }}>
@@ -1187,6 +1242,19 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
               <div style={{ margin: "0 auto", width: 52, height: 52, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD }}><Spark size={24} /></div>
               <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 25, fontWeight: 500 }}>One last step: get paid</h2>
               <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Your links are ready. Tell us your country so we can show the right payout options.</p>
+              <div style={{ marginTop: 16, background: C.ink, color: C.paper, borderRadius: 14, padding: "14px 16px" }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "rgba(253,252,250,.6)", marginBottom: 8 }}>Average earnings in first 3 months</div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ flex: 1, background: "rgba(253,252,250,.07)", borderRadius: 10, padding: "10px 12px" }}>
+                    <div className="er-serif" style={{ fontSize: 24, fontWeight: 500, lineHeight: 1.1 }}>~$500</div>
+                    <div style={{ fontSize: 11.5, color: "rgba(253,252,250,.7)" }}>smaller creators</div>
+                  </div>
+                  <div style={{ flex: 1, background: C.accent, color: "#fff", borderRadius: 10, padding: "10px 12px" }}>
+                    <div className="er-serif" style={{ fontSize: 24, fontWeight: 500, lineHeight: 1.1 }}>~$5,000</div>
+                    <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.85)" }}>larger creators</div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 16 }}>
               <Field label="Country">
@@ -2094,6 +2162,10 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
             <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <button className="er-btn er-btn-primary" onClick={onCreator}>Create my list free <Arrow size={16} /></button>
               <button className="er-btn er-btn-ghost" onClick={onList}>I'm a business</button>
+            </div>
+            <div style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 9, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 999, padding: "8px 15px" }}>
+              <Spark size={15} style={{ color: C.accentD, flexShrink: 0 }} />
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: C.accentD }}>Smaller creators average ~$500 in 3 months, larger creators ~$5,000</span>
             </div>
             <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Set up in under a minute · you keep every commission you earn.</p>
           </div>
