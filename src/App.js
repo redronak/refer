@@ -1098,21 +1098,12 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
 
   const q = query.trim().toLowerCase();
   const match = (b) => !q || (b.name || "").toLowerCase().includes(q);
-  const byCat = {}; approved.forEach((b) => { if (!(b && b.name && b.name.trim())) return; const c = ((b.categories || []).find((x) => CATS[x])) || "Other"; (byCat[c] = byCat[c] || []).push(b); });
+  const byCat = {}; approved.filter((b) => !b.registered).forEach((b) => { if (!(b && b.name && b.name.trim())) return; const c = ((b.categories || []).find((x) => CATS[x])) || "Other"; (byCat[c] = byCat[c] || []).push(b); });
   Object.values(byCat).forEach((arr) => arr.sort((a, b) => (b.paid ? 1 : 0) - (a.paid ? 1 : 0)));
   const cats = CAT_LIST.filter((c) => byCat[c]);
-  const noMatches = q && cats.every((c) => !byCat[c].filter(match).length);
-  const paidBrands = approved.filter((b) => (b.paid || b.premium) && match(b));
   const recencyOf = (b) => new Date(b.approvedAt || b.createdAt || 0).getTime();
-  // "Recently added" = the newest brands, always shown (not gated to 7 days), so
-  // anything we add surfaces at the top. Ones added by us (admin_grant / no signup
-  // phone) are prioritized, then by newest.
-  const addedByUs = (b) => b.chargeId === "admin_grant" || b.paid;
-  const recentBrands = approved.filter(match).slice().sort((a, b) => {
-    const au = addedByUs(a) ? 1 : 0, bu = addedByUs(b) ? 1 : 0;
-    if (au !== bu) return bu - au;
-    return recencyOf(b) - recencyOf(a);
-  }).slice(0, 10);
+  const builders = approved.filter((b) => b.registered && match(b)).sort((a, b) => { const ap = a.paid ? 1 : 0, bp = b.paid ? 1 : 0; if (ap !== bp) return bp - ap; return recencyOf(b) - recencyOf(a); });
+  const noMatches = q && !builders.length && cats.every((c) => !byCat[c].filter(match).length);
   const brandRow = (b) => { const on = picked.includes(b.id); const bt = tintFor(b.id || b.name); const photo = (b.photos || [])[0];
     return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 13, textAlign: "left", padding: "14px 16px", border: "none", borderTop: `1px solid ${C.line}`, background: on ? C.accentSoft : (b.paid ? "#FBFAF6" : "#fff"), boxShadow: b.paid && !on ? `inset 3px 0 0 ${C.accent}` : "none", cursor: "pointer" }}>
       <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center", border: `1.5px solid ${on ? C.accent : "#CFC8BA"}`, background: on ? C.accent : "#fff", color: "#fff" }}>{on && <Check size={15} />}</span>
@@ -1160,36 +1151,34 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
               return <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.ink, color: C.paper, borderRadius: 999, padding: "5px 6px 5px 12px", fontSize: 13, fontWeight: 600 }}>{b.name}<button onClick={() => toggle(id)} style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.22)", color: C.paper, cursor: "pointer" }}><Close size={11} /></button></span>; })}
           </div>}
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
-            {recentBrands.length > 0 && <div style={{ border: `1px solid ${C.accent}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: C.accentSoft }}>
+            {builders.length > 0 && <div style={{ border: `1px solid ${C.accent}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 16px", background: C.accentSoft }}>
                 <Spark size={16} style={{ color: C.accentD }} />
-                <span style={{ flex: 1, fontWeight: 700, fontSize: 15, color: C.accentD }}>Recently added</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: C.accentD }}>newest first</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>{recentBrands.length}</span>
+                <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 15, color: C.accentD }}>Small builders</div><div style={{ fontSize: 12, color: C.accentD, opacity: .8 }}>Indie founders who signed up, easier to get on their radar.</div></div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>{builders.length}</span>
               </div>
-              <div>{recentBrands.map(brandRow)}</div>
+              <div>{builders.map(brandRow)}</div>
             </div>}
-            {paidBrands.length > 0 && <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: C.panel }}>
-                <span style={{ flex: 1, fontWeight: 700, fontSize: 15, color: C.ink }}>Featured partners</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.muted }}>{paidBrands.length}</span>
+            {cats.length > 0 && <>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px 0", marginTop: builders.length ? 4 : 0 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>Established businesses</span>
+                <span style={{ flex: 1, height: 1, background: C.line }} />
               </div>
-              <div>{paidBrands.map(brandRow)}</div>
-            </div>}
-            {cats.map((c) => { const all = byCat[c]; const list = all.filter(match); if (q && !list.length) return null; const open = q ? true : openCat === c; const x = CATS[c] || CATS.Beauty; const selCount = all.filter((b) => picked.includes(b.id)).length;
-              return <div key={c} style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
-                <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 64, padding: "16px", background: open ? x.bg : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
-                  <span style={{ width: 13, height: 13, borderRadius: "50%", background: x.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontWeight: 700, fontSize: 16.5, lineHeight: 1.2, color: C.ink }}>{c}</span>
-                  {selCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: x.color, borderRadius: 999, padding: "4px 11px", flexShrink: 0 }}>{selCount} picked</span>}
-                  <span style={{ fontSize: 13.5, fontWeight: 600, color: C.muted, flexShrink: 0 }}>{list.length}</span>
-                  <span style={{ color: C.muted, display: "flex", flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}><ChevR size={17} /></span>
-                </button>
-                {open && <div style={{ borderTop: `1px solid ${C.line}` }}>
-                  {list.map(brandRow)}
-                </div>}
-              </div>; })}
-            {!cats.length && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "24px 0" }}>No live businesses yet, check back soon.</p>}
+              {cats.map((c) => { const all = byCat[c]; const list = all.filter(match); if (q && !list.length) return null; const open = q ? true : openCat === c; const x = CATS[c] || CATS.Beauty; const selCount = all.filter((b) => picked.includes(b.id)).length;
+                return <div key={c} style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
+                  <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 64, padding: "16px", background: open ? x.bg : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
+                    <span style={{ width: 13, height: 13, borderRadius: "50%", background: x.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontWeight: 700, fontSize: 16.5, lineHeight: 1.2, color: C.ink }}>{c}</span>
+                    {selCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: x.color, borderRadius: 999, padding: "4px 11px", flexShrink: 0 }}>{selCount} picked</span>}
+                    <span style={{ fontSize: 13.5, fontWeight: 600, color: C.muted, flexShrink: 0 }}>{list.length}</span>
+                    <span style={{ color: C.muted, display: "flex", flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}><ChevR size={17} /></span>
+                  </button>
+                  {open && <div style={{ borderTop: `1px solid ${C.line}` }}>
+                    {list.map(brandRow)}
+                  </div>}
+                </div>; })}
+            </>}
+            {!builders.length && !cats.length && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "24px 0" }}>No live businesses yet, check back soon.</p>}
             {noMatches && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "20px 0" }}>No brands match &ldquo;{query}&rdquo;.</p>}
           </div>
           <div style={{ marginTop: 22, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
