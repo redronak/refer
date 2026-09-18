@@ -1401,7 +1401,10 @@ function BulkSms({ businesses = [] }) {
     try {
       const pastedArr = nums.trim() ? nums.split(/[\s,;]+/) : [];
       const pickedPhones = businesses.filter((b) => picked.includes(b._id)).map((b) => b.phone).filter(Boolean);
-      const r = await api("/admin/bulk-sms", { method: "POST", admin: true, body: { message: msg, numbers: [...pastedArr, ...pickedPhones], audience: aud === "none" ? "" : aud, richOnly } });
+      // If specific businesses are picked, send to ONLY those (+ any pasted numbers),
+      // never the whole audience group.
+      const effectiveAudience = picked.length > 0 ? "" : (aud === "none" ? "" : aud);
+      const r = await api("/admin/bulk-sms", { method: "POST", admin: true, body: { message: msg, numbers: [...pastedArr, ...pickedPhones], audience: effectiveAudience, richOnly } });
       setRes(`Sent to ${r.sent} of ${r.recipients} recipient(s).${r.skipped ? ` Skipped ${r.skipped} non-rich number(s).` : ""}`);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -1410,8 +1413,8 @@ function BulkSms({ businesses = [] }) {
     <div className="er-card" style={{ padding: 18, marginTop: 22 }}>
       <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Bulk SMS</h2>
       <p style={{ margin: "6px 0 14px", fontSize: 13.5, color: C.muted }}>Pick which businesses to text, and/or paste extra numbers below.</p>
-      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>Businesses on file</div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>Businesses on file{picked.length > 0 && <span style={{ marginLeft: 8, textTransform: "none", letterSpacing: 0, fontWeight: 600, color: C.accentD }}>· ignored while {picked.length} picked below</span>}</div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", opacity: picked.length > 0 ? 0.4 : 1, pointerEvents: picked.length > 0 ? "none" : "auto" }}>
         {[["approved", "Approved only"], ["pending", "Pending only"], ["paid", "Paid only"], ["free", "Free only"], ["all", "All businesses"], ["none", "None"]].map(([k, l]) => { const on = aud === k;
           return <button key={k} type="button" onClick={() => setAud(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "8px 13px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{l}</button>; })}
       </div>
