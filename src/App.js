@@ -54,6 +54,9 @@ function hashStr(s) { let h = 0; const str = String(s || ""); for (let i = 0; i 
 function tintFor(seed) { const h = hashStr(seed) % 360; return { bg: `hsl(${h}, 64%, 93%)`, color: `hsl(${h}, 42%, 52%)` }; }
 const slugify = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const emailOk = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || "").trim());
+// Rich-country dialing prefixes (mirrors the backend). Only these get SMS OTP.
+const RICH_PREFIXES = ["44","353","61","64","49","33","41","43","32","31","352","45","46","47","358","354","39","34","351","356","357","377","423","65","852","81","82","886","971","974","965","973","968","966","972"];
+const isRichPhone = (raw) => { let d = String(raw || "").replace(/\D/g, ""); if (!d) return false; if (d.startsWith("00")) d = d.slice(2); if (d.startsWith("1") || (d.length === 10 && /^[2-9]/.test(d))) return true; return RICH_PREFIXES.some((p) => d.startsWith(p)); };
 // Country → local payout methods. Each method: [key, label, placeholder].
 const PAYOUT_BY_COUNTRY = {
   "United States": [["venmo", "Venmo", "@your-venmo"], ["zelle", "Zelle", "Email or phone"], ["paypal", "PayPal", "PayPal email"], ["cashapp", "Cash App", "$cashtag"], ["bank", "Bank (ACH)", "Routing + account"]],
@@ -439,9 +442,13 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
         </div>
         <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {step > 0 ? <button className="er-btn er-btn-ghost" onClick={() => setStep(step - 1)}><ChevL size={16} /> Back</button> : <span />}
-          {step < 3
-            ? <button className="er-btn er-btn-primary" disabled={!valid[step]} onClick={() => { const next = step + 1; setStep(next); if (next === 3) sendCode(); }}>Continue <ChevR size={16} /></button>
-            : <button className="er-btn er-btn-primary" disabled={!valid[3] || busy} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
+          {step < 2
+            ? <button className="er-btn er-btn-primary" disabled={!valid[step]} onClick={() => setStep(step + 1)}>Continue <ChevR size={16} /></button>
+            : step === 2
+              ? (isRichPhone(f.phone)
+                  ? <button className="er-btn er-btn-primary" disabled={!valid[2]} onClick={() => { setStep(3); sendCode(); }}>Continue <ChevR size={16} /></button>
+                  : <button className="er-btn er-btn-primary" disabled={!valid[2] || busy} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>)
+              : <button className="er-btn er-btn-primary" disabled={!valid[3] || busy} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
         </div>
       </div>
     </Modal>
@@ -508,8 +515,10 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
         </div>}
 
         {mode === "brand" && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Field label="Mobile number" hint="We'll text a code to the number you signed up with."><PhoneInput value={phone} onChange={setPhone} /></Field>
-          {!sent ? <button className="er-btn er-btn-primary er-btn-block" disabled={!phone} onClick={sendCode}><Send size={16} /> Send code</button>
+          <Field label="Mobile number" hint={isRichPhone(phone) ? "We'll text a code to the number you signed up with." : "Log in with the number you signed up with."}><PhoneInput value={phone} onChange={setPhone} /></Field>
+          {!isRichPhone(phone)
+            ? <button className="er-btn er-btn-primary er-btn-block" disabled={!phone || busy} onClick={brandLogin}>{busy ? "…" : "Log in"}</button>
+            : !sent ? <button className="er-btn er-btn-primary er-btn-block" disabled={!phone} onClick={sendCode}><Send size={16} /> Send code</button>
             : <>
               <Field label="Verification code"><input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
               <button className="er-btn er-btn-primary er-btn-block" disabled={otp.length < 6 || busy} onClick={brandLogin}>{busy ? "…" : "Log in"}</button>
@@ -1401,10 +1410,7 @@ function BulkSms({ businesses = [] }) {
     try {
       const pastedArr = nums.trim() ? nums.split(/[\s,;]+/) : [];
       const pickedPhones = businesses.filter((b) => picked.includes(b._id)).map((b) => b.phone).filter(Boolean);
-      // If specific businesses are picked, send to ONLY those (+ any pasted numbers),
-      // never the whole audience group.
-      const effectiveAudience = picked.length > 0 ? "" : (aud === "none" ? "" : aud);
-      const r = await api("/admin/bulk-sms", { method: "POST", admin: true, body: { message: msg, numbers: [...pastedArr, ...pickedPhones], audience: effectiveAudience, richOnly } });
+      const r = await api("/admin/bulk-sms", { method: "POST", admin: true, body: { message: msg, numbers: [...pastedArr, ...pickedPhones], audience: aud === "none" ? "" : aud, richOnly } });
       setRes(`Sent to ${r.sent} of ${r.recipients} recipient(s).${r.skipped ? ` Skipped ${r.skipped} non-rich number(s).` : ""}`);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -1413,8 +1419,8 @@ function BulkSms({ businesses = [] }) {
     <div className="er-card" style={{ padding: 18, marginTop: 22 }}>
       <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Bulk SMS</h2>
       <p style={{ margin: "6px 0 14px", fontSize: 13.5, color: C.muted }}>Pick which businesses to text, and/or paste extra numbers below.</p>
-      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>Businesses on file{picked.length > 0 && <span style={{ marginLeft: 8, textTransform: "none", letterSpacing: 0, fontWeight: 600, color: C.accentD }}>· ignored while {picked.length} picked below</span>}</div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", opacity: picked.length > 0 ? 0.4 : 1, pointerEvents: picked.length > 0 ? "none" : "auto" }}>
+      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>Businesses on file</div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         {[["approved", "Approved only"], ["pending", "Pending only"], ["paid", "Paid only"], ["free", "Free only"], ["all", "All businesses"], ["none", "None"]].map(([k, l]) => { const on = aud === k;
           return <button key={k} type="button" onClick={() => setAud(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "8px 13px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{l}</button>; })}
       </div>
