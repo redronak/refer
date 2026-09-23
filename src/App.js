@@ -54,9 +54,6 @@ function hashStr(s) { let h = 0; const str = String(s || ""); for (let i = 0; i 
 function tintFor(seed) { const h = hashStr(seed) % 360; return { bg: `hsl(${h}, 64%, 93%)`, color: `hsl(${h}, 42%, 52%)` }; }
 const slugify = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const emailOk = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || "").trim());
-// Rich-country dialing prefixes (mirrors the backend). Only these get SMS OTP.
-const RICH_PREFIXES = ["44","353","61","64","49","33","41","43","32","31","352","45","46","47","358","354","39","34","351","356","357","377","423","65","852","81","82","886","971","974","965","973","968","966","972"];
-const isRichPhone = (raw) => { let d = String(raw || "").replace(/\D/g, ""); if (!d) return false; if (d.startsWith("00")) d = d.slice(2); if (d.startsWith("1") || (d.length === 10 && /^[2-9]/.test(d))) return true; return RICH_PREFIXES.some((p) => d.startsWith(p)); };
 // Country → local payout methods. Each method: [key, label, placeholder].
 const PAYOUT_BY_COUNTRY = {
   "United States": [["venmo", "Venmo", "@your-venmo"], ["zelle", "Zelle", "Email or phone"], ["paypal", "PayPal", "PayPal email"], ["cashapp", "Cash App", "$cashtag"], ["bank", "Bank (ACH)", "Routing + account"]],
@@ -334,14 +331,14 @@ function BusinessDetail({ id, onClose, onRecommend }) {
 function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [step, setStep] = useState(0);
   const [f, setF] = useState({ name: "", phone: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0 });
-  const [otp, setOtp] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const [searching, setSearching] = useState(false); const [revealed, setRevealed] = useState(false);
   const incentiveRef = useRef(null);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
-  const valid = [f.website.trim() && f.categories.length > 0, f.name.trim() && f.phone.trim() && (f.online || f.city.trim()), commValid, otp.length >= 6];
-  const titles = ["Get discovered", "About your business", "Your terms", "Verify your number"];
+  const valid = [f.website.trim() && f.categories.length > 0, f.name.trim() && f.phone.trim() && (f.online || f.city.trim()), commValid, true];
+  const titles = ["Get discovered", "About your business", "Your terms", "You're verified"];
 
   // When URL + category are filled, run a brief "searching" animation, then reveal the numbers.
   useEffect(() => {
@@ -356,11 +353,10 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   // Scroll the reveal into view once it appears.
   useEffect(() => { if ((searching || revealed) && incentiveRef.current) { try { incentiveRef.current.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {} } }, [searching, revealed]);
 
-  const sendCode = async () => { setErr(""); try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); } catch (e) { setErr(e.message); } };
   const submit = async () => {
     setBusy(true); setErr("");
     try {
-      const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount, contacts: ["website"], otp } });
+      const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount, contacts: ["website"] } });
       if (r && r.token) onLogin({ role: "brand", token: r.token, phone: f.phone });
       onRefresh(); onDone(f.name);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
@@ -432,23 +428,20 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>Get {f.discount}% off when you shop {f.name || "us"} through this link{f.website ? ` at ${f.website}` : ""}.</div>
             </div>}
           </>}
-          {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px", fontSize: 14, color: C.inkSoft }}>Enter the 6-digit code we texted <b style={{ color: C.ink }}>{f.phone}</b>.</div>
-            <Field label="Verification code">
-              <input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
-            <button className="er-link" onClick={sendCode} style={{ alignSelf: "flex-start" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={14} /> Text me a code</span></button>
+          {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center", textAlign: "center", padding: "8px 0" }}>
+            <span style={{ width: 56, height: 56, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD }}><Check size={28} /></span>
+            <div>
+              <div className="er-serif" style={{ fontSize: 20, fontWeight: 500 }}>Number auto-verified</div>
+              <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}><b style={{ color: C.ink }}>{f.phone}</b> is confirmed. Submit to finish, we'll review your listing shortly.</p>
+            </div>
             <ErrBox msg={err} />
           </div>}
         </div>
         <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {step > 0 ? <button className="er-btn er-btn-ghost" onClick={() => setStep(step - 1)}><ChevL size={16} /> Back</button> : <span />}
-          {step < 2
+          {step < 3
             ? <button className="er-btn er-btn-primary" disabled={!valid[step]} onClick={() => setStep(step + 1)}>Continue <ChevR size={16} /></button>
-            : step === 2
-              ? (isRichPhone(f.phone)
-                  ? <button className="er-btn er-btn-primary" disabled={!valid[2]} onClick={() => { setStep(3); sendCode(); }}>Continue <ChevR size={16} /></button>
-                  : <button className="er-btn er-btn-primary" disabled={!valid[2] || busy} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>)
-              : <button className="er-btn er-btn-primary" disabled={!valid[3] || busy} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
+            : <button className="er-btn er-btn-primary" disabled={busy} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
         </div>
       </div>
     </Modal>
@@ -471,7 +464,7 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
   // creator
   const [cName, setCName] = useState(""); const [cPass, setCPass] = useState("");
   // brand
-  const [phone, setPhone] = useState(""); const [otp, setOtp] = useState(""); const [sent, setSent] = useState(false);
+  const [phone, setPhone] = useState("");
 
   const creatorLogin = async () => {
     setBusy(true); setErr("");
@@ -480,10 +473,9 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
     try { const r = await api("/creator/login", { method: "POST", body }); onLogin({ role: "creator", token: r.token, username: r.username }); onAfterCreator(r.username); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
-  const sendCode = async () => { setErr(""); try { await api("/otp/send", { method: "POST", body: { phone } }); setSent(true); } catch (e) { setErr(e.message); } };
   const brandLogin = async () => {
     setBusy(true); setErr("");
-    try { const r = await api("/business/login/verify", { method: "POST", body: { phone, otp } }); onLogin({ role: "brand", token: r.token, phone }); onAfterBrand(); }
+    try { const r = await api("/business/login/verify", { method: "POST", body: { phone } }); onLogin({ role: "brand", token: r.token, phone }); onAfterBrand(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
 
@@ -515,16 +507,10 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
         </div>}
 
         {mode === "brand" && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Field label="Mobile number" hint={isRichPhone(phone) ? "We'll text a code to the number you signed up with." : "Log in with the number you signed up with."}><PhoneInput value={phone} onChange={setPhone} /></Field>
-          {!isRichPhone(phone)
-            ? <button className="er-btn er-btn-primary er-btn-block" disabled={!phone || busy} onClick={brandLogin}>{busy ? "…" : "Log in"}</button>
-            : !sent ? <button className="er-btn er-btn-primary er-btn-block" disabled={!phone} onClick={sendCode}><Send size={16} /> Send code</button>
-            : <>
-              <Field label="Verification code"><input className="er-input" style={{ letterSpacing: ".35em", fontWeight: 700, textAlign: "center" }} placeholder="••••••" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} /></Field>
-              <button className="er-btn er-btn-primary er-btn-block" disabled={otp.length < 6 || busy} onClick={brandLogin}>{busy ? "…" : "Log in"}</button>
-            </>}
+          <Field label="Mobile number" hint="The number you signed up with."><PhoneInput value={phone} onChange={setPhone} /></Field>
+          <button className="er-btn er-btn-primary er-btn-block" disabled={!phone || busy} onClick={brandLogin}>{busy ? "…" : "Log in"}</button>
           <ErrBox msg={err} />
-          <button className="er-btn er-btn-ghost" style={{ alignSelf: "flex-start" }} onClick={() => { setMode(null); setSent(false); }}><ChevL size={16} /> Back</button>
+          <button className="er-btn er-btn-ghost" style={{ alignSelf: "flex-start" }} onClick={() => setMode(null)}><ChevL size={16} /> Back</button>
         </div>}
       </div>
     </Modal>
@@ -1421,7 +1407,7 @@ function BulkSms({ businesses = [] }) {
       <p style={{ margin: "6px 0 14px", fontSize: 13.5, color: C.muted }}>Pick which businesses to text, and/or paste extra numbers below.</p>
       <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>Businesses on file</div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        {[["approved", "Approved only"], ["pending", "Pending only"], ["paid", "Paid only"], ["free", "Free only"], ["all", "All businesses"], ["none", "None"]].map(([k, l]) => { const on = aud === k;
+        {[["approvedweek", "Approved this week"], ["approved", "Approved only"], ["pending", "Pending only"], ["paid", "Paid only"], ["free", "Free only"], ["all", "All businesses"], ["none", "None"]].map(([k, l]) => { const on = aud === k;
           return <button key={k} type="button" onClick={() => setAud(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "8px 13px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{l}</button>; })}
       </div>
       <div style={{ marginBottom: 14 }}>
@@ -1622,11 +1608,20 @@ function AdminPanel({ onBack, onRefresh }) {
         <p style={{ margin: "0 0 12px", fontSize: 13, color: C.muted }}>Verify a creator to make them hireable by paid businesses in the Hire tab.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {infs.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "24px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>No creators yet.</p> : infs.map((i) => (
-            <div key={i.id} className="er-card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 14 }}>
-              <Avatar name={i.username} image={i.image} size={40} />
-              <div style={{ minWidth: 0, flex: 1 }}><p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>@{i.username}</p><p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>{i.followers > 0 ? `${i.followersLabel} followers · ` : ""}{i.count} recommendation{i.count !== 1 ? "s" : ""}</p></div>
-              <VerifyToggle i={i} reload={reload} />
-              <button className="er-btn er-btn-ghost er-btn-sm" style={{ color: "#C0392B" }} onClick={() => { if (window.confirm(`Delete @${i.username}? This removes their profile and all their recommendations. This can't be undone.`)) (async () => { try { await api(`/admin/influencer/${i.username}`, { method: "DELETE", admin: true }); await reload(); } catch (e) { alert(e.message); } })(); }}><Trash size={14} /> Delete</button>
+            <div key={i.id} className="er-card" style={{ padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Avatar name={i.username} image={i.image} size={40} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>@{i.username}{i.country && <span style={{ marginLeft: 7, fontSize: 11, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 8px" }}>{i.country}</span>}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{i.followers > 0 ? `${i.followersLabel} followers · ` : ""}{i.count} on list{i.email ? ` · ${i.email}` : ""}</p>
+                </div>
+                <VerifyToggle i={i} reload={reload} />
+                <button className="er-btn er-btn-ghost er-btn-sm" style={{ color: "#C0392B" }} onClick={() => { if (window.confirm(`Delete @${i.username}? This removes their profile and all their recommendations. This can't be undone.`)) (async () => { try { await api(`/admin/influencer/${i.username}`, { method: "DELETE", admin: true }); await reload(); } catch (e) { alert(e.message); } })(); }}><Trash size={14} /> Delete</button>
+              </div>
+              {(i.brands && i.brands.length > 0) && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.line}`, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {i.brands.map((b, n) => <span key={n} style={{ fontSize: 11.5, fontWeight: 600, color: C.inkSoft, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "3px 9px" }}>{b}</span>)}
+              </div>}
+              {(i.payMethod || i.payHandle) && <div style={{ marginTop: 8, fontSize: 11.5, color: C.muted }}>Payout: {i.payMethod}{i.payHandle ? ` · ${i.payHandle}` : ""}</div>}
             </div>
           ))}
         </div>
