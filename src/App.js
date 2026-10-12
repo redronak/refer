@@ -1498,6 +1498,50 @@ function FeatureSwitches() {
     </div>
   );
 }
+function AdminStats() {
+  const [s, setS] = useState(null); const [err, setErr] = useState(""); const [metric, setMetric] = useState("pageviews");
+  useEffect(() => { api("/admin/stats", { admin: true }).then(setS).catch((e) => setErr(e.message)); }, []);
+  const fmtDay = (d) => { if (!d) return ""; const [y, m, dd] = d.split("-"); return new Date(Date.UTC(+y, +m - 1, +dd)).toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
+  if (err) return null;
+  if (!s) return <p style={{ color: C.muted, margin: "20px 0" }}>Loading stats…</p>;
+  const metrics = [["pageviews", "Page views"], ["newCreators", "New creators"], ["newBrands", "New brands"]];
+  const daily = s.daily || []; const n = daily.length;
+  const vals = daily.map((d) => d[metric] || 0); const max = Math.max(1, ...vals);
+  const W = 720, H = 180, padB = 22, padT = 8, bw = W / Math.max(n, 1);
+  const col = metric === "pageviews" ? C.accent : metric === "newCreators" ? "#3E51A8" : C.gold;
+  const tiles = [["Creators", s.totals.creators, null], ["Brands", s.totals.brands, `${s.totals.approvedBrands} live`], ["Page views", s.totals.pageviews, `${s.totals.pageviewsToday} today`]];
+  return (
+    <div style={{ marginTop: 22 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+        {tiles.map(([label, val, sub]) => (
+          <div key={label} className="er-card" style={{ padding: "16px 18px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>{label}</div>
+            <div className="er-serif" style={{ fontSize: 32, fontWeight: 500, lineHeight: 1.1, marginTop: 4 }}>{Number(val || 0).toLocaleString()}</div>
+            {sub && <div style={{ fontSize: 12, color: C.accentD, fontWeight: 600, marginTop: 2 }}>{sub}</div>}
+          </div>
+        ))}
+      </div>
+      <div className="er-card" style={{ padding: "18px 18px 12px", marginTop: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Last 30 days</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {metrics.map(([k, l]) => <button key={k} className="er-btn er-btn-sm" onClick={() => setMetric(k)} style={{ border: "none", background: metric === k ? C.ink : C.panel, color: metric === k ? C.paper : C.inkSoft }}>{l}</button>)}
+          </div>
+        </div>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", overflow: "visible" }} preserveAspectRatio="xMidYMid meet">
+          <line x1="0" y1={H - padB} x2={W} y2={H - padB} stroke={C.line} strokeWidth="1" />
+          {daily.map((d, i) => { const v = d[metric] || 0; const h = (H - padB - padT) * (v / max); const x = i * bw + 3; const y = H - padB - h;
+            return <rect key={d.day} x={x} y={y} width={Math.max(bw - 6, 1)} height={Math.max(h, v > 0 ? 2 : 0)} rx="2" fill={col} opacity={i === n - 1 ? 1 : 0.8}><title>{`${fmtDay(d.day)}: ${v}`}</title></rect>; })}
+        </svg>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: C.muted, marginTop: 4 }}>
+          <span>{fmtDay(daily[0] && daily[0].day)}</span>
+          <span>peak {max}</span>
+          <span>{fmtDay(daily[n - 1] && daily[n - 1].day)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 function AdminPanel({ onBack, onRefresh }) {
   const [authed, setAuthed] = useState(() => !!adminKey());
   const [keyInput, setKeyInput] = useState(""); const [authErr, setAuthErr] = useState(""); const [authBusy, setAuthBusy] = useState(false);
@@ -1559,6 +1603,7 @@ function AdminPanel({ onBack, onRefresh }) {
         <button className="er-btn er-btn-ghost er-btn-sm" onClick={seed} disabled={seeding}>{seeding ? "Loading…" : "Load demo data"}</button>
       </div>
       <p style={{ margin: "6px 0 0", fontSize: 14.5, color: C.muted }}>Approve businesses to list them under their category, or adjust their terms. Commission is admin-only.</p>
+      <AdminStats />
       <FeatureSwitches />
       <BulkSms businesses={rows || []} />
       {err && <p style={{ marginTop: 14, background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>Couldn't reach the backend ({err}). API base: {API_BASE}</p>}
@@ -2671,6 +2716,7 @@ function EasyApp() {
   const goInfluencerPage = () => { setView("influencers"); nav("/influencers"); window.scrollTo(0, 0); };
 
   useEffect(() => {
+    try { if (!sessionStorage.getItem("er_pv")) { sessionStorage.setItem("er_pv", "1"); api("/pageview", { method: "POST" }).catch(() => {}); } } catch (e) {}
     const f = document.createElement("link"); f.rel = "stylesheet";
     f.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap";
     document.head.appendChild(f);
