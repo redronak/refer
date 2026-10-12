@@ -1765,6 +1765,12 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}><h1 className="er-serif" style={{ margin: 0, fontSize: 30, fontWeight: 500 }}>@{data.username}</h1><Seal size={20} /></div>
               <p style={{ margin: "2px 0 0", fontSize: 14.5, color: C.muted }}>{data.bio || "Curating businesses worth trusting."}</p>
               <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{isOwner && data.followers > 0 ? `${data.followersLabel} followers · ` : ""}{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
+              <div style={{ marginTop: 12 }}>
+                <button className="er-btn er-btn-sm" onClick={shareStory} disabled={sharing === "busy"} style={{ border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}>
+                  <IgIcon size={14} /> {sharing === "busy" ? "Creating…" : sharing === "saved" ? "Image saved" : sharing === "err" ? "Try again" : "Share to story"}
+                </button>
+                {sharing === "saved" && <p style={{ margin: "6px 0 0", fontSize: 11.5, color: C.muted, maxWidth: 260, lineHeight: 1.3 }}>Saved to your device, open Instagram and add it to your story.</p>}
+              </div>
               {(data.channels && data.channels.length > 0)
                 ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                     {data.channels.map((c, i) => { const u = socialUrl(c.platform, c.handle);
@@ -1782,10 +1788,6 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
               </div>}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", flexShrink: 0 }}>
-              <button className="er-btn er-btn-sm" onClick={shareStory} disabled={sharing === "busy"} style={{ border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}>
-                <IgIcon size={14} /> {sharing === "busy" ? "Creating…" : sharing === "saved" ? "Image saved" : sharing === "err" ? "Try again" : "Share to story"}
-              </button>
-              {sharing === "saved" && <span style={{ fontSize: 11, color: C.muted, textAlign: "right", maxWidth: 170, lineHeight: 1.3 }}>Saved to your device, open Instagram and add it to your story.</span>}
               <button className="er-btn er-btn-light er-btn-sm" onClick={copyLink} style={{ color: copied ? C.accent : C.ink }}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}</button>
               <a href="https://www.instagram.com/nycdesihangouts/" target="_blank" rel="noopener noreferrer" className="er-link" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: C.muted, textDecoration: "none", textAlign: "right", lineHeight: 1.3 }}><IgIcon size={12} /> See how creators add this to Linktree or bio</a>
               {isOwner && <button className="er-btn er-btn-light er-btn-sm" onClick={() => setEditing(true)}><Edit size={14} /> Edit profile</button>}
@@ -1854,7 +1856,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
           </div>;
         })()}
         <div style={{ marginTop: 28, background: C.ink, borderRadius: 18, padding: "26px 24px", textAlign: "center" }}>
-          <p className="er-serif" style={{ margin: 0, color: C.paper, fontSize: 19, fontWeight: 500 }}>Want recommendations like these?</p>
+          <p className="er-serif" style={{ margin: 0, color: C.paper, fontSize: 19, fontWeight: 500 }}>Earn by sharing your favorite brand recommendations</p>
           <button className="er-btn er-btn-sm" style={{ marginTop: 14, background: C.paper, color: C.ink }} onClick={onBrowse}>Browse all brands <Arrow size={15} /></button></div>
       </div>
     </div>
