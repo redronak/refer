@@ -1061,7 +1061,6 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
 
   const ADD_LIMIT = 15;
   const toggle = (id) => setPicked((p) => p.includes(id) ? p.filter((x) => x !== id) : (p.length >= ADD_LIMIT ? p : [...p, id]));
-  const [bulkCat, setBulkCat] = useState("");
   const setReview = (id, patch) => setReviews((prev) => ({ ...prev, [id]: { stars: 0, text: "", ...prev[id], ...patch } }));
   const join = async () => {
     setBusy(true); setErr("");
@@ -1133,32 +1132,12 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: C.muted, display: "flex" }}><Search size={16} /></span>
             <input className="er-input" style={{ paddingLeft: 38 }} placeholder="Search brands" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.muted, flexShrink: 0 }}>Bulk add</span>
-            <select className="er-input" style={{ flex: "1 1 150px", minWidth: 130 }} value={bulkCat} onChange={(e) => setBulkCat(e.target.value)}>
-              <option value="">Choose a category…</option>
-              {cats.map((c) => <option key={c} value={c}>{c} ({byCat[c].length})</option>)}
-            </select>
-            <button type="button" className="er-btn er-btn-light er-btn-sm" disabled={!bulkCat} onClick={() => { const ids = (byCat[bulkCat] || []).map((b) => b.id); setPicked((p) => Array.from(new Set([...p, ...ids])).slice(0, ADD_LIMIT)); }}>Add all</button>
-          </div>
           {picked.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
             {picked.map((id) => { const b = approved.find((x) => x.id === id); if (!b) return null;
               return <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.ink, color: C.paper, borderRadius: 999, padding: "5px 6px 5px 12px", fontSize: 13, fontWeight: 600 }}>{b.name}<button onClick={() => toggle(id)} style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.22)", color: C.paper, cursor: "pointer" }}><Close size={11} /></button></span>; })}
           </div>}
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
-            {builders.length > 0 && <div style={{ border: `1px solid ${C.accent}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 16px", background: C.accentSoft }}>
-                <Spark size={16} style={{ color: C.accentD }} />
-                <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 15, color: C.accentD }}>Small builders</div><div style={{ fontSize: 12, color: C.accentD, opacity: .8 }}>Indie founders who signed up, easier to get on their radar.</div></div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>{builders.length}</span>
-              </div>
-              <div>{builders.map(brandRow)}</div>
-            </div>}
             {cats.length > 0 && <>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px 0", marginTop: builders.length ? 4 : 0 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>Established businesses</span>
-                <span style={{ flex: 1, height: 1, background: C.line }} />
-              </div>
               {cats.map((c) => { const all = byCat[c]; const list = all.filter(match); if (q && !list.length) return null; const open = q ? true : openCat === c; const x = CATS[c] || CATS.Beauty; const selCount = all.filter((b) => picked.includes(b.id)).length;
                 return <div key={c} style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
                   <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 64, padding: "16px", background: open ? x.bg : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
@@ -1173,6 +1152,14 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
                   </div>}
                 </div>; })}
             </>}
+            {builders.length > 0 && <div style={{ border: `1px solid ${C.accent}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0, marginTop: cats.length ? 4 : 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 16px", background: C.accentSoft }}>
+                <Spark size={16} style={{ color: C.accentD }} />
+                <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 15, color: C.accentD }}>Small builders</div><div style={{ fontSize: 12, color: C.accentD, opacity: .8 }}>Indie founders who signed up, easier to get on their radar.</div></div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>{builders.length}</span>
+              </div>
+              <div>{builders.map(brandRow)}</div>
+            </div>}
             {!builders.length && !cats.length && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "24px 0" }}>No live businesses yet, check back soon.</p>}
             {noMatches && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "20px 0" }}>No brands match &ldquo;{query}&rdquo;.</p>}
           </div>
@@ -1407,7 +1394,7 @@ function BulkSms({ businesses = [] }) {
       <p style={{ margin: "6px 0 14px", fontSize: 13.5, color: C.muted }}>Pick which businesses to text, and/or paste extra numbers below.</p>
       <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>Businesses on file</div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        {[["approvedweek", "Approved this week"], ["approved", "Approved only"], ["pending", "Pending only"], ["paid", "Paid only"], ["free", "Free only"], ["all", "All businesses"], ["none", "None"]].map(([k, l]) => { const on = aud === k;
+        {[["approved", "Approved only"], ["pending", "Pending only"], ["paid", "Paid only"], ["free", "Free only"], ["all", "All businesses"], ["none", "None"]].map(([k, l]) => { const on = aud === k;
           return <button key={k} type="button" onClick={() => setAud(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "8px 13px", borderRadius: 999, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{l}</button>; })}
       </div>
       <div style={{ marginBottom: 14 }}>
@@ -1608,20 +1595,11 @@ function AdminPanel({ onBack, onRefresh }) {
         <p style={{ margin: "0 0 12px", fontSize: 13, color: C.muted }}>Verify a creator to make them hireable by paid businesses in the Hire tab.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {infs.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "24px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>No creators yet.</p> : infs.map((i) => (
-            <div key={i.id} className="er-card" style={{ padding: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Avatar name={i.username} image={i.image} size={40} />
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>@{i.username}{i.country && <span style={{ marginLeft: 7, fontSize: 11, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 8px" }}>{i.country}</span>}</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{i.followers > 0 ? `${i.followersLabel} followers · ` : ""}{i.count} on list{i.email ? ` · ${i.email}` : ""}</p>
-                </div>
-                <VerifyToggle i={i} reload={reload} />
-                <button className="er-btn er-btn-ghost er-btn-sm" style={{ color: "#C0392B" }} onClick={() => { if (window.confirm(`Delete @${i.username}? This removes their profile and all their recommendations. This can't be undone.`)) (async () => { try { await api(`/admin/influencer/${i.username}`, { method: "DELETE", admin: true }); await reload(); } catch (e) { alert(e.message); } })(); }}><Trash size={14} /> Delete</button>
-              </div>
-              {(i.brands && i.brands.length > 0) && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.line}`, display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {i.brands.map((b, n) => <span key={n} style={{ fontSize: 11.5, fontWeight: 600, color: C.inkSoft, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "3px 9px" }}>{b}</span>)}
-              </div>}
-              {(i.payMethod || i.payHandle) && <div style={{ marginTop: 8, fontSize: 11.5, color: C.muted }}>Payout: {i.payMethod}{i.payHandle ? ` · ${i.payHandle}` : ""}</div>}
+            <div key={i.id} className="er-card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 14 }}>
+              <Avatar name={i.username} image={i.image} size={40} />
+              <div style={{ minWidth: 0, flex: 1 }}><p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>@{i.username}</p><p style={{ margin: 0, fontSize: 12.5, color: C.muted }}>{i.followers > 0 ? `${i.followersLabel} followers · ` : ""}{i.count} recommendation{i.count !== 1 ? "s" : ""}</p></div>
+              <VerifyToggle i={i} reload={reload} />
+              <button className="er-btn er-btn-ghost er-btn-sm" style={{ color: "#C0392B" }} onClick={() => { if (window.confirm(`Delete @${i.username}? This removes their profile and all their recommendations. This can't be undone.`)) (async () => { try { await api(`/admin/influencer/${i.username}`, { method: "DELETE", admin: true }); await reload(); } catch (e) { alert(e.message); } })(); }}><Trash size={14} /> Delete</button>
             </div>
           ))}
         </div>
@@ -1775,9 +1753,9 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
           <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Brands I back</h2>
           {isOwner && <button className="er-btn er-btn-primary er-btn-sm" onClick={onAddBrand}><Plus size={14} /> Add a brand</button>}
         </div>
-        {recs.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "40px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No recommendations yet.{isOwner ? " Add a brand to get started." : ""}</p> : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {recs.map((b) => { const cc = catOf(b); const photo = (b.photos || [])[0]; const site = (b.website || "").replace(/^https?:\/\//i, "").replace(/\/$/, ""); const hasContact = b.website || b.phone || b.email;
+        {recs.length === 0 ? <p style={{ background: C.panel, borderRadius: 14, padding: "40px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No recommendations yet.{isOwner ? " Add a brand to get started." : ""}</p> : (() => {
+          const groups = {}; recs.forEach((b) => { const k = (b.categories && b.categories[0]) || "Other"; (groups[k] = groups[k] || []).push(b); });
+          const renderCard = (b) => { const cc = catOf(b); const photo = (b.photos || [])[0]; const site = (b.website || "").replace(/^https?:\/\//i, "").replace(/\/$/, ""); const hasContact = b.website || b.phone || b.email;
               return <div key={b.id} className="er-card" style={{ overflow: "hidden" }}>
                 <div style={{ padding: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1799,9 +1777,22 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                 {b.review && <div style={{ borderTop: `1px solid ${C.line}`, background: C.panel, padding: "13px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}><Stars value={b.review.stars} /><span style={{ fontSize: 12, fontWeight: 600, color: C.inkSoft }}>@{data.username}'s review</span></div>
                   {b.review.text && <p className="er-serif" style={{ margin: "8px 0 0", fontSize: 16, lineHeight: 1.45, color: C.inkSoft }}>&ldquo;{b.review.text}&rdquo;</p>}</div>}
-              </div>; })}
-          </div>
-        )}
+              </div>; };
+          const order = Object.keys(groups);
+          return <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+            {order.map((cat) => { const x = CATS[cat] || CATS.Beauty; return (
+              <div key={cat}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <span style={{ width: 11, height: 11, borderRadius: "50%", background: x.color, flexShrink: 0 }} />
+                  <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.ink }}>{cat}</h3>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>{groups[cat].length}</span>
+                  <span style={{ flex: 1, height: 1, background: C.line }} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>{groups[cat].map(renderCard)}</div>
+              </div>
+            ); })}
+          </div>;
+        })()}
         {!isOwner && <div style={{ marginTop: 28, background: C.ink, borderRadius: 18, padding: "26px 24px", textAlign: "center" }}>
           <p className="er-serif" style={{ margin: 0, color: C.paper, fontSize: 19, fontWeight: 500 }}>Want recommendations like these?</p>
           <button className="er-btn er-btn-sm" style={{ marginTop: 14, background: C.paper, color: C.ink }} onClick={onBrowse}>Browse all brands <Arrow size={15} /></button></div>}
@@ -2123,8 +2114,8 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
   ];
   return (
     <div>
-      <button onClick={onList} style={{ display: "block", width: "100%", border: "none", cursor: "pointer", fontFamily: "inherit", background: C.ink, color: C.paper, textAlign: "center", fontSize: 13.5, fontWeight: 600, padding: "9px 16px", letterSpacing: ".01em" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap" }}><Spark size={14} /> Free limited signups! Only <b style={{ color: "#fff" }}>{seatsLeft} seat{seatsLeft === 1 ? "" : "s"} left</b>. Claim yours →</span>
+      <button onClick={onCreator} style={{ display: "block", width: "100%", border: "none", cursor: "pointer", fontFamily: "inherit", background: C.ink, color: C.paper, textAlign: "center", fontSize: 13.5, fontWeight: 600, padding: "9px 16px", letterSpacing: ".01em" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap" }}><Spark size={14} /> Get paid for sharing recommendations →</span>
       </button>
       <header style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(253,252,250,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
