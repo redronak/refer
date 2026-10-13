@@ -856,6 +856,97 @@ function VerifyNotice({ onClose }) {
     </Modal>
   );
 }
+function CopyBox({ text, label }) {
+  const [done, setDone] = useState(false);
+  const copy = async () => { try { await navigator.clipboard.writeText(text); } catch (e) {} setDone(true); setTimeout(() => setDone(false), 1500); };
+  return (
+    <div style={{ position: "relative", marginTop: 8 }}>
+      <pre style={{ margin: 0, background: C.ink, color: "#EDE9E1", borderRadius: 10, padding: "12px 14px", fontSize: 12, lineHeight: 1.5, overflowX: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{text}</pre>
+      <button type="button" onClick={copy} className="er-btn er-btn-sm" style={{ position: "absolute", top: 8, right: 8, background: done ? C.accent : "#fff", color: done ? "#fff" : C.ink, border: "none", padding: "4px 10px" }}>{done ? "Copied" : (label || "Copy")}</button>
+    </div>
+  );
+}
+function MethodCard({ num, title, desc, children }) {
+  return (
+    <div className="er-card" style={{ padding: "22px 22px", marginBottom: 22 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ flexShrink: 0, width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD, fontWeight: 700, fontSize: 14 }}>{num}</span>
+        <h3 className="er-serif" style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>{title}</h3>
+      </div>
+      {desc && <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.55 }}>{desc}</p>}
+      <div style={{ marginTop: 14 }}>{children}</div>
+    </div>
+  );
+}
+function SetupTab({ token, business }) {
+  const [px, setPx] = useState(null);
+  const [plat, setPlat] = useState("Shopify"); const [url, setUrl] = useState(business && business.website ? business.website : "");
+  const [note, setNote] = useState(""); const [busy, setBusy] = useState(false); const [sent, setSent] = useState(false); const [err, setErr] = useState("");
+  useEffect(() => { api(`/business/me/pixel?token=${encodeURIComponent(token)}`).then(setPx).catch(() => {}); }, [token]);
+  const key = (px && px.pixelKey) || "your-key";
+  const pixelUrl = (px && px.pixelUrl) || `https://www.easyrecommend.co/easyrecommend/px.js?key=${key}`;
+  const submit = async () => {
+    setBusy(true); setErr("");
+    try { await api("/business/me/setup-request", { method: "POST", body: { token, platform: plat, siteUrl: url.trim(), note: note.trim() } }); setSent(true); }
+    catch (e) { setErr(e.message || "Couldn't send."); } finally { setBusy(false); }
+  };
+  const universalSnippet = `<!-- 1. On every page (in your site <head>): -->\n<script src="${pixelUrl}"></script>\n\n<!-- 2. On your order-confirmation / thank-you page: -->\n<script>\n  EasyRec.conversion({ orderId: "YOUR_ORDER_ID", value: 49.00 }); // value = subtotal\n</script>`;
+  const step = (n, t) => <li style={{ marginBottom: 6 }}><b>{n}.</b> {t}</li>;
+  return (
+    <div>
+      <p style={{ margin: "0 0 10px", fontSize: 14, color: C.inkSoft, lineHeight: 1.55 }}>Connect sales tracking so creators get credited when their referrals buy. Pick the one that fits you — each method below is separate.</p>
+      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", marginBottom: 22 }}>
+        <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>Your tracking key</div>
+        <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13.5, fontWeight: 600, color: C.ink, marginTop: 4, wordBreak: "break-all" }}>{key}</div>
+        <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Used by every method below. Keep it private.</div>
+      </div>
+
+      <MethodCard num="1" title="Let our dev set it up for free" desc="Short on time? Send us your site and we'll install tracking for you at no cost, then confirm when it's live.">
+        {sent ? <div style={{ background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}><span style={{ color: C.accentD }}><Check size={18} /></span><span style={{ fontSize: 13.5, color: C.accentD }}>Got it — our team will set up tracking and email you once it's live.</span></div>
+        : <>
+          <Field label="Your store / website URL"><input className="er-input" placeholder="https://yourstore.com" value={url} onChange={(e) => setUrl(e.target.value)} /></Field>
+          <div style={{ marginTop: 12 }}><Field label="Platform"><select className="er-input" value={plat} onChange={(e) => setPlat(e.target.value)}><option>Shopify</option><option>WooCommerce / WordPress</option><option>BigCommerce</option><option>Custom / Other</option></select></Field></div>
+          <div style={{ marginTop: 12 }}><Field label="Anything we should know? (optional)"><textarea className="er-input" placeholder="Store login access, platform details, etc." value={note} onChange={(e) => setNote(e.target.value)} /></Field></div>
+          {err && <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "#9B3024" }}>{err}</p>}
+          <button className="er-btn er-btn-primary" style={{ marginTop: 14 }} disabled={busy || !url.trim()} onClick={submit}>{busy ? "Sending…" : <>Request free setup <Arrow size={15} /></>}</button>
+        </>}
+      </MethodCard>
+
+      <MethodCard num="2" title="Custom site" desc="Any site where you can edit the HTML. Add the script to every page, then fire one line on your order-confirmation page with the order subtotal.">
+        <CopyBox text={universalSnippet} />
+      </MethodCard>
+
+      <MethodCard num="3" title="Shopify, BigCommerce, or WordPress" desc="Use the ready-made integration for your platform — no code changes to your theme.">
+        <div style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>Shopify</div>
+        <ol style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13, color: C.inkSoft, lineHeight: 1.5, listStyle: "none" }}>
+          {step(1, "Admin → Settings → Customer events → Add custom pixel, name it “Easy Recommend”.")}
+          {step(2, "Paste the snippet below and Save, then Connect.")}
+        </ol>
+        <CopyBox text={`var EASYREC_KEY = "${key}";\nvar EASYREC_ENDPOINT = "https://www.easyrecommend.co/easyrecommend/conversion";\nanalytics.subscribe("page_viewed", async (e) => { try { var h=(e.context.document.location.href)||""; var m=h.match(/[?&]er_click=([^&#]+)/); if(m) await browser.localStorage.setItem("er_click", decodeURIComponent(m[1])); } catch(_){} });\nanalytics.subscribe("checkout_completed", async (e) => { try { var cid=await browser.localStorage.getItem("er_click"); if(!cid) return; var co=(e.data&&e.data.checkout)||{}; var v=(co.subtotalPrice&&co.subtotalPrice.amount)||(co.totalPrice&&co.totalPrice.amount)||0; var oid=(co.order&&co.order.id)||co.token||""; await fetch(EASYREC_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({key:EASYREC_KEY,clickId:cid,orderId:String(oid),value:Number(v)}),keepalive:true}); } catch(_){} });`} />
+
+        <div style={{ height: 1, background: C.line, margin: "20px 0" }} />
+        <div style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>WooCommerce / WordPress</div>
+        <ol style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13, color: C.inkSoft, lineHeight: 1.5, listStyle: "none" }}>
+          {step(1, "Install our WooCommerce plugin (ask us for the file, or use “Let our dev set it up” above).")}
+          {step(2, "Open the plugin file and paste your key where it says PASTE_YOUR_KEY_HERE:")}
+        </ol>
+        <CopyBox text={`define('EASYREC_PIXEL_KEY', '${key}');`} />
+        <p style={{ margin: "6px 0 0", fontSize: 12.5, color: C.muted }}>Then upload &amp; activate under Plugins. It reports every order automatically (most reliable method).</p>
+
+        <div style={{ height: 1, background: C.line, margin: "20px 0" }} />
+        <div style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>BigCommerce</div>
+        <ol style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13, color: C.inkSoft, lineHeight: 1.5, listStyle: "none" }}>
+          {step(1, "Storefront → Script Manager → Create a Script (Location: Head, Pages: All pages). Paste:")}
+        </ol>
+        <CopyBox text={`<script src="${pixelUrl}"></script>`} />
+        <ol style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 13, color: C.inkSoft, lineHeight: 1.5, listStyle: "none" }}>
+          {step(2, "Create a second script (Pages: Order confirmation). Paste:")}
+        </ol>
+        <CopyBox text={`<script>\n(function(){function f(){if(!window.EasyRec)return setTimeout(f,300);var o=(window.BODL&&window.BODL.order)||null,id="",v=0;if(o){id=o.orderId||o.id||"";v=o.subtotal||o.grandTotal||0;}window.EasyRec.conversion({orderId:id,value:v});}f();})();\n</script>`} />
+      </MethodCard>
+    </div>
+  );
+}
 function MyBusiness({ session, onBack, onRefresh }) {
   const [tab, setTab] = useState("info");
   const [rows, setRows] = useState(null); const [err, setErr] = useState("");
@@ -879,7 +970,7 @@ function MyBusiness({ session, onBack, onRefresh }) {
   const loadCreators = async () => { try { setCreators(await api(`/business/me/creators?token=${t}`)); } catch (e) { setCreators([]); } };
   useEffect(() => { if (tab === "hire" && hireOn) loadCreators(); }, [tab, hireOn]);
   const onPaid = async () => { await reload(); setTab("promo"); setShowReward(true); };
-  const tabs = [["info", "My information"], ["promo", effPaid ? `Requests${pending ? ` · ${pending}` : ""}` : "Approve/Reject Influencer request"], ...(hireOn ? [["hire", "Hire influencers"]] : [])];
+  const tabs = [["info", "My information"], ["setup", "Setup tracking"], ["promo", effPaid ? `Requests${pending ? ` · ${pending}` : ""}` : "Approve/Reject Influencer request"], ...(hireOn ? [["hire", "Hire influencers"]] : [])];
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 22px 80px" }}>
       {showReward && business && <RewardPrompt business={business} token={session.token} onClose={() => { setShowReward(false); setShowVerify(true); }} onSaved={async () => { await reload(); setShowReward(false); setShowVerify(true); }} />}
@@ -897,6 +988,8 @@ function MyBusiness({ session, onBack, onRefresh }) {
         {rows && rows.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No business found on this account.</p>}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(rows || []).map((b) => <BizEditCard key={b.id} b={b} token={session.token} reload={reload} />)}</div>
       </>}
+
+      {tab === "setup" && (business ? <SetupTab token={session.token} business={business} /> : <p style={{ color: C.muted }}>Loading…</p>)}
 
       {tab === "promo" && (rows === null
         ? <p style={{ color: C.muted }}>Loading…</p>
@@ -1514,6 +1607,37 @@ function FeatureSwitches() {
     </div>
   );
 }
+function AdminSetupRequests() {
+  const [list, setList] = useState(null);
+  const load = () => api("/admin/setup-requests", { admin: true }).then(setList).catch(() => setList([]));
+  useEffect(() => { load(); }, []);
+  const markDone = async (id) => { try { await api(`/admin/setup-request/${id}/done`, { method: "POST", admin: true }); await load(); } catch (e) {} };
+  if (!list || list.length === 0) return null;
+  const openCount = list.filter((r) => r.status !== "done").length;
+  return (
+    <div className="er-card" style={{ padding: 18, marginTop: 22 }}>
+      <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft, display: "flex", alignItems: "center", gap: 8 }}>Dev setup requests {openCount > 0 && <span style={{ background: "#D97706", color: "#fff", borderRadius: 999, fontSize: 11, padding: "1px 7px" }}>{openCount}</span>}</h2>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+        {list.map((r) => (
+          <div key={r.id} style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, opacity: r.status === "done" ? 0.6 : 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 600, fontSize: 15 }}>{r.name || "Business"}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: C.panel, color: C.inkSoft }}>{r.platform || "—"}</span>
+              <span style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : ""}</span>
+            </div>
+            {r.siteUrl && <a href={/^https?:\/\//i.test(r.siteUrl) ? r.siteUrl : `https://${r.siteUrl}`} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 4, fontSize: 13, color: C.accentD, fontWeight: 600, textDecoration: "none", wordBreak: "break-all" }}>{r.siteUrl}</a>}
+            {r.note && <p style={{ margin: "6px 0 0", fontSize: 13, color: C.inkSoft }}>{r.note}</p>}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+              <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12, color: C.muted, wordBreak: "break-all" }}>key: {r.pixelKey}</span>
+              {r.status === "done" ? <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, color: C.accentD }}>Done</span>
+                : <button className="er-btn er-btn-light er-btn-sm" style={{ marginLeft: "auto" }} onClick={() => markDone(r.id)}><Check size={13} /> Mark done</button>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 function AdminStats() {
   const [s, setS] = useState(null); const [err, setErr] = useState(""); const [metric, setMetric] = useState("pageviews");
   useEffect(() => { api("/admin/stats", { admin: true }).then(setS).catch((e) => setErr(e.message)); }, []);
@@ -1620,6 +1744,7 @@ function AdminPanel({ onBack, onRefresh }) {
       </div>
       <p style={{ margin: "6px 0 0", fontSize: 14.5, color: C.muted }}>Approve businesses to list them under their category, or adjust their terms. Commission is admin-only.</p>
       <AdminStats />
+      <AdminSetupRequests />
       <FeatureSwitches />
       <BulkSms businesses={rows || []} />
       {err && <p style={{ marginTop: 14, background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>Couldn't reach the backend ({err}). API base: {API_BASE}</p>}
@@ -2297,7 +2422,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
             </div>
             <div style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 9, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 999, padding: "8px 15px" }}>
               <Spark size={15} style={{ color: C.accentD, flexShrink: 0 }} />
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: C.accentD }}>Smaller creators average ~$500 in 3 months, larger creators ~$5,000</span>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: C.accentD }}>Smaller creators earn on average ~$500 in 3 months, larger creators earn $5,000</span>
             </div>
             <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Set up in under a minute · you keep every commission you earn.</p>
           </div>
