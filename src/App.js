@@ -1115,7 +1115,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
           <Field label="Username" hint="This becomes your public profile link.">
             <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "13px 14px" }}>
               <span style={{ fontSize: 15, color: C.muted }}>easyrecommend.co/@</span>
-              <input autoFocus style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 15, fontFamily: "inherit", color: C.ink }} placeholder="yourname" value={username} onChange={(e) => setUsername(e.target.value)} /></div></Field>
+              <input autoFocus style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 15, fontFamily: "inherit", color: C.ink }} placeholder="yourname" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} /></div></Field>
           <Field label="Email" hint="So you can log back in and get paid.">
             <input className="er-input" type="email" placeholder="you@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} /></Field>
           <Field label="Password" hint="At least 6 characters.">
