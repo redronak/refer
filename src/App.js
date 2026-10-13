@@ -1725,61 +1725,67 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false); const [photoBusy, setPhotoBusy] = useState(false);
   const [myReqs, setMyReqs] = useState({}); const [reqList, setReqList] = useState([]);
   const [sharing, setSharing] = useState("");
+  const [shareOpen, setShareOpen] = useState(false); const [shareCopied, setShareCopied] = useState(false);
   const isOwner = session && session.role === "creator" && session.username === handle;
   const profileUrl = `${window.location.origin}/@${handle}`;
   const copyLink = async () => { try { await navigator.clipboard.writeText(profileUrl); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
+  const copyForStory = async () => { try { await navigator.clipboard.writeText(profileUrl); } catch (e) {} setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); };
   const shareStory = async () => {
     if (!data) return;
     setSharing("busy");
     try {
       const W = 1080, H = 1920, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
       const g = cv.getContext("2d");
-      g.fillStyle = C.ink; g.fillRect(0, 0, W, H);
+      // Airbnb-style vibrant warm gradient background.
+      const bg = g.createLinearGradient(0, 0, W, H);
+      bg.addColorStop(0, "#FF5A5F"); bg.addColorStop(0.5, "#FF385C"); bg.addColorStop(1, "#FC642D");
+      g.fillStyle = bg; g.fillRect(0, 0, W, H);
       const glow = (x, y, r, col) => { const rg = g.createRadialGradient(x, y, 30, x, y, r); rg.addColorStop(0, col); rg.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = rg; g.fillRect(0, 0, W, H); };
-      glow(W * 0.82, H * 0.12, 900, "rgba(15,107,79,0.55)");
-      glow(W * 0.15, H * 0.92, 820, "rgba(217,154,0,0.20)");
+      glow(W * 0.85, H * 0.08, 760, "rgba(255,200,120,0.45)");
+      glow(W * 0.1, H * 0.95, 820, "rgba(214,41,118,0.40)");
       const round = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
       const M = 92;
       g.textBaseline = "alphabetic"; g.textAlign = "left";
-      g.fillStyle = "rgba(253,252,250,0.55)"; g.font = "600 30px Georgia, serif";
+      g.fillStyle = "rgba(255,255,255,0.8)"; g.font = "700 30px Georgia, serif";
       g.fillText("MY RECOMMENDATIONS", M, 214);
-      g.fillStyle = C.paper; g.font = "500 94px Georgia, serif";
+      g.fillStyle = "#fff"; g.font = "600 94px Georgia, serif";
       g.fillText("@" + data.username, M, 326);
-      g.fillStyle = "rgba(253,252,250,0.78)"; g.font = "400 37px -apple-system, Segoe UI, Roboto, sans-serif";
+      g.fillStyle = "rgba(255,255,255,0.9)"; g.font = "400 37px -apple-system, Segoe UI, Roboto, sans-serif";
       g.fillText(String(data.bio || "Brands I actually trust.").slice(0, 64), M, 392);
       const items = recs.slice(0, 5), cardH = 182, gap = 28, cardW = W - M * 2; let y = 492;
       items.forEach((b) => {
-        round(M, y, cardW, cardH, 34); g.fillStyle = "rgba(253,252,250,0.07)"; g.fill();
-        round(M, y, cardW, cardH, 34); g.strokeStyle = "rgba(253,252,250,0.14)"; g.lineWidth = 2; g.stroke();
+        round(M, y, cardW, cardH, 34); g.fillStyle = "rgba(255,255,255,0.18)"; g.fill();
+        round(M, y, cardW, cardH, 34); g.strokeStyle = "rgba(255,255,255,0.35)"; g.lineWidth = 2; g.stroke();
         const cat = (b.categories || [])[0] || "Other", col = (CATS[cat] || CATS.Other).color;
-        g.beginPath(); g.arc(M + 72, y + cardH / 2, 26, 0, Math.PI * 2); g.fillStyle = col; g.fill();
-        g.fillStyle = C.paper; g.font = "600 50px Georgia, serif";
+        g.beginPath(); g.arc(M + 72, y + cardH / 2, 40, 0, Math.PI * 2); g.fillStyle = "#fff"; g.fill();
+        g.beginPath(); g.arc(M + 72, y + cardH / 2, 22, 0, Math.PI * 2); g.fillStyle = col; g.fill();
+        g.fillStyle = "#fff"; g.font = "700 50px Georgia, serif";
         let name = String(b.name || ""); const maxW = cardW - 440;
         if (g.measureText(name).width > maxW) { while (name.length > 4 && g.measureText(name + "…").width > maxW) name = name.slice(0, -1); name = name.trim() + "…"; }
-        g.fillText(name, M + 132, y + 94);
-        g.fillStyle = "rgba(253,252,250,0.58)"; g.font = "500 31px -apple-system, Segoe UI, Roboto, sans-serif";
-        g.fillText(cat, M + 132, y + 142);
-        if (b.discount > 0) { const txt = b.discount + "% OFF"; g.font = "700 33px -apple-system, Segoe UI, Roboto, sans-serif"; const bw = g.measureText(txt).width + 50, bx = M + cardW - bw - 42, by = y + cardH / 2 - 32; round(bx, by, bw, 64, 32); g.fillStyle = C.gold; g.fill(); g.fillStyle = C.ink; g.fillText(txt, bx + 25, by + 44); }
+        g.fillText(name, M + 142, y + 94);
+        g.fillStyle = "rgba(255,255,255,0.78)"; g.font = "500 31px -apple-system, Segoe UI, Roboto, sans-serif";
+        g.fillText(cat, M + 142, y + 142);
+        if (b.discount > 0) { const txt = b.discount + "% OFF"; g.font = "800 33px -apple-system, Segoe UI, Roboto, sans-serif"; const bw = g.measureText(txt).width + 50, bx = M + cardW - bw - 42, by = y + cardH / 2 - 32; round(bx, by, bw, 64, 32); g.fillStyle = "#fff"; g.fill(); g.fillStyle = "#FF385C"; g.fillText(txt, bx + 25, by + 44); }
         y += cardH + gap;
       });
-      if (recs.length > items.length) { g.fillStyle = "rgba(253,252,250,0.7)"; g.font = "500 35px -apple-system, Segoe UI, Roboto, sans-serif"; g.fillText("+ " + (recs.length - items.length) + " more on my page", M + 12, y + 52); }
+      if (recs.length > items.length) { g.fillStyle = "rgba(255,255,255,0.88)"; g.font = "600 35px -apple-system, Segoe UI, Roboto, sans-serif"; g.fillText("+ " + (recs.length - items.length) + " more on my page", M + 12, y + 52); }
       g.textAlign = "center";
-      const pillW = 560, pillH = 100, px = (W - pillW) / 2, py = H - 240;
-      round(px, py, pillW, pillH, 50); g.fillStyle = C.accent; g.fill();
-      g.fillStyle = "#fff"; g.font = "700 42px -apple-system, Segoe UI, Roboto, sans-serif";
-      g.fillText("Shop my picks →", W / 2, py + 65);
-      g.fillStyle = C.paper; g.font = "500 44px Georgia, serif";
-      g.fillText("easyrecommend.co/@" + data.username, W / 2, H - 110);
+      const pillW = 580, pillH = 104, px = (W - pillW) / 2, py = H - 248;
+      round(px, py, pillW, pillH, 52); g.fillStyle = "#fff"; g.fill();
+      g.fillStyle = "#FF385C"; g.font = "800 44px -apple-system, Segoe UI, Roboto, sans-serif";
+      g.fillText("Shop my picks →", W / 2, py + 67);
+      g.fillStyle = "#fff"; g.font = "600 44px Georgia, serif";
+      g.fillText("easyrecommend.co/@" + data.username, W / 2, H - 108);
       g.textAlign = "left";
       const blob = await new Promise((res) => cv.toBlob(res, "image/png"));
       if (!blob) throw new Error("render failed");
       const file = new File([blob], data.username + "-recommendations.png", { type: "image/png" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: "@" + data.username + " on Easy Recommend", text: "My recommendations → " + profileUrl });
-        setSharing("");
+        setSharing(""); setShareOpen(false);
       } else {
         const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 5000);
-        setSharing("saved"); setTimeout(() => setSharing(""), 4000);
+        setSharing("saved"); setTimeout(() => { setSharing(""); setShareOpen(false); }, 2500);
       }
     } catch (e) { if (e && e.name === "AbortError") { setSharing(""); return; } setSharing("err"); setTimeout(() => setSharing(""), 3000); }
   };
@@ -1795,6 +1801,26 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
   return (
     <div>
       {editing && <EditProfileModal token={session.token} current={data} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
+      {shareOpen && <Modal onClose={() => setShareOpen(false)}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ margin: "0 auto", width: 54, height: 54, borderRadius: 15, display: "grid", placeItems: "center", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }}><IgIcon size={24} /></div>
+          <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 24, fontWeight: 500 }}>Share to your story</h2>
+          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Copy your link first, then add it as a link sticker on your story so people can tap through.</p>
+        </div>
+        <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "6px 6px 6px 14px" }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>{profileUrl.replace(/^https?:\/\//i, "")}</span>
+          <button className="er-btn er-btn-sm" onClick={copyForStory} style={{ flexShrink: 0, background: shareCopied ? C.accent : C.ink, color: "#fff", border: "none" }}>{shareCopied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}</button>
+        </div>
+        <ol style={{ margin: "16px 0 0", padding: "0 0 0 20px", fontSize: 13, color: C.inkSoft, lineHeight: 1.7, textAlign: "left" }}>
+          <li>Tap <b>Copy link</b> above.</li>
+          <li>Tap <b>Create image &amp; share</b> — pick Instagram → Story.</li>
+          <li>In the story editor, add a <b>Link sticker</b> and paste your link.</li>
+        </ol>
+        <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 18 }} disabled={sharing === "busy"} onClick={shareStory}>
+          {sharing === "busy" ? "Creating image…" : sharing === "saved" ? "Image saved ✓" : sharing === "err" ? "Something went wrong, try again" : <>Create image &amp; share <Arrow size={16} /></>}
+        </button>
+        {sharing === "saved" && <p style={{ margin: "10px 0 0", fontSize: 12, color: C.muted, textAlign: "center" }}>Saved to your device — open Instagram and add it to your story.</p>}
+      </Modal>}
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.line}` }}>
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 22px 36px" }}>
           <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><ChevL size={15} /> Easy Recommend</button>
@@ -1811,10 +1837,9 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
               <p style={{ margin: "2px 0 0", fontSize: 14.5, color: C.muted }}>{data.bio || "Curating businesses worth trusting."}</p>
               <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{isOwner && data.followers > 0 ? `${data.followersLabel} followers · ` : ""}{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
               <div style={{ marginTop: 12 }}>
-                <button className="er-btn er-btn-sm" onClick={shareStory} disabled={sharing === "busy"} style={{ border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}>
-                  <IgIcon size={14} /> {sharing === "busy" ? "Creating…" : sharing === "saved" ? "Image saved" : sharing === "err" ? "Try again" : "Share to story"}
+                <button className="er-btn er-btn-sm" onClick={() => { setShareCopied(false); setSharing(""); setShareOpen(true); }} style={{ border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}>
+                  <IgIcon size={14} /> Share to story
                 </button>
-                {sharing === "saved" && <p style={{ margin: "6px 0 0", fontSize: 11.5, color: C.muted, maxWidth: 260, lineHeight: 1.3 }}>Saved to your device, open Instagram and add it to your story.</p>}
               </div>
               {(data.channels && data.channels.length > 0)
                 ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
