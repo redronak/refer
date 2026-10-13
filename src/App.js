@@ -96,8 +96,17 @@ function clearSession() { try { localStorage.removeItem("er_session"); } catch (
 function creatorHandle() { const s = getSession(); return s && s.role === "creator" ? s.username : ""; }
 
 // Open an external website in a new tab, adding https:// if missing.
-function openSite(url) { if (!url) return; const u = /^https?:\/\//i.test(url) ? url : `https://${url}`; window.open(u, "_blank", "noopener"); }
 const trackClick = (username, businessId) => { try { api("/track", { method: "POST", body: { username, businessId, type: "click" } }); } catch (e) {} };
+function erClickId() { try { const a = new Uint8Array(12); (window.crypto || window.msCrypto).getRandomValues(a); return Array.from(a, (x) => x.toString(16).padStart(2, "0")).join(""); } catch (e) { return Date.now().toString(16) + Math.random().toString(16).slice(2); } }
+// Log the click (link counter + attributable click record) and open the brand site with a ref id appended.
+function goToBrand(username, businessId, url) {
+  const clickId = erClickId();
+  try { api("/track", { method: "POST", body: { username, businessId, type: "click" } }); } catch (e) {}
+  try { api("/click", { method: "POST", body: { clickId, handle: username, businessId } }); } catch (e) {}
+  if (!url) return;
+  const base = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+  window.open(base + (base.includes("?") ? "&" : "?") + "er_click=" + clickId, "_blank", "noopener");
+}
 
 // Parse the current URL into a view: "/" → home, "/admin" (or #admin) → admin, "/@handle" → profile.
 function parseRoute() {
@@ -296,7 +305,7 @@ function BusinessDetail({ id, onClose, onRecommend }) {
 
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <button className="er-btn er-btn-primary" onClick={() => onRecommend(b.id)}>Recommend &amp; earn <Arrow size={16} /></button>
-            {b.website && <button className="er-btn er-btn-ghost" onClick={() => { trackClick(handle, b.id); openSite(b.website); }}>Visit website</button>}
+            {b.website && <button className="er-btn er-btn-ghost" onClick={() => goToBrand(handle, b.id, b.website)}>Visit website</button>}
           </div>
           {(b.phone || b.email) && (
             <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -315,7 +324,7 @@ function BusinessDetail({ id, onClose, onRecommend }) {
                       <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{p.name}</div>
                       {p.note && <div style={{ fontSize: 12.5, color: C.muted }}>{p.note}</div>}
                     </div>
-                    {p.url && <button className="er-btn er-btn-light er-btn-sm" style={{ flexShrink: 0 }} onClick={() => { trackClick(handle, b.id); openSite(p.url); }}>View</button>}
+                    {p.url && <button className="er-btn er-btn-light er-btn-sm" style={{ flexShrink: 0 }} onClick={() => goToBrand(handle, b.id, p.url)}>View</button>}
                   </div>
                 ))}
               </div>
@@ -855,29 +864,31 @@ function MyBusiness({ session, onBack, onRefresh }) {
   const reload = async () => { try { setRows(await api(`/business/me?token=${t}`)); setErr(""); } catch (e) { setErr(e.message); } onRefresh(); };
   const reloadReqs = async () => { try { setReqs(await api(`/business/me/requests?token=${t}`)); } catch (e) { setReqs([]); } };
   useEffect(() => { reload(); }, []);
+  const [hireOn, setHireOn] = useState(false);
+  const [pricingOn, setPricingOn] = useState(false);
+  useEffect(() => { api("/settings").then((s) => { setHireOn(!!s.hireEnabled); setPricingOn(!!s.pricingEnabled); }).catch(() => {}); }, []);
   const paid = (rows || []).some((b) => b.paid);
   const premium = (rows || []).some((b) => b.premium);
   const business = (rows || [])[0] || null;
-  useEffect(() => { if (paid) reloadReqs(); }, [paid]);
+  const effPaid = paid || !pricingOn;
+  useEffect(() => { if (effPaid) reloadReqs(); }, [effPaid]);
   const decide = async (id, status, message) => { await api(`/business/request/${id}`, { method: "PATCH", body: { token: session.token, status, message } }); await reloadReqs(); };
   const pending = (reqs || []).filter((r) => r.status === "pending").length;
   const [showVerify, setShowVerify] = useState(false); const [showReward, setShowReward] = useState(false);
   const [creators, setCreators] = useState(null);
-  const [hireOn, setHireOn] = useState(false);
-  useEffect(() => { api("/settings").then((s) => setHireOn(!!s.hireEnabled)).catch(() => {}); }, []);
   const loadCreators = async () => { try { setCreators(await api(`/business/me/creators?token=${t}`)); } catch (e) { setCreators([]); } };
   useEffect(() => { if (tab === "hire" && hireOn) loadCreators(); }, [tab, hireOn]);
   const onPaid = async () => { await reload(); setTab("promo"); setShowReward(true); };
-  const tabs = [["info", "My information"], ["promo", paid ? `Requests${pending ? ` · ${pending}` : ""}` : "Approve/Reject Influencer request"], ...(hireOn ? [["hire", "Hire influencers"]] : [])];
+  const tabs = [["info", "My information"], ["promo", effPaid ? `Requests${pending ? ` · ${pending}` : ""}` : "Approve/Reject Influencer request"], ...(hireOn ? [["hire", "Hire influencers"]] : [])];
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 22px 80px" }}>
       {showReward && business && <RewardPrompt business={business} token={session.token} onClose={() => { setShowReward(false); setShowVerify(true); }} onSaved={async () => { await reload(); setShowReward(false); setShowVerify(true); }} />}
       {showVerify && <VerifyNotice onClose={() => setShowVerify(false)} />}
       <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>My business</h1>
-      <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>Edit your listing for free. Unlock creator promotion and requests with a one-time plan.</p>
+      <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>{pricingOn ? "Edit your listing for free. Unlock creator promotion and requests with a one-time plan." : "Edit your listing, review creator requests, and go live for promotion — all free."}</p>
       <div style={{ display: "flex", gap: 26, borderBottom: `1px solid ${C.line}`, marginBottom: 22, flexWrap: "wrap" }}>
-        {tabs.map(([k, lbl]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 17, fontWeight: 600, padding: "12px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2.5px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, display: "inline-flex", alignItems: "center", gap: 7 }}>{lbl}{k === "promo" && !paid && <Lock size={15} />}</button>)}
+        {tabs.map(([k, lbl]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 17, fontWeight: 600, padding: "12px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2.5px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, display: "inline-flex", alignItems: "center", gap: 7 }}>{lbl}{k === "promo" && !effPaid && <Lock size={15} />}</button>)}
       </div>
       {err && <p style={{ background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>{err}</p>}
 
@@ -889,7 +900,7 @@ function MyBusiness({ session, onBack, onRefresh }) {
 
       {tab === "promo" && (rows === null
         ? <p style={{ color: C.muted }}>Loading…</p>
-        : paid
+        : effPaid
           ? <>
             <div style={{ background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 14, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ color: C.accentD, display: "flex" }}>{premium ? <Seal size={20} /> : <Check size={20} />}</span>
@@ -1471,29 +1482,34 @@ function VerifyToggle({ i, reload }) {
   );
 }
 function FeatureSwitches() {
-  const [hireOn, setHireOn] = useState(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
-  useEffect(() => { api("/settings").then((s) => setHireOn(!!s.hireEnabled)).catch((e) => { setHireOn(false); setErr(`Couldn't load settings: ${e.message}`); }); }, []);
-  const toggle = async () => {
-    const next = !hireOn;
-    setBusy(true); setErr("");
+  const [hireOn, setHireOn] = useState(null); const [pricingOn, setPricingOn] = useState(null);
+  const [busy, setBusy] = useState(""); const [err, setErr] = useState("");
+  useEffect(() => { api("/settings").then((s) => { setHireOn(!!s.hireEnabled); setPricingOn(!!s.pricingEnabled); }).catch((e) => { setHireOn(false); setPricingOn(false); setErr(`Couldn't load settings: ${e.message}`); }); }, []);
+  const toggle = async (key, cur, setCur) => {
+    const next = !cur;
+    setBusy(key); setErr("");
     try {
-      const r = await api("/admin/settings", { method: "POST", admin: true, body: { hireEnabled: next } });
-      setHireOn(!!r.hireEnabled);
-      if (!!r.hireEnabled !== next) setErr("The server didn't save that change. Is the latest backend deployed?");
-    } catch (e) { setErr(e.message || "Couldn't save."); } finally { setBusy(false); }
+      const r = await api("/admin/settings", { method: "POST", admin: true, body: { [key]: next } });
+      setCur(!!r[key]);
+      if (!!r[key] !== next) setErr("The server didn't save that change. Is the latest backend deployed?");
+    } catch (e) { setErr(e.message || "Couldn't save."); } finally { setBusy(""); }
   };
+  const Row = ({ label, desc, on, setOn, k }) => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 }}>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>{label} {on !== null && <span style={{ fontSize: 11, fontWeight: 700, marginLeft: 4, padding: "2px 8px", borderRadius: 999, background: on ? C.accentSoft : C.panel, color: on ? C.accentD : C.muted }}>{on ? "ON" : "OFF"}</span>}</div>
+        <div style={{ fontSize: 12.5, color: C.muted }}>{desc}</div>
+      </div>
+      <button type="button" disabled={!!busy || on === null} onClick={() => toggle(k, on, setOn)} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: busy || on === null ? "default" : "pointer", background: on ? C.accent : "#CFC8BA", transition: "background .15s", flexShrink: 0, opacity: busy === k ? 0.6 : 1 }}>
+        <span style={{ position: "absolute", top: 3, left: on ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
+      </button>
+    </div>
+  );
   return (
     <div className="er-card" style={{ padding: 18, marginTop: 22 }}>
       <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Features</h2>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>&ldquo;Hire influencers&rdquo; tab {hireOn !== null && <span style={{ fontSize: 11, fontWeight: 700, marginLeft: 4, padding: "2px 8px", borderRadius: 999, background: hireOn ? C.accentSoft : C.panel, color: hireOn ? C.accentD : C.muted }}>{hireOn ? "ON" : "OFF"}</span>}</div>
-          <div style={{ fontSize: 12.5, color: C.muted }}>Show the hire tab to businesses. Keep it off until you have enough verified creators.</div>
-        </div>
-        <button type="button" disabled={busy || hireOn === null} onClick={toggle} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: busy || hireOn === null ? "default" : "pointer", background: hireOn ? C.accent : "#CFC8BA", transition: "background .15s", flexShrink: 0, opacity: busy ? 0.6 : 1 }}>
-          <span style={{ position: "absolute", top: 3, left: hireOn ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
-        </button>
-      </div>
+      <Row label="&ldquo;Hire influencers&rdquo; tab" desc="Show the hire tab to businesses. Keep it off until you have enough verified creators." on={hireOn} setOn={setHireOn} k="hireEnabled" />
+      <Row label="Pricing / paid plans" desc="OFF = free for everyone (brands unlock creator requests at no charge). Turn ON to show plans and require payment." on={pricingOn} setOn={setPricingOn} k="pricingEnabled" />
       {err && <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "#9B3024" }}>{err}</p>}
     </div>
   );
@@ -1899,7 +1915,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                   </div>
                   {b.discount > 0 && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 13, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "9px 12px" }}><span style={{ color: C.accentD, flexShrink: 0 }}><Seal size={16} /></span><span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>Get {b.discount}% off when you shop {b.name} through this link{site ? ` at ${site}` : ""}.</span></div>}
                   {!isOwner && hasContact && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 13 }}>
-                    {b.website && <button className="er-btn er-btn-primary er-btn-sm" onClick={() => { trackClick(data.username, b.id); openSite(b.website); }}><Globe size={14} /> {site}</button>}
+                    {b.website && <button className="er-btn er-btn-primary er-btn-sm" onClick={() => goToBrand(data.username, b.id, b.website)}><Globe size={14} /> {site}</button>}
                     {b.email && <a href={`mailto:${b.email}`} onClick={() => trackClick(data.username, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Mail size={14} /> {b.email}</a>}
                     {b.phone && <a href={`tel:${b.phone}`} onClick={() => trackClick(data.username, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Phone size={14} /> {b.phone}</a>}
                   </div>}
