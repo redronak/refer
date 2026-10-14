@@ -2518,16 +2518,16 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
       <section className="er-wrap er-hero-scatter" style={{ padding: "48px 22px 56px" }}>
         <div className="er-scatter" aria-hidden="true">
           {[
-            { top: "7%", left: "2%", r: -8, s: 150, keep: true },
-            { top: "40%", left: "0%", r: 6, s: 128 },
-            { bottom: "7%", left: "6%", r: -5, s: 158, keep: true },
-            { top: "4%", left: "22%", r: 5, s: 116 },
-            { bottom: "5%", left: "26%", r: 7, s: 116 },
-            { top: "5%", right: "22%", r: -6, s: 116 },
-            { top: "6%", right: "2%", r: 7, s: 150, keep: true },
-            { top: "42%", right: "0%", r: -7, s: 128 },
-            { bottom: "7%", right: "6%", r: 6, s: 158, keep: true },
-            { bottom: "5%", right: "25%", r: -5, s: 116 },
+            { top: "8%", left: "3%", r: -8, s: 150, keep: true },
+            { top: "40%", left: "3%", r: 6, s: 128 },
+            { bottom: "8%", left: "5%", r: -5, s: 158, keep: true },
+            { top: "5%", left: "23%", r: 5, s: 116 },
+            { bottom: "6%", left: "26%", r: 7, s: 116 },
+            { top: "6%", right: "23%", r: -6, s: 116 },
+            { top: "8%", right: "3%", r: 7, s: 150, keep: true },
+            { top: "40%", right: "3%", r: -7, s: 128 },
+            { bottom: "8%", right: "5%", r: 6, s: 158, keep: true },
+            { bottom: "6%", right: "26%", r: -5, s: 116 },
           ].map((c, i) => { const v = ER_VIDEOS[i % ER_VIDEOS.length]; const pos = {}; ["top", "left", "right", "bottom"].forEach((k) => { if (c[k] != null) pos[k] = c[k]; });
             return <div key={i} className={`er-scatter-card${c.keep ? " er-keep" : ""}`} style={{ ...pos, width: c.s, height: c.s, "--rot": `rotate(${c.r}deg)`, transform: `rotate(${c.r}deg)`, animationDelay: `${(i % 5) * 0.5}s` }}>
               <img src={v.poster} alt="" loading="lazy" />
@@ -2535,8 +2535,8 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         </div>
         <div style={{ position: "relative", zIndex: 2, maxWidth: 680, margin: "0 auto" }}>
           <span className="er-eyebrow">For creators, free forever</span>
-          <h1 className="er-serif" style={{ margin: "14px 0 0", fontSize: "clamp(40px,7vw,72px)", lineHeight: 1.02, fontWeight: 500, letterSpacing: "-.02em" }}>Recommend what you love,<br /><span style={{ color: C.accent }}>get paid</span> <span style={{ color: C.gold }}>for every sale.</span></h1>
-          <p style={{ margin: "22px auto 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 520 }}>Build a list of the apps and brands you back, drop one link in your bio, and earn a commission every time your audience buys.</p>
+          <h1 style={{ fontFamily: "'Inter',-apple-system,system-ui,sans-serif", margin: "14px 0 0", fontSize: "clamp(44px,8vw,84px)", lineHeight: 0.98, fontWeight: 800, letterSpacing: "-.035em", color: C.ink }}>Recommend what<br />you love,<span style={{ color: C.accent }}> get paid</span><br /><span style={{ color: C.gold }}>for every sale.</span></h1>
+          <p style={{ margin: "24px auto 0", fontSize: 18, lineHeight: 1.5, color: C.muted, maxWidth: 500, fontWeight: 500 }}>Build a list of the apps and brands you back, drop one link in your bio, and earn a commission every time your audience buys.</p>
           <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
             <button className="er-btn er-btn-primary" onClick={onCreator}>Create my list free <Arrow size={16} /></button>
             <button className="er-btn er-btn-ghost" onClick={onList}>I'm a business</button>
@@ -2723,7 +2723,8 @@ const STYLES = `
 @media(max-width:400px){.er-hide-xs{display:none}}
 @media(min-width:680px){.er-cards{grid-template-columns:1fr 1fr}.er-creators{grid-template-columns:1fr 1fr}.er-videos-grid{grid-template-columns:1fr 1fr}}
 @media(min-width:1000px){.er-cards{grid-template-columns:1fr 1fr 1fr}.er-hero{grid-template-columns:1.05fr .95fr;gap:60px}.er-stepwork{grid-template-columns:1fr 1fr 1fr}.er-videos-grid{grid-template-columns:1fr 1fr 1fr}.er-how2{grid-template-columns:1fr 1fr;gap:64px}.er-hero-2col{grid-template-columns:1.1fr .9fr;gap:56px}}
-.er-hero-scatter{position:relative;overflow:hidden;min-height:clamp(540px,80vh,800px);display:grid;place-items:center;text-align:center}
+.er-hero-scatter{position:relative;overflow:visible;min-height:clamp(540px,80vh,800px);display:grid;place-items:center;text-align:center}
+.er-root{overflow-x:hidden}
 .er-scatter{position:absolute;inset:0;pointer-events:none;z-index:0}
 .er-scatter-card{position:absolute;border-radius:18px;overflow:hidden;background:#fff;border:3px solid #fff;box-shadow:0 12px 34px rgba(28,26,23,.16);animation:er-floaty 7s ease-in-out infinite}
 .er-scatter-card img{display:block;width:100%;height:100%;object-fit:cover}
@@ -2877,7 +2878,7 @@ function RetentionApp() {
   useEffect(() => {
     if (!document.getElementById("er-fonts")) {
       const l = document.createElement("link"); l.id = "er-fonts"; l.rel = "stylesheet";
-      l.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap";
+      l.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800;900&display=swap";
       document.head.appendChild(l);
     }
     if (!document.getElementById("rb-styles")) {
@@ -3009,7 +3010,7 @@ function EasyApp() {
   useEffect(() => {
     try { if (!sessionStorage.getItem("er_pv")) { sessionStorage.setItem("er_pv", "1"); api("/pageview", { method: "POST" }).catch(() => {}); } } catch (e) {}
     const f = document.createElement("link"); f.rel = "stylesheet";
-    f.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap";
+    f.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800;900&display=swap";
     document.head.appendChild(f);
     const s = document.createElement("style"); s.textContent = STYLES; document.head.appendChild(s);
     let rb = null;
