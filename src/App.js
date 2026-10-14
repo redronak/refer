@@ -342,12 +342,15 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [f, setF] = useState({ name: "", phone: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0 });
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const [searching, setSearching] = useState(false); const [revealed, setRevealed] = useState(false);
+  const [otp, setOtp] = useState(""); const [sent, setSent] = useState(false); const [sending, setSending] = useState(false);
   const incentiveRef = useRef(null);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
-  const valid = [f.website.trim() && f.categories.length > 0, f.name.trim() && f.phone.trim() && (f.online || f.city.trim()), commValid, true];
-  const titles = ["Get discovered", "About your business", "Your terms", "You're verified"];
+  const valid = [f.website.trim() && f.categories.length > 0, f.name.trim() && f.phone.trim() && (f.online || f.city.trim()), commValid, /^\d{6}$/.test(otp.trim())];
+  const titles = ["Get discovered", "About your business", "Your terms", "Verify your number"];
+  const sendCode = async () => { if (!f.phone.trim()) return; setSending(true); setErr(""); try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); setSent(true); } catch (e) { setErr(e.message); } finally { setSending(false); } };
+  useEffect(() => { if (step === 3 && !sent && f.phone.trim()) sendCode(); }, [step]);
 
   // When URL + category are filled, run a brief "searching" animation, then reveal the numbers.
   useEffect(() => {
@@ -365,7 +368,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const submit = async () => {
     setBusy(true); setErr("");
     try {
-      const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount, contacts: ["website"] } });
+      const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, otp: otp.trim(), website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount, contacts: ["website"] } });
       if (r && r.token) onLogin({ role: "brand", token: r.token, phone: f.phone });
       onRefresh(); onDone(f.name);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
@@ -437,12 +440,12 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>Get {f.discount}% off when you shop {f.name || "us"} through this link{f.website ? ` at ${f.website}` : ""}.</div>
             </div>}
           </>}
-          {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center", textAlign: "center", padding: "8px 0" }}>
-            <span style={{ width: 56, height: 56, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD }}><Check size={28} /></span>
-            <div>
-              <div className="er-serif" style={{ fontSize: 20, fontWeight: 500 }}>Number auto-verified</div>
-              <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}><b style={{ color: C.ink }}>{f.phone}</b> is confirmed. Submit to finish, we'll review your listing shortly.</p>
-            </div>
+          {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <p style={{ margin: 0, fontSize: 14, color: C.muted }}>We texted a 6-digit code to <b style={{ color: C.ink }}>{f.phone}</b>. Enter it to finish, we'll review your listing shortly.</p>
+            <Field label="Verification code">
+              <input className="er-input" inputMode="numeric" maxLength={6} placeholder="123456" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} style={{ letterSpacing: ".3em", fontSize: 18, textAlign: "center" }} autoFocus />
+            </Field>
+            <button type="button" onClick={sendCode} disabled={sending} style={{ alignSelf: "flex-start", background: "none", border: "none", padding: 0, cursor: sending ? "default" : "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: C.accentD }}>{sending ? "Sending…" : sent ? "Resend code" : "Send code"}</button>
             <ErrBox msg={err} />
           </div>}
         </div>
@@ -450,7 +453,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
           {step > 0 ? <button className="er-btn er-btn-ghost" onClick={() => setStep(step - 1)}><ChevL size={16} /> Back</button> : <span />}
           {step < 3
             ? <button className="er-btn er-btn-primary" disabled={!valid[step]} onClick={() => setStep(step + 1)}>Continue <ChevR size={16} /></button>
-            : <button className="er-btn er-btn-primary" disabled={busy} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
+            : <button className="er-btn er-btn-primary" disabled={busy || !valid[3]} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
         </div>
       </div>
     </Modal>
@@ -473,7 +476,8 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
   // creator
   const [cName, setCName] = useState(""); const [cPass, setCPass] = useState("");
   // brand
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(""); const [bOtp, setBOtp] = useState(""); const [bSent, setBSent] = useState(false);
+  const sendBrandCode = async () => { if (!phone) return; setBusy(true); setErr(""); try { await api("/otp/send", { method: "POST", body: { phone } }); setBSent(true); } catch (e) { setErr(e.message); } finally { setBusy(false); } };
 
   const creatorLogin = async () => {
     setBusy(true); setErr("");
@@ -484,7 +488,7 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
   };
   const brandLogin = async () => {
     setBusy(true); setErr("");
-    try { const r = await api("/business/login/verify", { method: "POST", body: { phone } }); onLogin({ role: "brand", token: r.token, phone }); onAfterBrand(); }
+    try { const r = await api("/business/login/verify", { method: "POST", body: { phone, otp: bOtp.trim() } }); onLogin({ role: "brand", token: r.token, phone }); onAfterBrand(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
 
@@ -516,8 +520,14 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
         </div>}
 
         {mode === "brand" && <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Field label="Mobile number" hint="The number you signed up with."><PhoneInput value={phone} onChange={setPhone} /></Field>
-          <button className="er-btn er-btn-primary er-btn-block" disabled={!phone || busy} onClick={brandLogin}>{busy ? "…" : "Log in"}</button>
+          <Field label="Mobile number" hint="The number you signed up with."><PhoneInput value={phone} onChange={setPhone} disabled={bSent} /></Field>
+          {!bSent
+            ? <button className="er-btn er-btn-primary er-btn-block" disabled={!phone || busy} onClick={sendBrandCode}>{busy ? "Sending…" : "Send code"}</button>
+            : <>
+                <Field label="Verification code"><input className="er-input" inputMode="numeric" maxLength={6} placeholder="123456" value={bOtp} onChange={(e) => setBOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} onKeyDown={(e) => { if (e.key === "Enter" && /^\d{6}$/.test(bOtp) && !busy) brandLogin(); }} style={{ letterSpacing: ".3em", fontSize: 18, textAlign: "center" }} autoFocus /></Field>
+                <button className="er-btn er-btn-primary er-btn-block" disabled={!/^\d{6}$/.test(bOtp) || busy} onClick={brandLogin}>{busy ? "…" : "Log in"}</button>
+                <button type="button" onClick={sendBrandCode} disabled={busy} style={{ alignSelf: "flex-start", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: C.accentD }}>Resend code</button>
+              </>}
           <ErrBox msg={err} />
           <button className="er-btn er-btn-ghost" style={{ alignSelf: "flex-start" }} onClick={() => setMode(null)}><ChevL size={16} /> Back</button>
         </div>}
