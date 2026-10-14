@@ -1669,6 +1669,34 @@ const STAT_METRICS = [
   ["clicks", "Clicks", "#2D6E8E"],
   ["sales", "Sales", "#B5572E"],
 ];
+function StatItemRow({ it }) {
+  const [open, setOpen] = useState(false); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false); const [done, setDone] = useState(false); const [err, setErr] = useState("");
+  const send = async () => {
+    if (!msg.trim()) return; setBusy(true); setErr("");
+    try { await api("/admin/sms", { method: "POST", admin: true, body: { phone: it.phone, message: msg.trim() } }); setDone(true); setMsg(""); setTimeout(() => { setDone(false); setOpen(false); }, 1400); }
+    catch (e) { setErr(e.message || "Couldn't send."); } finally { setBusy(false); }
+  };
+  return (
+    <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: "9px 12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: C.ink, flexShrink: 0 }}>{it.label}</span>
+        {it.sub && <span style={{ fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</span>}
+        <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          {it.at && <span style={{ fontSize: 11.5, color: C.muted }}>{new Date(it.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}
+          {it.phone && <button className="er-btn er-btn-light er-btn-sm" onClick={() => setOpen((o) => !o)}><Send size={12} /> SMS</button>}
+        </span>
+      </div>
+      {open && it.phone && <div style={{ marginTop: 10 }}>
+        <textarea className="er-input" style={{ minHeight: 70 }} placeholder={`Custom SMS to ${it.phone}`} value={msg} onChange={(e) => setMsg(e.target.value)} />
+        {err && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#C0392B" }}>{err}</p>}
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <button className="er-btn er-btn-primary er-btn-sm" disabled={busy || !msg.trim()} onClick={send}>{busy ? "Sending…" : done ? "Sent ✓" : "Send SMS"}</button>
+          <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setOpen(false)}>Cancel</button>
+        </div>
+      </div>}
+    </div>
+  );
+}
 function AdminStats() {
   const [s, setS] = useState(null); const [err, setErr] = useState(""); const [metric, setMetric] = useState("pageviews");
   const [days, setDays] = useState(30);
@@ -1750,14 +1778,8 @@ function AdminStats() {
           {detailBusy && <p style={{ color: C.muted, fontSize: 13, margin: "10px 0 0" }}>Loading…</p>}
           {!detailBusy && detail && metric === "pageviews" && <p style={{ color: C.muted, fontSize: 13, margin: "10px 0 0" }}>{detail.count} page view{detail.count === 1 ? "" : "s"} this day. Page views are anonymous, so there's no list to show.</p>}
           {!detailBusy && detail && metric !== "pageviews" && (detail.items && detail.items.length ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10, maxHeight: 360, overflowY: "auto" }}>
-              {detail.items.map((it, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${C.line}`, borderRadius: 10, padding: "9px 12px" }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, color: C.ink, flexShrink: 0 }}>{it.label}</span>
-                  {it.sub && <span style={{ fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</span>}
-                  {it.at && <span style={{ marginLeft: "auto", fontSize: 11.5, color: C.muted, flexShrink: 0 }}>{new Date(it.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}
-                </div>
-              ))}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10, maxHeight: 420, overflowY: "auto" }}>
+              {detail.items.map((it, i) => <StatItemRow key={i} it={it} />)}
             </div>
           ) : <p style={{ color: C.muted, fontSize: 13, margin: "10px 0 0" }}>Nothing on this day.</p>)}
         </div>}
@@ -2493,23 +2515,36 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         </div>
       </header>
 
-      <section className="er-wrap" style={{ padding: "70px 22px 60px" }}>
-        <div className="er-hero-2col">
-          <div style={{ maxWidth: 640 }}>
-            <span className="er-eyebrow">For creators, free forever</span>
-            <h1 className="er-serif" style={{ margin: "16px 0 0", fontSize: "clamp(38px,6vw,62px)", lineHeight: 1.04, fontWeight: 500, letterSpacing: "-.02em" }}>Recommend what you love. Get paid for every sale.</h1>
-            <p style={{ margin: "22px 0 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 540 }}>Build a list of the apps and brands you back, drop one link in your bio, and earn a commission every time your audience buys. No inventory, no ads, no waiting on brand deals.</p>
-            <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button className="er-btn er-btn-primary" onClick={onCreator}>Create my list free <Arrow size={16} /></button>
-              <button className="er-btn er-btn-ghost" onClick={onList}>I'm a business</button>
-            </div>
-            <div style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 9, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 999, padding: "8px 15px" }}>
-              <Spark size={15} style={{ color: C.accentD, flexShrink: 0 }} />
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: C.accentD }}>Smaller creators earn on average ~$500 in 3 months, larger creators earn $5,000</span>
-            </div>
-            <p style={{ margin: "20px 0 0", fontSize: 13, color: C.muted, display: "flex", alignItems: "center", gap: 7 }}><Seal size={15} /> Set up in under a minute · you keep every commission you earn.</p>
+      <section className="er-wrap er-hero-scatter" style={{ padding: "48px 22px 56px" }}>
+        <div className="er-scatter" aria-hidden="true">
+          {[
+            { top: "7%", left: "2%", r: -8, s: 150, keep: true },
+            { top: "40%", left: "0%", r: 6, s: 128 },
+            { bottom: "7%", left: "6%", r: -5, s: 158, keep: true },
+            { top: "4%", left: "22%", r: 5, s: 116 },
+            { bottom: "5%", left: "26%", r: 7, s: 116 },
+            { top: "5%", right: "22%", r: -6, s: 116 },
+            { top: "6%", right: "2%", r: 7, s: 150, keep: true },
+            { top: "42%", right: "0%", r: -7, s: 128 },
+            { bottom: "7%", right: "6%", r: 6, s: 158, keep: true },
+            { bottom: "5%", right: "25%", r: -5, s: 116 },
+          ].map((c, i) => { const v = ER_VIDEOS[i % ER_VIDEOS.length]; const pos = {}; ["top", "left", "right", "bottom"].forEach((k) => { if (c[k] != null) pos[k] = c[k]; });
+            return <div key={i} className={`er-scatter-card${c.keep ? " er-keep" : ""}`} style={{ ...pos, width: c.s, height: c.s, "--rot": `rotate(${c.r}deg)`, transform: `rotate(${c.r}deg)`, animationDelay: `${(i % 5) * 0.5}s` }}>
+              <img src={v.poster} alt="" loading="lazy" />
+            </div>; })}
+        </div>
+        <div style={{ position: "relative", zIndex: 2, maxWidth: 680, margin: "0 auto" }}>
+          <span className="er-eyebrow">For creators, free forever</span>
+          <h1 className="er-serif" style={{ margin: "14px 0 0", fontSize: "clamp(40px,7vw,72px)", lineHeight: 1.02, fontWeight: 500, letterSpacing: "-.02em" }}>Recommend what you love,<br /><span style={{ color: C.accent }}>get paid</span> <span style={{ color: C.gold }}>for every sale.</span></h1>
+          <p style={{ margin: "22px auto 0", fontSize: 17.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 520 }}>Build a list of the apps and brands you back, drop one link in your bio, and earn a commission every time your audience buys.</p>
+          <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <button className="er-btn er-btn-primary" onClick={onCreator}>Create my list free <Arrow size={16} /></button>
+            <button className="er-btn er-btn-ghost" onClick={onList}>I'm a business</button>
           </div>
-          <BioMock />
+          <div style={{ marginTop: 18, display: "inline-flex", alignItems: "center", gap: 9, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 999, padding: "8px 15px" }}>
+            <Spark size={15} style={{ color: C.accentD, flexShrink: 0 }} />
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: C.accentD }}>Smaller creators earn ~$500 in 3 months, larger creators ~$5,000</span>
+          </div>
         </div>
       </section>
 
@@ -2688,8 +2723,15 @@ const STYLES = `
 @media(max-width:400px){.er-hide-xs{display:none}}
 @media(min-width:680px){.er-cards{grid-template-columns:1fr 1fr}.er-creators{grid-template-columns:1fr 1fr}.er-videos-grid{grid-template-columns:1fr 1fr}}
 @media(min-width:1000px){.er-cards{grid-template-columns:1fr 1fr 1fr}.er-hero{grid-template-columns:1.05fr .95fr;gap:60px}.er-stepwork{grid-template-columns:1fr 1fr 1fr}.er-videos-grid{grid-template-columns:1fr 1fr 1fr}.er-how2{grid-template-columns:1fr 1fr;gap:64px}.er-hero-2col{grid-template-columns:1.1fr .9fr;gap:56px}}
+.er-hero-scatter{position:relative;overflow:hidden;min-height:clamp(540px,80vh,800px);display:grid;place-items:center;text-align:center}
+.er-scatter{position:absolute;inset:0;pointer-events:none;z-index:0}
+.er-scatter-card{position:absolute;border-radius:18px;overflow:hidden;background:#fff;border:3px solid #fff;box-shadow:0 12px 34px rgba(28,26,23,.16);animation:er-floaty 7s ease-in-out infinite}
+.er-scatter-card img{display:block;width:100%;height:100%;object-fit:cover}
+@keyframes er-floaty{0%,100%{transform:translateY(0) var(--rot)}50%{transform:translateY(-12px) var(--rot)}}
+@media(max-width:880px){.er-scatter-card{display:none}.er-scatter-card.er-keep{display:block}}
+@media(max-width:560px){.er-scatter-card.er-keep{display:none}}
 .er-root button:focus-visible,.er-root input:focus-visible,.er-root a:focus-visible{outline:2px solid ${C.accent};outline-offset:2px}
-@media(prefers-reduced-motion:reduce){.er-root *{transition:none!important}}
+@media(prefers-reduced-motion:reduce){.er-root *{transition:none!important}.er-scatter-card{animation:none}}
 `;
 
 /* ---------- Root ---------- */
