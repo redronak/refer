@@ -1651,18 +1651,42 @@ function AdminSetupRequests() {
     </div>
   );
 }
+const STAT_METRICS = [
+  ["pageviews", "Page views", "#0F6B4F"],
+  ["newCreators", "Creators", "#3E51A8"],
+  ["newBrands", "Brands", "#D99A00"],
+  ["newLinks", "Backings", "#7A3E6B"],
+  ["clicks", "Clicks", "#2D6E8E"],
+  ["sales", "Sales", "#B5572E"],
+];
 function AdminStats() {
   const [s, setS] = useState(null); const [err, setErr] = useState(""); const [metric, setMetric] = useState("pageviews");
-  useEffect(() => { api("/admin/stats", { admin: true }).then(setS).catch((e) => setErr(e.message)); }, []);
+  const [days, setDays] = useState(30);
+  const [sel, setSel] = useState(null); const [detail, setDetail] = useState(null); const [detailBusy, setDetailBusy] = useState(false);
+  useEffect(() => { setS(null); api(`/admin/stats?days=${days}`, { admin: true }).then(setS).catch((e) => setErr(e.message)); }, [days]);
   const fmtDay = (d) => { if (!d) return ""; const [y, m, dd] = d.split("-"); return new Date(Date.UTC(+y, +m - 1, +dd)).toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
+  const mLabel = Object.fromEntries(STAT_METRICS.map(([k, l]) => [k, l]));
+  const mColor = Object.fromEntries(STAT_METRICS.map(([k, , c]) => [k, c]));
+  const openDay = async (day) => {
+    setSel({ day, metric }); setDetail(null); setDetailBusy(true);
+    try { setDetail(await api(`/admin/stats/items?metric=${metric}&day=${day}`, { admin: true })); } catch (e) { setDetail({ count: 0, items: [], error: e.message }); } finally { setDetailBusy(false); }
+  };
+  const pickMetric = (k) => { setMetric(k); setSel(null); setDetail(null); };
   if (err) return null;
   if (!s) return <p style={{ color: C.muted, margin: "20px 0" }}>Loading stats…</p>;
-  const metrics = [["pageviews", "Page views"], ["newCreators", "New creators"], ["newBrands", "New brands"]];
   const daily = s.daily || []; const n = daily.length;
   const vals = daily.map((d) => d[metric] || 0); const max = Math.max(1, ...vals);
   const W = 720, H = 180, padB = 22, padT = 8, bw = W / Math.max(n, 1);
-  const col = metric === "pageviews" ? C.accent : metric === "newCreators" ? "#3E51A8" : C.gold;
+  const col = mColor[metric] || C.accent;
+  const money = (v) => "$" + Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
   const tiles = [["Creators", s.totals.creators, null], ["Brands", s.totals.brands, `${s.totals.approvedBrands} live`], ["Page views", s.totals.pageviews, `${s.totals.pageviewsToday} today`]];
+  const w = s.window || {};
+  const windowStats = [
+    ["Page views", Number(w.pageviews || 0).toLocaleString()], ["Signups", Number(w.newCreators || 0).toLocaleString()],
+    ["Brands", Number(w.newBrands || 0).toLocaleString()], ["Backings", Number(w.newLinks || 0).toLocaleString()],
+    ["Clicks", Number(w.clicks || 0).toLocaleString()], ["Sales", Number(w.sales || 0).toLocaleString()],
+    ["Sales $", money(w.salesValue)], ["Commission", money(w.commission)],
+  ];
   return (
     <div style={{ marginTop: 22 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
@@ -1675,22 +1699,58 @@ function AdminStats() {
         ))}
       </div>
       <div className="er-card" style={{ padding: "18px 18px 12px", marginTop: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Last 30 days</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Last {days} days <span style={{ fontWeight: 500, color: C.muted }}>· tap a bar for that day</span></div>
           <div style={{ display: "flex", gap: 6 }}>
-            {metrics.map(([k, l]) => <button key={k} className="er-btn er-btn-sm" onClick={() => setMetric(k)} style={{ border: "none", background: metric === k ? C.ink : C.panel, color: metric === k ? C.paper : C.inkSoft }}>{l}</button>)}
+            {[7, 30, 90].map((d) => <button key={d} className="er-btn er-btn-sm" onClick={() => { setDays(d); setSel(null); setDetail(null); }} style={{ border: "none", background: days === d ? C.accent : C.panel, color: days === d ? "#fff" : C.inkSoft }}>{d}d</button>)}
           </div>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+          {STAT_METRICS.map(([k, l, c]) => <button key={k} className="er-btn er-btn-sm" onClick={() => pickMetric(k)} style={{ border: metric === k ? `1px solid ${c}` : `1px solid ${C.line}`, background: metric === k ? c : "#fff", color: metric === k ? "#fff" : C.inkSoft }}>{l}</button>)}
         </div>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", overflow: "visible" }} preserveAspectRatio="xMidYMid meet">
           <line x1="0" y1={H - padB} x2={W} y2={H - padB} stroke={C.line} strokeWidth="1" />
-          {daily.map((d, i) => { const v = d[metric] || 0; const h = (H - padB - padT) * (v / max); const x = i * bw + 3; const y = H - padB - h;
-            return <rect key={d.day} x={x} y={y} width={Math.max(bw - 6, 1)} height={Math.max(h, v > 0 ? 2 : 0)} rx="2" fill={col} opacity={i === n - 1 ? 1 : 0.8}><title>{`${fmtDay(d.day)}: ${v}`}</title></rect>; })}
+          {daily.map((d, i) => { const v = d[metric] || 0; const h = (H - padB - padT) * (v / max); const x = i * bw + (bw > 10 ? 3 : 1); const y = H - padB - h; const isSel = sel && sel.day === d.day && sel.metric === metric;
+            return <g key={d.day} onClick={() => openDay(d.day)} style={{ cursor: "pointer" }}>
+              <rect x={i * bw} y={padT} width={bw} height={H - padB - padT} fill="transparent" />
+              <rect x={x} y={y} width={Math.max(bw - (bw > 10 ? 6 : 2), 1)} height={Math.max(h, v > 0 ? 2 : 0)} rx="2" fill={isSel ? C.ink : col} opacity={isSel ? 1 : (i === n - 1 ? 1 : 0.8)}><title>{`${fmtDay(d.day)}: ${v}`}</title></rect>
+            </g>; })}
         </svg>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: C.muted, marginTop: 4 }}>
           <span>{fmtDay(daily[0] && daily[0].day)}</span>
-          <span>peak {max}</span>
+          <span>peak {metric === "sales" || metric === "pageviews" ? max : max}</span>
           <span>{fmtDay(daily[n - 1] && daily[n - 1].day)}</span>
         </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginTop: 16, borderTop: `1px solid ${C.line}`, paddingTop: 14 }}>
+          {windowStats.map(([l, v]) => (
+            <div key={l}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: C.muted }}>{l}</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: C.ink, marginTop: 1 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+
+        {sel && <div style={{ marginTop: 16, borderTop: `1px solid ${C.line}`, paddingTop: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{fmtDay(sel.day)} · {mLabel[metric]}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: col, borderRadius: 999, padding: "2px 10px" }}>{detailBusy ? "…" : (detail ? detail.count : 0)}</span>
+            <button className="er-link" style={{ marginLeft: "auto", color: C.muted }} onClick={() => { setSel(null); setDetail(null); }}>Close</button>
+          </div>
+          {detailBusy && <p style={{ color: C.muted, fontSize: 13, margin: "10px 0 0" }}>Loading…</p>}
+          {!detailBusy && detail && metric === "pageviews" && <p style={{ color: C.muted, fontSize: 13, margin: "10px 0 0" }}>{detail.count} page view{detail.count === 1 ? "" : "s"} this day. Page views are anonymous, so there's no list to show.</p>}
+          {!detailBusy && detail && metric !== "pageviews" && (detail.items && detail.items.length ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10, maxHeight: 360, overflowY: "auto" }}>
+              {detail.items.map((it, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${C.line}`, borderRadius: 10, padding: "9px 12px" }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: C.ink, flexShrink: 0 }}>{it.label}</span>
+                  {it.sub && <span style={{ fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</span>}
+                  {it.at && <span style={{ marginLeft: "auto", fontSize: 11.5, color: C.muted, flexShrink: 0 }}>{new Date(it.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}
+                </div>
+              ))}
+            </div>
+          ) : <p style={{ color: C.muted, fontSize: 13, margin: "10px 0 0" }}>Nothing on this day.</p>)}
+        </div>}
       </div>
     </div>
   );
