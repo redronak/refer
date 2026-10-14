@@ -866,6 +866,15 @@ function CopyBox({ text, label }) {
     </div>
   );
 }
+function OrRule() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "4px 0 22px" }}>
+      <span style={{ flex: 1, height: 1, background: C.line }} />
+      <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: ".12em", color: C.muted, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "4px 14px" }}>OR</span>
+      <span style={{ flex: 1, height: 1, background: C.line }} />
+    </div>
+  );
+}
 function MethodCard({ num, title, desc, children }) {
   return (
     <div className="er-card" style={{ padding: "22px 22px", marginBottom: 22 }}>
@@ -912,9 +921,13 @@ function SetupTab({ token, business }) {
         </>}
       </MethodCard>
 
+      <OrRule />
+
       <MethodCard num="2" title="Custom site" desc="Any site where you can edit the HTML. Add the script to every page, then fire one line on your order-confirmation page with the order subtotal.">
         <CopyBox text={universalSnippet} />
       </MethodCard>
+
+      <OrRule />
 
       <MethodCard num="3" title="Shopify, BigCommerce, or WordPress" desc="Use the ready-made integration for your platform — no code changes to your theme.">
         <div style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>Shopify</div>
