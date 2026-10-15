@@ -303,10 +303,23 @@ function BusinessDetail({ id, onClose, onRecommend }) {
             {!reward && <button className="er-btn er-btn-accent er-btn-sm" onClick={() => onRecommend(b.id)}><Lock size={14} /> Unlock</button>}
           </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-            <button className="er-btn er-btn-primary" onClick={() => onRecommend(b.id)}>Recommend &amp; earn <Arrow size={16} /></button>
-            {b.website && <button className="er-btn er-btn-ghost" onClick={() => goToBrand(handle, b.id, b.website)}>Visit website</button>}
+          <div style={{ marginTop: 16, borderRadius: 16, overflow: "hidden", border: `1px solid ${C.line}` }}>
+            <div style={{ background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", padding: "11px 16px", display: "flex", alignItems: "center", gap: 9 }}>
+              <Seal size={16} style={{ color: "#fff" }} />
+              <span style={{ fontWeight: 700, fontSize: 14, color: "#fff", letterSpacing: ".01em" }}>Easy Recommend</span>
+              <IgIcon size={16} style={{ color: "#fff", marginLeft: "auto" }} />
+            </div>
+            <div style={{ padding: "15px 16px", background: "#fff" }}>
+              <div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink, lineHeight: 1.35 }}>Share {b.name} with friends on Instagram{reward ? <> and earn <span style={{ color: C.accentD }}>{reward}</span></> : " and earn"} on every sale.</div>
+              <p style={{ margin: "6px 0 0", fontSize: 13, color: C.muted, lineHeight: 1.5 }}>Drop your link in a story, friends tap through and shop, and you get paid, no following required.</p>
+              <button className="er-btn er-btn-block" style={{ marginTop: 12, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }} onClick={() => onRecommend(b.id)}>
+                <IgIcon size={15} /> Share on Instagram &amp; earn
+              </button>
+            </div>
           </div>
+          {b.website && <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+            <button className="er-btn er-btn-ghost" onClick={() => goToBrand(handle, b.id, b.website)}>Visit website</button>
+          </div>}
           {(b.phone || b.email) && (
             <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
               {b.phone && <a href={`tel:${b.phone}`} onClick={() => trackClick(handle, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Phone size={14} /> {b.phone}</a>}
@@ -409,7 +422,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
             <Field label="Brand, product, or app name"><input className="er-input" placeholder="Lumière Skincare, Focusly app, etc." value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
             <Field label="Mobile number" hint="We'll text a 6-digit code. You'll sign in with this number from now on."><PhoneInput value={f.phone} onChange={(v) => set("phone", v)} /></Field>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 16px" }}>
-              <div><div style={{ fontSize: 14, fontWeight: 600 }}>Online business</div><div style={{ fontSize: 12.5, color: C.muted }}>Serve customers anywhere.</div></div>
+              <div><div style={{ fontSize: 14, fontWeight: 600 }}>Online Global</div><div style={{ fontSize: 12.5, color: C.muted }}>Software-only business, served anywhere.</div></div>
               <button type="button" onClick={() => set("online", !f.online)} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: "pointer", background: f.online ? C.accent : "#CFC8BA", transition: "background .15s" }}>
                 <span style={{ position: "absolute", top: 3, left: f.online ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} /></button>
             </div>
@@ -582,7 +595,7 @@ function BizEditCard({ b, token, reload }) {
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <Field label="City"><input className="er-input" style={{ width: 160 }} value={d.city} onChange={(e) => set("city", e.target.value)} /></Field>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600 }}>
-            <button type="button" onClick={() => set("online", !d.online)} style={{ position: "relative", width: 44, height: 26, borderRadius: 99, border: "none", cursor: "pointer", background: d.online ? C.accent : "#CFC8BA" }}><span style={{ position: "absolute", top: 3, left: d.online ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff" }} /></button> Online
+            <button type="button" onClick={() => set("online", !d.online)} style={{ position: "relative", width: 44, height: 26, borderRadius: 99, border: "none", cursor: "pointer", background: d.online ? C.accent : "#CFC8BA" }}><span style={{ position: "absolute", top: 3, left: d.online ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff" }} /></button> Online Global
           </label>
         </div>
         <Field label="Customer perk (%)"><input type="number" className="er-input" style={{ width: 120 }} value={d.discount} onChange={(e) => set("discount", +e.target.value)} /></Field>
@@ -984,7 +997,8 @@ function MyBusiness({ session, onBack, onRefresh }) {
   const paid = (rows || []).some((b) => b.paid);
   const premium = (rows || []).some((b) => b.premium);
   const business = (rows || [])[0] || null;
-  const effPaid = paid || !pricingOn;
+  const isOnline = (rows || []).some((b) => b.online);        // pricing applies only to online (software) businesses
+  const effPaid = paid || !pricingOn || !isOnline;
   useEffect(() => { if (effPaid) reloadReqs(); }, [effPaid]);
   const decide = async (id, status, message) => { await api(`/business/request/${id}`, { method: "PATCH", body: { token: session.token, status, message } }); await reloadReqs(); };
   const pending = (reqs || []).filter((r) => r.status === "pending").length;
@@ -1452,7 +1466,7 @@ function AdminRow({ b, reload }) {
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <Field label="City"><input className="er-input" style={{ width: 150 }} value={d.city} onChange={(e) => set("city", e.target.value)} /></Field>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600 }}>
-            <button type="button" onClick={() => set("online", !d.online)} style={{ position: "relative", width: 44, height: 26, borderRadius: 99, border: "none", cursor: "pointer", background: d.online ? C.accent : "#CFC8BA" }}><span style={{ position: "absolute", top: 3, left: d.online ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff" }} /></button> Online
+            <button type="button" onClick={() => set("online", !d.online)} style={{ position: "relative", width: 44, height: 26, borderRadius: 99, border: "none", cursor: "pointer", background: d.online ? C.accent : "#CFC8BA" }}><span style={{ position: "absolute", top: 3, left: d.online ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff" }} /></button> Online Global
           </label>
         </div>
         <div style={{ display: "flex", gap: 6 }}>{[["percent", "%"], ["flat", "$"], ["both", "Both"]].map(([t, lbl]) => { const on = d.commissionType === t;
@@ -2515,35 +2529,33 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         </div>
       </header>
 
-      <section className="er-wrap er-hero-scatter" style={{ padding: "48px 22px 56px" }}>
+      <section className="er-wrap er-hero-scatter" style={{ padding: "40px 22px" }}>
         <div className="er-scatter" aria-hidden="true">
           {[
-            { top: "8%", left: "3%", r: -8, s: 150, keep: true },
-            { top: "40%", left: "3%", r: 6, s: 128 },
-            { bottom: "8%", left: "5%", r: -5, s: 158, keep: true },
-            { top: "5%", left: "23%", r: 5, s: 116 },
-            { bottom: "6%", left: "26%", r: 7, s: 116 },
-            { top: "6%", right: "23%", r: -6, s: 116 },
-            { top: "8%", right: "3%", r: 7, s: 150, keep: true },
-            { top: "40%", right: "3%", r: -7, s: 128 },
-            { bottom: "8%", right: "5%", r: 6, s: 158, keep: true },
-            { bottom: "6%", right: "26%", r: -5, s: 116 },
+            { top: "11%", left: "18%", r: -4, s: 200, keep: true },   // upper-left (BOOK TALK)
+            { top: "38%", left: "4%", r: -8, s: 140 },               // mid-left small (LET'S RUN)
+            { top: "56%", left: "12%", r: -7, s: 214 },              // lower-left big (PITCH YOUR IDEA)
+            { bottom: "-6%", left: "3%", r: 8, s: 176, keep: true },  // bottom-left bleed (keyboard)
+            { top: "-8%", left: "44%", r: 2, s: 150 },               // top-center bleed (SUMMER25)
+            { top: "8%", right: "17%", r: 4, s: 196, keep: true },    // upper-right (make the earth happy)
+            { top: "36%", right: "3%", r: 6, s: 174 },               // mid-right (BACK TO 90s)
+            { top: "52%", right: "21%", r: -3, s: 150 },             // right-center (AI head)
+            { bottom: "10%", right: "6%", r: 5, s: 186, keep: true },  // lower-right (Cocktail Hour)
+            { bottom: "-7%", left: "30%", r: -3, s: 150 },           // bottom-center bleed (BBQ)
+            { bottom: "-7%", left: "58%", r: 4, s: 150 },            // bottom-center bleed (brunch)
           ].map((c, i) => { const v = ER_VIDEOS[i % ER_VIDEOS.length]; const pos = {}; ["top", "left", "right", "bottom"].forEach((k) => { if (c[k] != null) pos[k] = c[k]; });
             return <div key={i} className={`er-scatter-card${c.keep ? " er-keep" : ""}`} style={{ ...pos, width: c.s, height: c.s, "--rot": `rotate(${c.r}deg)`, transform: `rotate(${c.r}deg)`, animationDelay: `${(i % 5) * 0.5}s` }}>
               <img src={v.poster} alt="" loading="lazy" />
             </div>; })}
         </div>
         <div style={{ position: "relative", zIndex: 2, maxWidth: 680, margin: "0 auto" }}>
-          <span className="er-eyebrow">For creators, free forever</span>
-          <h1 style={{ fontFamily: "'Inter',-apple-system,system-ui,sans-serif", margin: "14px 0 0", fontSize: "clamp(44px,8vw,84px)", lineHeight: 0.98, fontWeight: 800, letterSpacing: "-.035em", color: C.ink }}>Recommend what<br />you love,<span style={{ color: C.accent }}> get paid</span><br /><span style={{ color: C.gold }}>for every sale.</span></h1>
-          <p style={{ margin: "24px auto 0", fontSize: 18, lineHeight: 1.5, color: C.muted, maxWidth: 500, fontWeight: 500 }}>Build a list of the apps and brands you back, drop one link in your bio, and earn a commission every time your audience buys.</p>
-          <div style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            <button className="er-btn er-btn-primary" onClick={onCreator}>Create my list free <Arrow size={16} /></button>
-            <button className="er-btn er-btn-ghost" onClick={onList}>I'm a business</button>
+          <h1 style={{ fontFamily: "'Inter',-apple-system,system-ui,sans-serif", margin: 0, fontSize: "clamp(46px,8.5vw,96px)", lineHeight: 0.92, fontWeight: 800, letterSpacing: "-.04em", color: C.ink }}>Recommend<br />what you love,<br /><span style={{ color: "#E6399B" }}>get</span> <span style={{ color: "#F5A623" }}>paid.</span></h1>
+          <p style={{ margin: "26px auto 0", fontSize: 19, lineHeight: 1.45, color: "#7A7A7E", maxWidth: 560, fontWeight: 500 }}>Build a list of the apps and brands you back, drop one link in your bio, and earn a commission every time your audience buys.</p>
+          <div style={{ marginTop: 32 }}>
+            <button onClick={onCreator} style={{ background: C.ink, color: "#fff", border: "none", borderRadius: 999, padding: "15px 30px", fontSize: 16.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Create my list free</button>
           </div>
-          <div style={{ marginTop: 18, display: "inline-flex", alignItems: "center", gap: 9, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 999, padding: "8px 15px" }}>
-            <Spark size={15} style={{ color: C.accentD, flexShrink: 0 }} />
-            <span style={{ fontSize: 13.5, fontWeight: 600, color: C.accentD }}>Smaller creators earn ~$500 in 3 months, larger creators ~$5,000</span>
+          <div style={{ marginTop: 16 }}>
+            <button onClick={onList} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: "#7A7A7E", display: "inline-flex", alignItems: "center", gap: 7 }}>I'm a business <Arrow size={15} /></button>
           </div>
         </div>
       </section>
@@ -2723,7 +2735,7 @@ const STYLES = `
 @media(max-width:400px){.er-hide-xs{display:none}}
 @media(min-width:680px){.er-cards{grid-template-columns:1fr 1fr}.er-creators{grid-template-columns:1fr 1fr}.er-videos-grid{grid-template-columns:1fr 1fr}}
 @media(min-width:1000px){.er-cards{grid-template-columns:1fr 1fr 1fr}.er-hero{grid-template-columns:1.05fr .95fr;gap:60px}.er-stepwork{grid-template-columns:1fr 1fr 1fr}.er-videos-grid{grid-template-columns:1fr 1fr 1fr}.er-how2{grid-template-columns:1fr 1fr;gap:64px}.er-hero-2col{grid-template-columns:1.1fr .9fr;gap:56px}}
-.er-hero-scatter{position:relative;overflow:visible;min-height:clamp(540px,80vh,800px);display:grid;place-items:center;text-align:center}
+.er-hero-scatter{position:relative;overflow:hidden;min-height:clamp(560px,86vh,860px);display:grid;place-items:center;text-align:center}
 .er-root{overflow-x:hidden}
 .er-scatter{position:absolute;inset:0;pointer-events:none;z-index:0}
 .er-scatter-card{position:absolute;border-radius:18px;overflow:hidden;background:#fff;border:3px solid #fff;box-shadow:0 12px 34px rgba(28,26,23,.16);animation:er-floaty 7s ease-in-out infinite}
