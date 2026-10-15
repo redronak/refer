@@ -2529,34 +2529,19 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         </div>
       </header>
 
-      <section className="er-wrap er-hero-scatter" style={{ padding: "40px 22px" }}>
-        <div className="er-scatter" aria-hidden="true">
-          {[
-            { top: "11%", left: "18%", r: -4, s: 200, keep: true },   // upper-left (BOOK TALK)
-            { top: "38%", left: "4%", r: -8, s: 140 },               // mid-left small (LET'S RUN)
-            { top: "56%", left: "12%", r: -7, s: 214 },              // lower-left big (PITCH YOUR IDEA)
-            { bottom: "-6%", left: "3%", r: 8, s: 176, keep: true },  // bottom-left bleed (keyboard)
-            { top: "-8%", left: "44%", r: 2, s: 150 },               // top-center bleed (SUMMER25)
-            { top: "8%", right: "17%", r: 4, s: 196, keep: true },    // upper-right (make the earth happy)
-            { top: "36%", right: "3%", r: 6, s: 174 },               // mid-right (BACK TO 90s)
-            { top: "52%", right: "21%", r: -3, s: 150 },             // right-center (AI head)
-            { bottom: "10%", right: "6%", r: 5, s: 186, keep: true },  // lower-right (Cocktail Hour)
-            { bottom: "-7%", left: "30%", r: -3, s: 150 },           // bottom-center bleed (BBQ)
-            { bottom: "-7%", left: "58%", r: 4, s: 150 },            // bottom-center bleed (brunch)
-          ].map((c, i) => { const v = ER_VIDEOS[i % ER_VIDEOS.length]; const pos = {}; ["top", "left", "right", "bottom"].forEach((k) => { if (c[k] != null) pos[k] = c[k]; });
-            return <div key={i} className={`er-scatter-card${c.keep ? " er-keep" : ""}`} style={{ ...pos, width: c.s, height: c.s, "--rot": `rotate(${c.r}deg)`, transform: `rotate(${c.r}deg)`, animationDelay: `${(i % 5) * 0.5}s` }}>
-              <img src={v.poster} alt="" loading="lazy" />
-            </div>; })}
-        </div>
-        <div style={{ position: "relative", zIndex: 2, maxWidth: 680, margin: "0 auto" }}>
-          <h1 style={{ fontFamily: "'Inter',-apple-system,system-ui,sans-serif", margin: 0, fontSize: "clamp(46px,8.5vw,96px)", lineHeight: 0.92, fontWeight: 800, letterSpacing: "-.04em", color: C.ink }}>Recommend<br />what you love,<br /><span style={{ color: "#E6399B" }}>get</span> <span style={{ color: "#F5A623" }}>paid.</span></h1>
-          <p style={{ margin: "26px auto 0", fontSize: 19, lineHeight: 1.45, color: "#7A7A7E", maxWidth: 560, fontWeight: 500 }}>Build a list of the apps and brands you back, drop one link in your bio, and earn a commission every time your audience buys.</p>
-          <div style={{ marginTop: 32 }}>
-            <button onClick={onCreator} style={{ background: C.ink, color: "#fff", border: "none", borderRadius: 999, padding: "15px 30px", fontSize: 16.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Create my list free</button>
+      <section className="er-luma">
+        {/* Tile slots measured from luma.com at 1440px wide: [x, y, w, h] of the image inside each frame. */}
+        {LUMA_TILES.map(([x, y, w, h], i) => (
+          <div key={i} className="er-luma-tile" aria-hidden="true" style={{ left: `${((x - 9) / 1440 * 100).toFixed(3)}%`, top: `calc(${y - 9} * var(--u))`, width: `calc(${w + 18} * var(--u))`, height: `calc(${h + 18} * var(--u))`, animationDelay: `${-(i * 0.9).toFixed(1)}s` }}>
+            <img src={ER_VIDEOS[(i + 3) % ER_VIDEOS.length].poster} alt="" loading={i < 9 ? "eager" : "lazy"} />
           </div>
-          <div style={{ marginTop: 16 }}>
-            <button onClick={onList} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: "#7A7A7E", display: "inline-flex", alignItems: "center", gap: 7 }}>I'm a business <Arrow size={15} /></button>
-          </div>
+        ))}
+        <div className="er-luma-fade" />
+        <div className="er-luma-copy">
+          <h1 className="er-luma-h1">Share what<br />you love,<br /><span className="er-luma-grad">get paid.</span></h1>
+          <p className="er-luma-sub">From skincare to software, build a list of brands you love and earn on every sale from your link.</p>
+          <button className="er-luma-cta" onClick={onCreator}>Create Your First List</button>
+          <div><button className="er-luma-link" onClick={onList}>List Your Business <Arrow size={16} /></button></div>
         </div>
       </section>
 
@@ -2735,16 +2720,31 @@ const STYLES = `
 @media(max-width:400px){.er-hide-xs{display:none}}
 @media(min-width:680px){.er-cards{grid-template-columns:1fr 1fr}.er-creators{grid-template-columns:1fr 1fr}.er-videos-grid{grid-template-columns:1fr 1fr}}
 @media(min-width:1000px){.er-cards{grid-template-columns:1fr 1fr 1fr}.er-hero{grid-template-columns:1.05fr .95fr;gap:60px}.er-stepwork{grid-template-columns:1fr 1fr 1fr}.er-videos-grid{grid-template-columns:1fr 1fr 1fr}.er-how2{grid-template-columns:1fr 1fr;gap:64px}.er-hero-2col{grid-template-columns:1.1fr .9fr;gap:56px}}
-.er-hero-scatter{position:relative;overflow:hidden;min-height:clamp(560px,86vh,860px);display:grid;place-items:center;text-align:center}
 .er-root{overflow-x:hidden}
-.er-scatter{position:absolute;inset:0;pointer-events:none;z-index:0}
-.er-scatter-card{position:absolute;border-radius:18px;overflow:hidden;background:#fff;border:3px solid #fff;box-shadow:0 12px 34px rgba(28,26,23,.16);animation:er-floaty 7s ease-in-out infinite}
-.er-scatter-card img{display:block;width:100%;height:100%;object-fit:cover}
-@keyframes er-floaty{0%,100%{transform:translateY(0) var(--rot)}50%{transform:translateY(-12px) var(--rot)}}
-@media(max-width:880px){.er-scatter-card{display:none}.er-scatter-card.er-keep{display:block}}
-@media(max-width:560px){.er-scatter-card.er-keep{display:none}}
+/* Luma-style hero. Designed on a 1440px canvas; --u is one design pixel, scaled down below 1440px. */
+.er-luma{--u:min(1px, 100vw / 1440);position:relative;overflow:hidden;background:#fff;height:calc(640 * var(--u));-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.er-luma-tile{position:absolute;box-sizing:border-box;padding:calc(9 * var(--u));border-radius:calc(13 * var(--u));background:linear-gradient(180deg,#F5F5F5 0%,#EFEFEF 55%,#E6E6E6 100%);border:.5px solid rgba(0,0,0,.16);box-shadow:0 calc(10 * var(--u)) calc(24 * var(--u)) rgba(0,0,0,.12);animation:er-lfloat 8s ease-in-out infinite;pointer-events:none}
+.er-luma-tile img{display:block;width:100%;height:100%;object-fit:cover;border-radius:calc(5 * var(--u))}
+@keyframes er-lfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(-6 * var(--u)))}}
+.er-luma-fade{position:absolute;left:0;right:0;top:calc(535 * var(--u));bottom:0;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,#fff 100%);pointer-events:none;z-index:1}
+.er-luma-copy{position:absolute;left:0;right:0;top:calc(134 * var(--u));text-align:center;z-index:2;padding:0 16px}
+.er-luma-h1{font-family:'Inter',-apple-system,system-ui,sans-serif;font-optical-sizing:auto;margin:0;font-size:calc(76 * var(--u));line-height:calc(74 * var(--u));font-weight:560;letter-spacing:-.012em;color:#131517}
+.er-luma-grad{background:linear-gradient(90deg,#C83BB3 0%,#E22C91 24%,#F1277A 36%,#F3455A 43%,#F57737 55%,#EE9137 68%,#E9AA38 81%,#E9AA38 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.er-luma-sub{font-family:'Inter',-apple-system,system-ui,sans-serif;margin:calc(27 * var(--u)) auto 0;max-width:calc(420 * var(--u));font-size:calc(18.8 * var(--u));line-height:calc(30 * var(--u));font-weight:400;color:#8D8E8F}
+.er-luma-cta{margin-top:calc(30 * var(--u));height:calc(45 * var(--u));padding:0 calc(19 * var(--u));border:none;border-radius:999px;background:#131517;color:#fff;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(17 * var(--u));font-weight:500;cursor:pointer}
+.er-luma-link{margin-top:calc(19 * var(--u));display:inline-flex;align-items:center;gap:calc(6 * var(--u));background:none;border:none;padding:0;cursor:pointer;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(16 * var(--u));line-height:calc(24 * var(--u));font-weight:500;color:#A1A2A3}
+@media(prefers-reduced-motion:reduce){.er-luma-tile{animation:none}}
+@media(max-width:760px){
+  .er-luma{height:auto;padding:56px 0 64px}
+  .er-luma-tile,.er-luma-fade{display:none}
+  .er-luma-copy{position:static}
+  .er-luma-h1{font-size:48px;line-height:47px}
+  .er-luma-sub{margin-top:22px;max-width:340px;font-size:17px;line-height:26px}
+  .er-luma-cta{margin-top:26px;height:46px;padding:0 20px;font-size:16px}
+  .er-luma-link{margin-top:16px;font-size:15px;line-height:22px;gap:6px}
+}
 .er-root button:focus-visible,.er-root input:focus-visible,.er-root a:focus-visible{outline:2px solid ${C.accent};outline-offset:2px}
-@media(prefers-reduced-motion:reduce){.er-root *{transition:none!important}.er-scatter-card{animation:none}}
+@media(prefers-reduced-motion:reduce){.er-root *{transition:none!important}}
 `;
 
 /* ---------- Root ---------- */
@@ -2786,6 +2786,20 @@ const RB_AGENTS = [
 ];
 // Videos for the homepage. Files in public/: /video1.mp4 … /video18.mp4, with
 // posters /image1.jpeg … /image18.jpeg. Plays on hover (desktop) / tap (mobile).
+// Luma hero tile slots, measured from luma.com at 1440px: image box [x, y, w, h] in design px.
+const LUMA_TILES = [
+  [557, -120, 195, 195], // top-centre, bleeds off the top
+  [284, 66, 134, 134],   // upper-left
+  [1044, 16, 146, 146],  // upper-right
+  [77, 192, 102, 102],   // mid-left, small
+  [166, 295, 164, 164],  // lower-left, large
+  [1249, 186, 129, 129], // far right
+  [1000, 312, 120, 120], // right of centre
+  [1140, 422, 142, 136], // lower-right
+  [-27, 494, 140, 140],  // bottom-left, cut by the left edge
+  [373, 596, 147, 147],  // bottom row (faded)
+  [810, 584, 212, 212],  // bottom row, large (faded)
+];
 const ER_VIDEOS = [13, 14, 15, 16, 17, 18, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => ({ src: `/video${n}.mp4`, poster: `/image${n}.jpeg`, title: "" }));
 
 function RBtn({ children, kind = "primary", as = "button", href, onClick, style }) {
@@ -2890,7 +2904,7 @@ function RetentionApp() {
   useEffect(() => {
     if (!document.getElementById("er-fonts")) {
       const l = document.createElement("link"); l.id = "er-fonts"; l.rel = "stylesheet";
-      l.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800;900&display=swap";
+      l.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:opsz,wght@14..32,100..900&display=swap";
       document.head.appendChild(l);
     }
     if (!document.getElementById("rb-styles")) {
@@ -3022,7 +3036,7 @@ function EasyApp() {
   useEffect(() => {
     try { if (!sessionStorage.getItem("er_pv")) { sessionStorage.setItem("er_pv", "1"); api("/pageview", { method: "POST" }).catch(() => {}); } } catch (e) {}
     const f = document.createElement("link"); f.rel = "stylesheet";
-    f.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800;900&display=swap";
+    f.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:opsz,wght@14..32,100..900&display=swap";
     document.head.appendChild(f);
     const s = document.createElement("style"); s.textContent = STYLES; document.head.appendChild(s);
     let rb = null;
