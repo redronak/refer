@@ -2541,8 +2541,10 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <h1 className="er-luma-h1">Share what<br />you love,<br /><span className="er-luma-grad">get paid.</span></h1>
           <p className="er-luma-sub">From skincare to software, build a list of brands you love and earn on every sale from your link. Wanna earn more? Create content and earn commission on every sale.</p>
           <div className="er-luma-pill">1,000+ brands to choose from</div>
-          <div><button className="er-luma-cta" onClick={onCreator}>Create Your First List</button></div>
-          <div><button className="er-luma-link" onClick={onList}>List Your Business <Arrow size={16} /></button></div>
+          <div className="er-luma-actions">
+            <button className="er-luma-cta" onClick={onCreator}>Create Your First List</button>
+            <button className="er-luma-cta2" onClick={onList}>List Your Business <Arrow size={17} /></button>
+          </div>
         </div>
       </section>
 
@@ -2733,7 +2735,9 @@ const STYLES = `
 .er-luma-grad{background:linear-gradient(90deg,#C83BB3 0%,#E22C91 24%,#F1277A 36%,#F3455A 43%,#F57737 55%,#EE9137 68%,#E9AA38 81%,#E9AA38 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .er-luma-sub{font-family:'Inter',-apple-system,system-ui,sans-serif;margin:calc(27 * var(--u)) auto 0;max-width:calc(520 * var(--u));font-size:calc(18.8 * var(--u));line-height:calc(30 * var(--u));font-weight:400;color:#8D8E8F}
 .er-luma-pill{display:inline-block;margin-top:calc(16 * var(--u));padding:calc(5 * var(--u)) calc(13 * var(--u));border-radius:999px;background:#F2F2F3;color:#131517;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(13.5 * var(--u));font-weight:600}
-.er-luma-cta{margin-top:calc(22 * var(--u));height:calc(45 * var(--u));padding:0 calc(19 * var(--u));border:none;border-radius:999px;background:#131517;color:#fff;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(17 * var(--u));font-weight:500;cursor:pointer}
+.er-luma-actions{margin-top:calc(22 * var(--u));display:flex;gap:calc(12 * var(--u));justify-content:center;flex-wrap:wrap}
+.er-luma-cta2{display:inline-flex;align-items:center;gap:calc(7 * var(--u));height:calc(45 * var(--u));padding:0 calc(20 * var(--u));border:1px solid #D6D6DA;border-radius:999px;background:#fff;color:#131517;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(17 * var(--u));font-weight:500;cursor:pointer}
+.er-luma-cta{margin-top:0;height:calc(45 * var(--u));padding:0 calc(19 * var(--u));border:none;border-radius:999px;background:#131517;color:#fff;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(17 * var(--u));font-weight:500;cursor:pointer}
 .er-luma-link{margin-top:calc(19 * var(--u));display:inline-flex;align-items:center;gap:calc(6 * var(--u));background:none;border:none;padding:0;cursor:pointer;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(16 * var(--u));line-height:calc(24 * var(--u));font-weight:500;color:#A1A2A3}
 @media(prefers-reduced-motion:reduce){.er-luma-tile{animation:none}}
 @media(max-width:760px){
@@ -2743,7 +2747,8 @@ const STYLES = `
   .er-luma-h1{font-size:48px;line-height:47px}
   .er-luma-sub{margin-top:22px;max-width:340px;font-size:17px;line-height:26px}
   .er-luma-pill{margin-top:14px;padding:5px 12px;font-size:13px}
-  .er-luma-cta{margin-top:20px;height:46px;padding:0 20px;font-size:16px}
+  .er-luma-actions{margin-top:20px;gap:10px}
+  .er-luma-cta,.er-luma-cta2{height:46px;padding:0 20px;font-size:16px}
   .er-luma-link{margin-top:16px;font-size:15px;line-height:22px;gap:6px}
 }
 .er-root button:focus-visible,.er-root input:focus-visible,.er-root a:focus-visible{outline:2px solid ${C.accent};outline-offset:2px}
