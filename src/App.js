@@ -1981,7 +1981,7 @@ function CommissionRequest({ token, businessId, requests = [], onDone }) {
     </div>
   );
 }
-function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh }) {
+function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh, onCreator, onList }) {
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false); const [photoBusy, setPhotoBusy] = useState(false);
   const [myReqs, setMyReqs] = useState({}); const [reqList, setReqList] = useState([]);
   const [sharing, setSharing] = useState("");
@@ -2188,6 +2188,9 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
         <div style={{ marginTop: 28, background: C.ink, borderRadius: 18, padding: "26px 24px", textAlign: "center" }}>
           <p className="er-serif" style={{ margin: 0, color: C.paper, fontSize: 19, fontWeight: 500 }}>Earn by sharing your favorite brand recommendations</p>
           <button className="er-btn er-btn-sm" style={{ marginTop: 14, background: C.paper, color: C.ink }} onClick={onBrowse}>Browse all brands <Arrow size={15} /></button></div>
+      </div>
+      <div style={{ marginTop: 48 }}>
+        <LumaHero title={<>Create your<br />first list,<br /><span className="er-luma-grad">earn $25.</span></>} onCreator={onCreator} onList={onList} />
       </div>
     </div>
   );
@@ -2496,6 +2499,29 @@ function PlatformSteps() {
     </section>
   );
 }
+/* Luma-inspired hero, shared by the homepage and creator profile pages. */
+function LumaHero({ title, onCreator, onList }) {
+  return (
+    <section className="er-luma">
+      {/* Tile slots measured from luma.com at 1440px wide: [x, y, w, h] of the image inside each frame. */}
+      {LUMA_TILES.map(([x, y, w, h], i) => (
+        <div key={i} className="er-luma-tile" aria-hidden="true" style={{ left: `${((x - 9) / 1440 * 100).toFixed(3)}%`, top: `calc(${y - 9} * var(--u))`, width: `calc(${w + 18} * var(--u))`, height: `calc(${h + 18} * var(--u))`, animationDelay: `${-(i * 0.9).toFixed(1)}s` }}>
+          <img src={ER_VIDEOS[(i + 3) % ER_VIDEOS.length].poster} alt="" loading={i < 9 ? "eager" : "lazy"} />
+        </div>
+      ))}
+      <div className="er-luma-fade" />
+      <div className="er-luma-copy">
+        <h1 className="er-luma-h1">{title}</h1>
+        <p className="er-luma-sub">From skincare to software, build a list of brands you love and earn on every sale from your link. Wanna earn more? Create content and earn commission on every sale.</p>
+        <div className="er-luma-pill">1,000+ brands to choose from</div>
+        <div className="er-luma-actions">
+          <button className="er-luma-cta" onClick={onCreator}>Create Your First List</button>
+          <button className="er-luma-cta2" onClick={onList}>List Your Business <Arrow size={17} /></button>
+        </div>
+      </div>
+    </section>
+  );
+}
 function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage }) {
   const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
   const seatsLeft = 8 - ((new Date().getDay() + 6) % 7); // Mon 8 → Sun 2, resets Monday
@@ -2529,24 +2555,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         </div>
       </header>
 
-      <section className="er-luma">
-        {/* Tile slots measured from luma.com at 1440px wide: [x, y, w, h] of the image inside each frame. */}
-        {LUMA_TILES.map(([x, y, w, h], i) => (
-          <div key={i} className="er-luma-tile" aria-hidden="true" style={{ left: `${((x - 9) / 1440 * 100).toFixed(3)}%`, top: `calc(${y - 9} * var(--u))`, width: `calc(${w + 18} * var(--u))`, height: `calc(${h + 18} * var(--u))`, animationDelay: `${-(i * 0.9).toFixed(1)}s` }}>
-            <img src={ER_VIDEOS[(i + 3) % ER_VIDEOS.length].poster} alt="" loading={i < 9 ? "eager" : "lazy"} />
-          </div>
-        ))}
-        <div className="er-luma-fade" />
-        <div className="er-luma-copy">
-          <h1 className="er-luma-h1">Share what<br />you love,<br /><span className="er-luma-grad">get paid.</span></h1>
-          <p className="er-luma-sub">From skincare to software, build a list of brands you love and earn on every sale from your link. Wanna earn more? Create content and earn commission on every sale.</p>
-          <div className="er-luma-pill">1,000+ brands to choose from</div>
-          <div className="er-luma-actions">
-            <button className="er-luma-cta" onClick={onCreator}>Create Your First List</button>
-            <button className="er-luma-cta2" onClick={onList}>List Your Business <Arrow size={17} /></button>
-          </div>
-        </div>
-      </section>
+      <LumaHero title={<>Share what<br />you love,<br /><span className="er-luma-grad">get paid.</span></>} onCreator={onCreator} onList={onList} />
 
       <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ padding: "64px 22px" }}>
@@ -3087,7 +3096,7 @@ function EasyApp() {
       {view === "mybiz" && session && <MyBusiness session={session} onBack={goHome} onRefresh={refresh} />}
       {view === "settings" && session && <AccountSettings session={session} onBack={goHome} onLogout={logout} onEditProfile={() => goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onLegal={() => setLegalOpen(true)} onDeleted={() => { logout(); }} />}
       {view === "settings" && !session && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => {}} onMyBiz={() => {}} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} />}
-      {view === "profile" && <InfluencerProfile handle={profileHandle} session={session} dataVersion={ver} onBack={goHome} onBrowse={goHome} onOpenBusiness={(id) => setDetailId(id)} onAddBrand={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onRefresh={refresh} />}
+      {view === "profile" && <InfluencerProfile handle={profileHandle} session={session} dataVersion={ver} onBack={goHome} onBrowse={goHome} onOpenBusiness={(id) => setDetailId(id)} onAddBrand={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onRefresh={refresh} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onList={() => setBrandOpen(true)} />}
 
       <CookieBar onLearnMore={() => setLegalOpen(true)} />
       {legalOpen && <LegalModal onClose={() => setLegalOpen(false)} />}
