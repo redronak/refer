@@ -1094,7 +1094,7 @@ function SetupTab({ token, business }) {
   );
 }
 function fmtFol(n) { n = Number(n) || 0; if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M"; return n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "K" : String(n); }
-function InfluencerDirectory({ token }) {
+function InfluencerDirectory({ token, approved }) {
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [cat, setCat] = useState("");
   const [asked, setAsked] = useState({}); const [busy, setBusy] = useState(null);
   useEffect(() => { setData(null); api(`/business/me/directory?token=${encodeURIComponent(token)}${cat ? `&cat=${encodeURIComponent(cat)}` : ""}`).then(setData).catch((e) => { setErr(e.message); setData({ items: [], cats: {} }); }); }, [token, cat]);
@@ -1106,6 +1106,7 @@ function InfluencerDirectory({ token }) {
   return (
     <div>
       <p style={{ margin: "0 0 14px", fontSize: 14, color: C.muted }}>1,000+ creators open to brand work. To protect them from spam, handles are hidden. Request an intro and we'll connect you.</p>
+      {!approved && <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 600, color: "#B26A00", background: "#FFF6E5", border: "1px solid #F3D9A4", borderRadius: 10, padding: "9px 12px" }}>You can request intros once our team approves your business.</p>}
       {err && <p style={{ color: "#9B3024", fontSize: 13 }}>{err}</p>}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
         {chip("", "All")}
@@ -1122,7 +1123,7 @@ function InfluencerDirectory({ token }) {
             <span style={{ fontSize: 12, fontWeight: 700, color: C.inkSoft, background: C.panel, borderRadius: 999, padding: "4px 10px", flexShrink: 0 }}>{fmtFol(x.followers)} followers</span>
             {asked[x.id]
               ? <span style={{ fontSize: 12.5, fontWeight: 700, color: C.accentD, display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0 }}><Check size={14} /> Intro requested</span>
-              : <button className="er-btn er-btn-light er-btn-sm" style={{ flexShrink: 0 }} disabled={busy === x.id} onClick={() => intro(x.id)}><Send size={13} /> {busy === x.id ? "Sending…" : "Request intro"}</button>}
+              : <button className="er-btn er-btn-light er-btn-sm" style={{ flexShrink: 0 }} disabled={!approved || busy === x.id} title={approved ? "" : "Available after your business is approved"} onClick={() => intro(x.id)}><Send size={13} /> {busy === x.id ? "Sending…" : "Request intro"}</button>}
           </div>); })}
       </div>
       <div style={{ marginTop: 14, background: C.panel, border: `1px dashed ${C.line}`, borderRadius: 14, padding: "16px", textAlign: "center" }}>
@@ -1206,7 +1207,7 @@ function MyBusiness({ session, onBack, onRefresh }) {
           </>
           : business ? <Paywall business={business} sessionToken={session.token} onPaid={onPaid} /> : <p style={{ color: C.muted }}>No business found.</p>)}
 
-      {tab === "inf" && <InfluencerDirectory token={session.token} />}
+      {tab === "inf" && <InfluencerDirectory token={session.token} approved={(rows || []).some((b) => b.status === "approved")} />}
 
       {tab === "hire" && hireOn && (rows === null
         ? <p style={{ color: C.muted }}>Loading…</p>
