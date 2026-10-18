@@ -116,7 +116,11 @@ function parseRoute() {
   if (p === "/my-business") return { view: getSession() ? "mybiz" : "home", handle: null };
   if (p === "/settings") return { view: getSession() ? "settings" : "home", handle: null };
   if (p === "/business") return { view: "business", handle: null };
+  if (p === "/brands") return { view: "brands", handle: null };
   if (p === "/influencers") return { view: "influencers", handle: null };
+  // Creator links (easyrecommend.co/r/name/brand) are tracked + redirected by the backend.
+  if (/^\/r\/[^/]+\/[^/]+/.test(p)) { window.location.replace(API_BASE + window.location.pathname + (window.location.search || "")); return { view: "redirecting", handle: null }; }
+  if (p === "/claim") return { view: "claim", handle: null };
   const m = p.match(/^\/@([A-Za-z0-9_]+)/);
   if (m) return { view: "profile", handle: m[1].toLowerCase() };
   return { view: "home", handle: null };
@@ -252,11 +256,90 @@ function Modal({ children, onClose, wide }) {
 function ErrBox({ msg }) { return msg ? <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "#C0392B" }}>{msg}</p> : null; }
 
 /* ---------- Business detail (fetches /business/:id) ---------- */
-function BusinessDetail({ id, onClose, onRecommend }) {
+/* Shopper lands here from a creator link when the brand has a discount code. */
+function ClaimPage() {
+  const q = new URLSearchParams(window.location.search);
+  const to = q.get("to") || ""; const ok = /^https?:\/\//i.test(to);
+  const code = q.get("code") || ""; const name = q.get("name") || "this brand"; const pct = Number(q.get("pct")) || 0; const by = (q.get("by") || "").replace(/[^a-z0-9_.-]/gi, "");
+  const id = (q.get("id") || "").replace(/[^a-f0-9]/gi, "");
+  const [copied, setCopied] = useState(false); const [img, setImg] = useState("");
+  useEffect(() => { if (id) api(`/business/${id}`).then((b) => setImg(b.offerImage || "")).catch(() => {}); }, [id]);
+  const copy = async () => { try { await navigator.clipboard.writeText(code); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1500); };
+  const go = async () => { if (code) { try { await navigator.clipboard.writeText(code); } catch (e) {} } if (ok) window.location.href = to; };
+  return (
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: C.panel, padding: 20 }}>
+      <div className="er-card" style={{ maxWidth: 420, width: "100%", padding: img ? 0 : "30px 26px", textAlign: "center", overflow: "hidden" }}>
+        {img && <img src={img} alt={name} style={{ display: "block", width: "100%", aspectRatio: "16/9", objectFit: "cover" }} />}
+        <div style={{ padding: img ? "22px 26px 28px" : 0 }}>
+        {!img && <div style={{ display: "flex", justifyContent: "center" }}><Seal size={34} /></div>}
+        {by && <p style={{ margin: "12px 0 0", fontSize: 13.5, color: C.muted }}>@{by} {code || pct > 0 ? "sent you a discount" : "recommends this"}</p>}
+        <h1 className="er-serif" style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 500 }}>{pct > 0 ? `${pct}% off ${name}` : code ? `A discount for ${name}` : name}</h1>
+        {code && <>
+        <p style={{ margin: "10px 0 0", fontSize: 14, color: C.inkSoft }}>Use this code at checkout:</p>
+        <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, border: `2px dashed ${C.accent}`, borderRadius: 12, padding: "12px 14px", background: C.accentSoft }}>
+          <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 20, fontWeight: 700, letterSpacing: ".08em", color: C.accentD }}>{code}</span>
+          <button className="er-btn er-btn-sm" onClick={copy} style={{ background: copied ? C.accent : C.ink, color: "#fff", border: "none" }}>{copied ? "Copied" : "Copy"}</button>
+        </div></>}
+        <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 18 }} disabled={!ok} onClick={go}>{code ? <>Copy code &amp; shop {name}</> : <>Shop {name}</>} <Arrow size={16} /></button>
+        <p style={{ margin: "14px 0 0", fontSize: 12, color: C.muted }}>Powered by Easy Recommend</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Creator's unique links for one brand: affiliate link + share link (friends get the discount). */
+function LinkPopup({ business, mode = "share", onClose }) {
+  const sess = getSession();
+  const [url, setUrl] = useState(""); const [err, setErr] = useState(""); const [copied, setCopied] = useState("");
+  useEffect(() => {
+    if (!sess || sess.role !== "creator") { setErr("Log in as a creator to get your link."); return; }
+    api("/creator/link", { method: "POST", body: { token: sess.token, businessId: business.id } }).then((r) => setUrl(r.referralUrl)).catch((e) => setErr(e.message));
+  }, [business.id]);
+  const affUrl = url; const shareUrl = url ? url + "?src=share" : "";
+  const copy = async (k, v) => { try { await navigator.clipboard.writeText(v); } catch (e) {} setCopied(k); setTimeout(() => setCopied(""), 1500); };
+  const shareIg = async () => {
+    const text = business.discount > 0 ? `${business.name}: ${business.discount}% off with my link` : `I recommend ${business.name}`;
+    try { if (navigator.share) { await navigator.share({ title: business.name, text, url: shareUrl }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+    copy("share", shareUrl); window.open("https://www.instagram.com/", "_blank", "noopener");
+  };
+  const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
+  const linkRow = (k, label, hint, v) => (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>{label}</div>
+      <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "6px 6px 6px 12px" }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v ? v.replace(/^https?:\/\//i, "") : "Creating your link…"}</span>
+        <button className="er-btn er-btn-sm" disabled={!v} onClick={() => copy(k, v)} style={{ flexShrink: 0, background: copied === k ? C.accent : C.ink, color: "#fff", border: "none" }}>{copied === k ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}</button>
+      </div>
+      <div style={{ marginTop: 5, fontSize: 12, color: C.muted }}>{hint}</div>
+    </div>
+  );
+  return (
+    <Modal onClose={onClose}>
+      <div style={{ padding: "28px 26px" }}>
+        <span className="er-eyebrow">{mode === "aff" ? "Affiliate link" : "Share & earn"}</span>
+        <h2 className="er-serif" style={{ margin: "8px 0 4px", fontSize: 24, fontWeight: 500 }}>{mode === "aff" ? `Your link for ${business.name}` : `Share ${business.name} & earn`}</h2>
+        <p style={{ margin: 0, fontSize: 13.5, color: C.muted }}>Every click and sale on these links is tracked to you{business.discount > 0 ? `, and shoppers get ${business.discount}% off` : ""}.</p>
+        {err ? <p style={{ marginTop: 14, fontSize: 13.5, color: "#9B3024" }}>{err}</p> : <>
+          {mode === "aff"
+            ? <>{linkRow("aff", "Affiliate link", "Put it in your bio, posts, reels and videos.", affUrl)}{linkRow("share", "Share link for friends", "Send this one in DMs and stories.", shareUrl)}</>
+            : <>{linkRow("share", "Your share link", "Friends who shop through it get the discount.", shareUrl)}{linkRow("aff", "Affiliate link", "For your bio and content.", affUrl)}</>}
+          {business.discountCode && <p style={{ margin: "12px 0 0", fontSize: 12.5, color: C.inkSoft }}>Shoppers will see the code <b>{business.discountCode}</b> before they shop.</p>}
+          <button className="er-btn er-btn-block" disabled={!shareUrl} onClick={shareIg} style={{ marginTop: 18, border: "none", color: "#fff", background: igGrad, boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}><IgIcon size={15} /> Share on Instagram</button>
+          <p style={{ margin: "8px 0 0", fontSize: 12, color: C.muted, textAlign: "center" }}>In your story, add a link sticker and paste your link.</p>
+        </>}
+      </div>
+    </Modal>
+  );
+}
+function BusinessDetail({ id, onClose, onRecommend, autoLink }) {
+  const [linkMode, setLinkMode] = useState(null);
   const [b, setB] = useState(null); const [err, setErr] = useState("");
   const [reward, setReward] = useState(null);
   const handle = creatorHandle();
   useEffect(() => { api(`/business/${id}`).then(setB).catch((e) => setErr(e.message)); }, [id]);
+  useEffect(() => { if (b && autoLink && handle) setLinkMode(autoLink); }, [b, autoLink]);
+  const openLink = (m) => { if (handle) setLinkMode(m); else onRecommend(b.id); };
   useEffect(() => { if (handle) api(`/business/${id}/reward?username=${encodeURIComponent(handle)}`).then((r) => setReward(r.earns)).catch(() => {}); }, [id, handle]);
   const cc = b ? catOf(b) : CATS.Beauty;
   const photo = b && (b.photos || [])[0];
@@ -312,9 +395,10 @@ function BusinessDetail({ id, onClose, onRecommend }) {
             <div style={{ padding: "15px 16px", background: "#fff" }}>
               <div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink, lineHeight: 1.35 }}>Share {b.name} with friends on Instagram{reward ? <> and earn <span style={{ color: C.accentD }}>{reward}</span></> : " and earn"} on every sale.</div>
               <p style={{ margin: "6px 0 0", fontSize: 13, color: C.muted, lineHeight: 1.5 }}>Drop your link in a story, friends tap through and shop, and you get paid, no following required.</p>
-              <button className="er-btn er-btn-block" style={{ marginTop: 12, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }} onClick={() => onRecommend(b.id)}>
+              <button className="er-btn er-btn-block" style={{ marginTop: 12, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }} onClick={() => openLink("share")}>
                 <IgIcon size={15} /> Share on Instagram &amp; earn
               </button>
+              <button className="er-btn er-btn-light er-btn-block" style={{ marginTop: 8 }} onClick={() => openLink("aff")}><Copy size={14} /> Get my affiliate link</button>
             </div>
           </div>
           {b.website && <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
@@ -344,6 +428,7 @@ function BusinessDetail({ id, onClose, onRecommend }) {
             </div>
           )}
         </div>
+        {linkMode && <LinkPopup business={b} mode={linkMode} onClose={() => setLinkMode(null)} />}
       </>)}
     </Modal>
   );
@@ -552,13 +637,14 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
 /* ---------- My business (brand self-service) ---------- */
 function BizEditCard({ b, token, reload }) {
   const [edit, setEdit] = useState(false); const [busy, setBusy] = useState(false);
-  const [d, setD] = useState({ name: b.name, blurb: b.blurb || "", city: b.city || "", online: !!b.online, website: b.website || "", discount: b.discount || 0, categories: b.categories || [], commissionType: b.commissionType || "percent", commissionPct: b.commissionPct || 0, commissionFlat: b.commissionFlat || 0, photos: b.photos || [], products: b.products || [] });
+  const [d, setD] = useState({ name: b.name, blurb: b.blurb || "", city: b.city || "", online: !!b.online, website: b.website || "", discount: (b.pendingOffer ? b.pendingOffer.discount : b.discount) || 0, discountCode: (b.pendingOffer ? b.pendingOffer.discountCode : b.discountCode) || "", offerImage: (b.pendingOffer ? b.pendingOffer.offerImage : b.offerImage) || "", categories: b.categories || [], commissionType: b.commissionType || "percent", commissionPct: b.commissionPct || 0, commissionFlat: b.commissionFlat || 0, photos: b.photos || [], products: b.products || [] });
   const set = (k, v) => setD((p) => ({ ...p, [k]: v }));
   const addProduct = () => set("products", [...(d.products || []), { name: "", url: "", note: "" }]);
   const setProduct = (i, k, v) => set("products", d.products.map((p, j) => (j === i ? { ...p, [k]: v } : p)));
   const removeProduct = (i) => set("products", d.products.filter((_, j) => j !== i));
   const toggleCat = (c) => set("categories", d.categories.includes(c) ? d.categories.filter((x) => x !== c) : [...d.categories, c]);
   const onPhotos = async (e) => { const files = [...(e.target.files || [])]; if (!files.length) return; const urls = []; for (const file of files) { try { urls.push(await fileToDataURL(file, 1000, 0.82)); } catch (x) {} } set("photos", [...d.photos, ...urls].slice(0, 6)); e.target.value = ""; };
+  const onOfferImg = async (e) => { const f = (e.target.files || [])[0]; if (!f) return; try { set("offerImage", await fileToDataURL(f, 1200, 0.85)); } catch (x) {} e.target.value = ""; };
   const save = async () => { setBusy(true); try { await api(`/business/me/${b.id}`, { method: "PATCH", body: { token, ...d } }); setEdit(false); await reload(); } catch (e) { alert(e.message); } finally { setBusy(false); } };
   const cc = catOf(b);
   return (
@@ -566,7 +652,7 @@ function BizEditCard({ b, token, reload }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ width: 44, height: 44, borderRadius: 11, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0, overflow: "hidden" }}>{(b.photos || [])[0] ? <img src={b.photos[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={18} />}</span>
         <div style={{ flex: 1, minWidth: 0 }}><p className="er-serif" style={{ margin: 0, fontSize: 17, fontWeight: 500 }}>{b.name}</p>
-          <p style={{ margin: 0, fontSize: 12.5, color: b.status === "approved" ? C.accent : "#B26A00", fontWeight: 600 }}>{b.status === "approved" ? "Live" : `On the waitlist · ${WAITLIST_COUNT} joined`}</p></div>
+          <p style={{ margin: 0, fontSize: 12.5, color: b.status === "approved" ? C.accent : "#B26A00", fontWeight: 600 }}>{b.status === "approved" ? "Live" : `On the waitlist · ${WAITLIST_COUNT} joined`}{b.status === "approved" && b.pendingOffer ? <span style={{ color: "#B26A00" }}> · New offer waiting on approval</span> : null}</p></div>
         {!edit && <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setEdit(true)}><Edit size={14} /> Edit</button>}
       </div>
       {edit && <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -598,7 +684,22 @@ function BizEditCard({ b, token, reload }) {
             <button type="button" onClick={() => set("online", !d.online)} style={{ position: "relative", width: 44, height: 26, borderRadius: 99, border: "none", cursor: "pointer", background: d.online ? C.accent : "#CFC8BA" }}><span style={{ position: "absolute", top: 3, left: d.online ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff" }} /></button> Online Global
           </label>
         </div>
-        <Field label="Customer perk (%)"><input type="number" className="er-input" style={{ width: 120 }} value={d.discount} onChange={(e) => set("discount", +e.target.value)} /></Field>
+        <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, background: C.panel, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700 }}>Offer for shoppers from creator links</p>
+            <p style={{ margin: "3px 0 0", fontSize: 12.5, color: C.muted }}>People who tap a creator's link see this image and discount before they reach your site.{b.status === "approved" ? " Changes go live after our team approves them." : ""}</p>
+          </div>
+          {b.status === "approved" && b.pendingOffer && <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "#B26A00", background: "#FFF6E5", border: "1px solid #F3D9A4", borderRadius: 10, padding: "8px 10px" }}>Waiting on approval. Shoppers still see your current offer until then.</p>}
+          <Field label="Offer image" hint="A product shot or promo banner. Wide images look best.">
+            {d.offerImage
+              ? <div style={{ position: "relative", maxWidth: 320, borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}><img src={d.offerImage} alt="" style={{ display: "block", width: "100%", aspectRatio: "16/9", objectFit: "cover" }} /><button type="button" onClick={() => set("offerImage", "")} title="Remove" style={{ position: "absolute", top: 8, right: 8, width: 24, height: 24, borderRadius: "50%", border: "none", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,.3)", cursor: "pointer", display: "grid", placeItems: "center", color: C.muted }}><Close size={12} /></button></div>
+              : <label style={{ maxWidth: 320, aspectRatio: "16/9", borderRadius: 12, border: `2px dashed ${C.line}`, display: "grid", placeItems: "center", cursor: "pointer", color: C.muted, fontSize: 13, fontWeight: 600, background: "#fff" }}><span style={{ display: "flex", alignItems: "center", gap: 6 }}><Plus size={16} /> Upload image</span><input type="file" accept="image/*" style={{ display: "none" }} onChange={onOfferImg} /></label>}
+          </Field>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <Field label="Discount (%)"><input type="number" min="0" max="90" className="er-input" style={{ width: 110 }} value={d.discount} onChange={(e) => set("discount", Math.max(0, Math.min(90, +e.target.value || 0)))} /></Field>
+            <Field label="Discount code" hint="Create it in your store first."><input className="er-input" style={{ maxWidth: 220 }} placeholder="EASY15" value={d.discountCode} onChange={(e) => set("discountCode", e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 30))} /></Field>
+          </div>
+        </div>
         <Field label="Creator reward" hint="Private, only creators see it.">
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             {[["percent", "%"], ["flat", "$"], ["both", "Both"]].map(([t, l]) => { const on = d.commissionType === t;
@@ -916,12 +1017,13 @@ function SetupTab({ token, business }) {
   const [note, setNote] = useState(""); const [busy, setBusy] = useState(false); const [sent, setSent] = useState(false); const [err, setErr] = useState("");
   useEffect(() => { api(`/business/me/pixel?token=${encodeURIComponent(token)}`).then(setPx).catch(() => {}); }, [token]);
   const key = (px && px.pixelKey) || "your-key";
-  const pixelUrl = (px && px.pixelUrl) || `https://www.easyrecommend.co/easyrecommend/px.js?key=${key}`;
+  const pixelUrl = (px && px.pixelUrl) || `https://learntok-backend-2026-24c204fe508e.herokuapp.com/easyrecommend/px.js?key=${key}`;
   const submit = async () => {
     setBusy(true); setErr("");
     try { await api("/business/me/setup-request", { method: "POST", body: { token, platform: plat, siteUrl: url.trim(), note: note.trim() } }); setSent(true); }
     catch (e) { setErr(e.message || "Couldn't send."); } finally { setBusy(false); }
   };
+  const widgetSnippet = `<script src="${pixelUrl.replace("/px.js", "/widget.js")}" data-mode="both"></script>`;
   const universalSnippet = `<!-- 1. On every page (in your site <head>): -->\n<script src="${pixelUrl}"></script>\n\n<!-- 2. On your order-confirmation / thank-you page: -->\n<script>\n  EasyRec.conversion({ orderId: "YOUR_ORDER_ID", value: 49.00 }); // value = subtotal\n</script>`;
   const step = (n, t) => <li style={{ marginBottom: 6 }}><b>{n}.</b> {t}</li>;
   return (
@@ -958,7 +1060,7 @@ function SetupTab({ token, business }) {
           {step(1, "Admin → Settings → Customer events → Add custom pixel, name it “Easy Recommend”.")}
           {step(2, "Paste the snippet below and Save, then Connect.")}
         </ol>
-        <CopyBox text={`var EASYREC_KEY = "${key}";\nvar EASYREC_ENDPOINT = "https://www.easyrecommend.co/easyrecommend/conversion";\nanalytics.subscribe("page_viewed", async (e) => { try { var h=(e.context.document.location.href)||""; var m=h.match(/[?&]er_click=([^&#]+)/); if(m) await browser.localStorage.setItem("er_click", decodeURIComponent(m[1])); } catch(_){} });\nanalytics.subscribe("checkout_completed", async (e) => { try { var cid=await browser.localStorage.getItem("er_click"); if(!cid) return; var co=(e.data&&e.data.checkout)||{}; var v=(co.subtotalPrice&&co.subtotalPrice.amount)||(co.totalPrice&&co.totalPrice.amount)||0; var oid=(co.order&&co.order.id)||co.token||""; await fetch(EASYREC_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({key:EASYREC_KEY,clickId:cid,orderId:String(oid),value:Number(v)}),keepalive:true}); } catch(_){} });`} />
+        <CopyBox text={`var EASYREC_KEY = "${key}";\nvar EASYREC_ENDPOINT = "https://learntok-backend-2026-24c204fe508e.herokuapp.com/easyrecommend/conversion";\nanalytics.subscribe("page_viewed", async (e) => { try { var h=(e.context.document.location.href)||""; var m=h.match(/[?&]er_click=([^&#]+)/); if(m) await browser.localStorage.setItem("er_click", decodeURIComponent(m[1])); } catch(_){} });\nanalytics.subscribe("checkout_completed", async (e) => { try { var cid=await browser.localStorage.getItem("er_click"); if(!cid) return; var co=(e.data&&e.data.checkout)||{}; var v=(co.subtotalPrice&&co.subtotalPrice.amount)||(co.totalPrice&&co.totalPrice.amount)||0; var oid=(co.order&&co.order.id)||co.token||""; await fetch(EASYREC_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({key:EASYREC_KEY,clickId:cid,orderId:String(oid),value:Number(v)}),keepalive:true}); } catch(_){} });`} />
 
         <div style={{ height: 1, background: C.line, margin: "20px 0" }} />
         <div style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>WooCommerce / WordPress</div>
@@ -980,6 +1082,53 @@ function SetupTab({ token, business }) {
         </ol>
         <CopyBox text={`<script>\n(function(){function f(){if(!window.EasyRec)return setTimeout(f,300);var o=(window.BODL&&window.BODL.order)||null,id="",v=0;if(o){id=o.orderId||o.id||"";v=o.subtotal||o.grandTotal||0;}window.EasyRec.conversion({orderId:id,value:v});}f();})();\n</script>`} />
       </MethodCard>
+
+      <div className="er-card" style={{ padding: "22px", marginTop: 8, border: `1px solid ${C.accent}` }}>
+        <span style={{ display: "inline-block", fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "4px 10px" }}>Bonus · after tracking is set up</span>
+        <h3 className="er-serif" style={{ margin: "12px 0 0", fontSize: 20, fontWeight: 500 }}>Add &ldquo;Share &amp; earn&rdquo; buttons to your site</h3>
+        <p style={{ margin: "8px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.55 }}>Puts a small floating button on your site. Customers can <b>share you with friends</b> (friends get your discount, they earn) or <b>become an affiliate</b> (they post about you and earn per sale). Each person gets their own tracked link.</p>
+        <CopyBox text={widgetSnippet} />
+        <p style={{ margin: "8px 0 0", fontSize: 12.5, color: C.muted }}>Paste it before <code>&lt;/body&gt;</code>. Use <code>data-mode="share"</code> or <code>data-mode="affiliate"</code> to show only one option, and <code>data-position="left"</code> to move it.</p>
+      </div>
+    </div>
+  );
+}
+function fmtFol(n) { n = Number(n) || 0; if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M"; return n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "K" : String(n); }
+function InfluencerDirectory({ token }) {
+  const [data, setData] = useState(null); const [err, setErr] = useState(""); const [cat, setCat] = useState("");
+  const [asked, setAsked] = useState({}); const [busy, setBusy] = useState(null);
+  useEffect(() => { setData(null); api(`/business/me/directory?token=${encodeURIComponent(token)}${cat ? `&cat=${encodeURIComponent(cat)}` : ""}`).then(setData).catch((e) => { setErr(e.message); setData({ items: [], cats: {} }); }); }, [token, cat]);
+  const intro = async (id) => { setBusy(id); try { await api("/business/me/intro", { method: "POST", body: { token, id } }); setAsked((a) => ({ ...a, [id]: true })); } catch (e) { alert(e.message || "Couldn't send."); } finally { setBusy(null); } };
+  if (data === null) return <p style={{ color: C.muted }}>Loading…</p>;
+  const counts = data.cats || {};
+  const cats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  const chip = (key, label) => <button key={key || "all"} className="er-btn er-btn-sm" onClick={() => setCat(key)} style={{ border: `1px solid ${cat === key ? C.ink : C.line}`, background: cat === key ? C.ink : "#fff", color: cat === key ? C.paper : C.inkSoft, textTransform: "capitalize" }}>{label}</button>;
+  return (
+    <div>
+      <p style={{ margin: "0 0 14px", fontSize: 14, color: C.muted }}>1,000+ creators open to brand work. To protect them from spam, handles are hidden. Request an intro and we'll connect you.</p>
+      {err && <p style={{ color: "#9B3024", fontSize: 13 }}>{err}</p>}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+        {chip("", "All")}
+        {cats.map((c) => chip(c, c))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {(data.items || []).map((x) => { const capCat = (x.category || "").charAt(0).toUpperCase() + (x.category || "").slice(1); const cc = CATS[capCat] || tintFor(x.category); return (
+          <div key={x.id} className="er-card" style={{ padding: "13px 15px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span style={{ width: 40, height: 40, borderRadius: "50%", display: "grid", placeItems: "center", background: cc.bg, color: cc.color, fontWeight: 700, flexShrink: 0 }}>{(x.name || "?")[0]}</span>
+            <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 15, color: C.ink }}>{x.name} <span aria-label="Handle hidden" style={{ fontWeight: 600, fontSize: 13, color: C.accentD, filter: "blur(4px)", userSelect: "none" }}>{x.handle}</span></div>
+              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{x.niche} · {x.location}</div>
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.inkSoft, background: C.panel, borderRadius: 999, padding: "4px 10px", flexShrink: 0 }}>{fmtFol(x.followers)} followers</span>
+            {asked[x.id]
+              ? <span style={{ fontSize: 12.5, fontWeight: 700, color: C.accentD, display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0 }}><Check size={14} /> Intro requested</span>
+              : <button className="er-btn er-btn-light er-btn-sm" style={{ flexShrink: 0 }} disabled={busy === x.id} onClick={() => intro(x.id)}><Send size={13} /> {busy === x.id ? "Sending…" : "Request intro"}</button>}
+          </div>); })}
+      </div>
+      <div style={{ marginTop: 14, background: C.panel, border: `1px dashed ${C.line}`, borderRadius: 14, padding: "16px", textAlign: "center" }}>
+        <div style={{ fontWeight: 700, fontSize: 14.5, color: C.ink }}>+ 1,000 more creators</div>
+        <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Request an intro to any creator above and we'll match you with more like them.</div>
+      </div>
     </div>
   );
 }
@@ -1007,7 +1156,14 @@ function MyBusiness({ session, onBack, onRefresh }) {
   const loadCreators = async () => { try { setCreators(await api(`/business/me/creators?token=${t}`)); } catch (e) { setCreators([]); } };
   useEffect(() => { if (tab === "hire" && hireOn) loadCreators(); }, [tab, hireOn]);
   const onPaid = async () => { await reload(); setTab("promo"); setShowReward(true); };
-  const tabs = [["info", "My information"], ["setup", "Setup tracking"], ["promo", effPaid ? `Requests${pending ? ` · ${pending}` : ""}` : "Approve/Reject Influencer request"], ...(hireOn ? [["hire", "Hire influencers"]] : [])];
+  const awaiting = (rows || []).some((b) => b.status === "pending");
+  // [key, step label, title, note]
+  const tabs = [
+    ["info", "Step 1", "My information", awaiting ? "Waiting on approval" : ""],
+    ["setup", "Step 2", "Setup tracking", ""],
+    ["promo", "Step 3", `Requests${pending ? ` · ${pending}` : ""}`, "Accept or reject them"],
+    ["inf", "", "Influencers", ""],
+  ];
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 22px 80px" }}>
       {showReward && business && <RewardPrompt business={business} token={session.token} onClose={() => { setShowReward(false); setShowVerify(true); }} onSaved={async () => { await reload(); setShowReward(false); setShowVerify(true); }} />}
@@ -1016,11 +1172,19 @@ function MyBusiness({ session, onBack, onRefresh }) {
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>My business</h1>
       <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>{pricingOn ? "Edit your listing for free. Unlock creator promotion and requests with a one-time plan." : "Edit your listing, review creator requests, and go live for promotion — all free."}</p>
       <div style={{ display: "flex", gap: 26, borderBottom: `1px solid ${C.line}`, marginBottom: 22, flexWrap: "wrap" }}>
-        {tabs.map(([k, lbl]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 17, fontWeight: 600, padding: "12px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2.5px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, display: "inline-flex", alignItems: "center", gap: 7 }}>{lbl}{k === "promo" && !effPaid && <Lock size={15} />}</button>)}
+        {tabs.map(([k, step, lbl, note]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "10px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2.5px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, textAlign: "left" }}>
+          {step && <span style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: tab === k ? C.accentD : C.muted }}>{step}</span>}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 16.5, fontWeight: 600 }}>{lbl}{k === "promo" && !effPaid && <Lock size={15} />}</span>
+          {note && <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: k === "info" ? "#B26A00" : C.muted }}>({note})</span>}
+        </button>)}
       </div>
       {err && <p style={{ background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>{err}</p>}
 
       {tab === "info" && <>
+        {awaiting && <div style={{ background: "#FFF6E5", border: "1px solid #F1D29A", borderRadius: 14, padding: "13px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#D98A00", flexShrink: 0 }} />
+          <div style={{ fontSize: 13.5, color: "#7A4B00" }}><b>Waiting on approval.</b> We review every business before it goes live, usually within 24 hours. Meanwhile, set up tracking in Step 2.</div>
+        </div>}
         {rows === null && !err && <p style={{ color: C.muted }}>Loading…</p>}
         {rows && rows.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No business found on this account.</p>}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(rows || []).map((b) => <BizEditCard key={b.id} b={b} token={session.token} reload={reload} />)}</div>
@@ -1041,6 +1205,8 @@ function MyBusiness({ session, onBack, onRefresh }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(reqs || []).map((r) => <ReqDecision key={r.id} r={r} onDecide={decide} />)}</div>
           </>
           : business ? <Paywall business={business} sessionToken={session.token} onPaid={onPaid} /> : <p style={{ color: C.muted }}>No business found.</p>)}
+
+      {tab === "inf" && <InfluencerDirectory token={session.token} />}
 
       {tab === "hire" && hireOn && (rows === null
         ? <p style={{ color: C.muted }}>Loading…</p>
@@ -1510,6 +1676,43 @@ function AdminRow({ b, reload }) {
     </div>
   );
 }
+// Saved SMS messages (shared across every SMS box in admin).
+let _smsTpl = null; const _smsSubs = new Set();
+function useSmsTemplates() {
+  const [list, setList] = useState(_smsTpl || []);
+  useEffect(() => {
+    _smsSubs.add(setList);
+    if (_smsTpl === null) { _smsTpl = []; api("/admin/sms-templates", { admin: true }).then((r) => { _smsTpl = r.templates || []; _smsSubs.forEach((f) => f(_smsTpl)); }).catch(() => { _smsTpl = null; }); }
+    else setList(_smsTpl);
+    return () => { _smsSubs.delete(setList); };
+  }, []);
+  const save = async (next) => { const r = await api("/admin/sms-templates", { method: "POST", admin: true, body: { templates: next } }); _smsTpl = r.templates || next; _smsSubs.forEach((f) => f(_smsTpl)); };
+  return [list, save];
+}
+function SmsTemplates({ msg, setMsg }) {
+  const [list, save] = useSmsTemplates(); const [sel, setSel] = useState(""); const [busy, setBusy] = useState(false);
+  const pick = (id) => { setSel(id); const t = list.find((x) => x.id === id); if (t) setMsg(t.text); };
+  const add = async () => {
+    const name = window.prompt("Name this saved message", msg.trim().slice(0, 30)); if (!name || !name.trim()) return;
+    setBusy(true);
+    try { const id = Date.now().toString(36); await save([...list, { id, name: name.trim(), text: msg }]); setSel(id); } catch (e) { alert(e.message || "Couldn't save."); } finally { setBusy(false); }
+  };
+  const del = async () => {
+    if (!sel || !window.confirm("Delete this saved message?")) return;
+    setBusy(true);
+    try { await save(list.filter((x) => x.id !== sel)); setSel(""); } catch (e) { alert(e.message || "Couldn't delete."); } finally { setBusy(false); }
+  };
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+      <select className="er-input" style={{ flex: "1 1 200px", minWidth: 160 }} value={sel} onChange={(e) => pick(e.target.value)}>
+        <option value="">{list.length ? "Use a saved message…" : "No saved messages yet"}</option>
+        {list.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+      </select>
+      <button type="button" className="er-btn er-btn-light er-btn-sm" disabled={busy || !msg.trim()} onClick={add}>Save as template</button>
+      {sel && <button type="button" className="er-btn er-btn-ghost er-btn-sm" disabled={busy} onClick={del}>Delete</button>}
+    </div>
+  );
+}
 function BulkSms({ businesses = [] }) {
   const [msg, setMsg] = useState(""); const [nums, setNums] = useState(""); const [aud, setAud] = useState("approved"); const [richOnly, setRichOnly] = useState(false);
   const [picked, setPicked] = useState([]); const [showPick, setShowPick] = useState(false);
@@ -1558,6 +1761,7 @@ function BulkSms({ businesses = [] }) {
           </div>
         </div>}
       </div>
+      <SmsTemplates msg={msg} setMsg={setMsg} />
       <textarea className="er-input" style={{ minHeight: 88 }} placeholder="Your message…" value={msg} onChange={(e) => setMsg(e.target.value)} />
       <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, margin: "14px 0 8px" }}>Extra numbers (optional)</div>
       <textarea className="er-input" style={{ minHeight: 60 }} placeholder="Phone numbers, separate by commas, spaces, or new lines (e.g. +15550102030)" value={nums} onChange={(e) => setNums(e.target.value)} />
@@ -1644,6 +1848,41 @@ function FeatureSwitches() {
     </div>
   );
 }
+/* Admin: approve/reject brands' creator-link offers (image + discount). */
+function AdminOffers() {
+  const [list, setList] = useState(null); const [busy, setBusy] = useState("");
+  const load = () => api("/admin/offers", { admin: true }).then(setList).catch(() => setList([]));
+  useEffect(() => { load(); }, []);
+  const act = async (id, verb) => {
+    let body;
+    if (verb === "reject") { const reason = window.prompt("Reason (sent to the brand by SMS, optional):", ""); if (reason === null) return; body = { reason }; }
+    setBusy(id); try { await api(`/admin/offer/${id}/${verb}`, { method: "POST", admin: true, body }); await load(); } catch (e) { alert(e.message); } finally { setBusy(""); }
+  };
+  if (!list || list.length === 0) return null;
+  const desc = (o) => [o.discount ? `${o.discount}% off` : "No %", o.discountCode ? `code ${o.discountCode}` : "no code"].join(" · ");
+  return (
+    <div className="er-card" style={{ padding: 18, marginTop: 22 }}>
+      <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft, display: "flex", alignItems: "center", gap: 8 }}>Offers waiting on approval <span style={{ background: "#D97706", color: "#fff", borderRadius: 999, fontSize: 11, padding: "1px 7px" }}>{list.length}</span></h2>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
+        {list.map((r) => (
+          <div key={r.id} style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start" }}>
+            {r.pending.offerImage ? <img src={r.pending.offerImage} alt="" style={{ width: 200, maxWidth: "100%", aspectRatio: "16/9", objectFit: "cover", borderRadius: 10, border: `1px solid ${C.line}` }} /> : <div style={{ width: 200, maxWidth: "100%", aspectRatio: "16/9", borderRadius: 10, background: C.panel, display: "grid", placeItems: "center", fontSize: 12, color: C.muted }}>No image</div>}
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>{r.name}</div>
+              <div style={{ marginTop: 6, fontSize: 13.5 }}><b>New:</b> {desc(r.pending)}</div>
+              <div style={{ marginTop: 2, fontSize: 12.5, color: C.muted }}>Live now: {desc(r.live)}{r.live.offerImage ? " · has image" : ""}</div>
+              {r.pending.submittedAt && <div style={{ marginTop: 2, fontSize: 12, color: C.muted }}>Sent {new Date(r.pending.submittedAt).toLocaleString()}</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button className="er-btn er-btn-primary er-btn-sm" disabled={busy === r.id} onClick={() => act(r.id, "approve")}><Check size={13} /> Approve</button>
+                <button className="er-btn er-btn-ghost er-btn-sm" disabled={busy === r.id} onClick={() => act(r.id, "reject")}>Reject</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 function AdminSetupRequests() {
   const [list, setList] = useState(null);
   const load = () => api("/admin/setup-requests", { admin: true }).then(setList).catch(() => setList([]));
@@ -1701,6 +1940,7 @@ function StatItemRow({ it }) {
         </span>
       </div>
       {open && it.phone && <div style={{ marginTop: 10 }}>
+        <SmsTemplates msg={msg} setMsg={setMsg} />
         <textarea className="er-input" style={{ minHeight: 70 }} placeholder={`Custom SMS to ${it.phone}`} value={msg} onChange={(e) => setMsg(e.target.value)} />
         {err && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#C0392B" }}>{err}</p>}
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
@@ -1863,6 +2103,7 @@ function AdminPanel({ onBack, onRefresh }) {
       </div>
       <p style={{ margin: "6px 0 0", fontSize: 14.5, color: C.muted }}>Approve businesses to list them under their category, or adjust their terms. Commission is admin-only.</p>
       <AdminStats />
+      <AdminOffers />
       <AdminSetupRequests />
       <FeatureSwitches />
       <BulkSms businesses={rows || []} />
@@ -1986,6 +2227,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
   const [myReqs, setMyReqs] = useState({}); const [reqList, setReqList] = useState([]);
   const [sharing, setSharing] = useState("");
   const [shareOpen, setShareOpen] = useState(false); const [shareCopied, setShareCopied] = useState(false);
+  const [linkBiz, setLinkBiz] = useState(null);
   const isOwner = session && session.role === "creator" && session.username === handle;
   const profileUrl = `${window.location.origin}/@${handle}`;
   const copyLink = async () => { try { await navigator.clipboard.writeText(profileUrl); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
@@ -2060,6 +2302,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
   const recs = data.recommendations || [];
   return (
     <div>
+      {linkBiz && <LinkPopup business={linkBiz} mode="aff" onClose={() => setLinkBiz(null)} />}
       {editing && <EditProfileModal token={session.token} current={data} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
       {shareOpen && <Modal onClose={() => setShareOpen(false)}>
         <div style={{ textAlign: "center" }}>
@@ -2155,9 +2398,10 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}><h3 className="er-serif" style={{ margin: 0, fontSize: 19, fontWeight: 500 }}>{b.name}</h3><span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 999, background: cc.bg, color: cc.color }}>{b.categories[0]}</span>{isOwner && !b.listApproved && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 999, background: C.panel, color: C.inkSoft }}>Awaiting brand confirmation</span>}</div>
                       <p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted }}>{b.online ? "Online" : b.city}</p></div>
+                    {isOwner && <button className="er-btn er-btn-light er-btn-sm" onClick={() => setLinkBiz(b)}><Copy size={14} /> Get link</button>}
                     {isOwner && <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => removeBrand(b.id)}><Close size={14} /> Remove</button>}
                   </div>
-                  {b.discount > 0 && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 13, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "9px 12px" }}><span style={{ color: C.accentD, flexShrink: 0 }}><Seal size={16} /></span><span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>Get {b.discount}% off when you shop {b.name} through this link{site ? ` at ${site}` : ""}.</span></div>}
+                  {b.discount > 0 && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 13, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "9px 12px" }}><span style={{ color: C.accentD, flexShrink: 0 }}><Seal size={16} /></span><span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>Get {b.discount}% off when you shop {b.name} through this link{site ? ` at ${site}` : ""}.{b.discountCode ? <> Code: <b>{b.discountCode}</b></> : null}</span></div>}
                   {!isOwner && hasContact && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 13 }}>
                     {b.website && <button className="er-btn er-btn-primary er-btn-sm" onClick={() => goToBrand(data.username, b.id, b.website)}><Globe size={14} /> {site}</button>}
                     {b.email && <a href={`mailto:${b.email}`} onClick={() => trackClick(data.username, b.id)} className="er-btn er-btn-light er-btn-sm" style={{ textDecoration: "none" }}><Mail size={14} /> {b.email}</a>}
@@ -2500,7 +2744,10 @@ function PlatformSteps() {
   );
 }
 /* Luma-inspired hero, shared by the homepage and creator profile pages. */
-function LumaHero({ title, onCreator, onList }) {
+const LUMA_SUB = "From skincare to software, build a list of brands you love and earn on every sale from your link. Wanna earn more? Create content and earn commission on every sale.";
+function LumaHero({ title, onCreator, onList, sub = LUMA_SUB, pill = "1,000+ brands to choose from", cta, cta2 }) {
+  const c1 = cta || ["Create Your First List", onCreator];
+  const c2 = cta2 || ["List Your Business", onList];
   return (
     <section className="er-luma">
       {/* Tile slots measured from luma.com at 1440px wide: [x, y, w, h] of the image inside each frame. */}
@@ -2512,18 +2759,195 @@ function LumaHero({ title, onCreator, onList }) {
       <div className="er-luma-fade" />
       <div className="er-luma-copy">
         <h1 className="er-luma-h1">{title}</h1>
-        <p className="er-luma-sub">From skincare to software, build a list of brands you love and earn on every sale from your link. Wanna earn more? Create content and earn commission on every sale.</p>
-        <div className="er-luma-pill">1,000+ brands to choose from</div>
+        <p className="er-luma-sub">{sub}</p>
+        {pill && <div className="er-luma-pill">{pill}</div>}
         <div className="er-luma-actions">
-          <button className="er-luma-cta" onClick={onCreator}>Create Your First List</button>
-          <button className="er-luma-cta2" onClick={onList}>List Your Business <Arrow size={17} /></button>
+          <button className="er-luma-cta" onClick={c1[1]}>{c1[0]}</button>
+          <button className="er-luma-cta2" onClick={c2[1]}>{c2[0]} <Arrow size={17} /></button>
         </div>
       </div>
     </section>
   );
 }
+// Big brands listed on Easy Recommend that creators can recommend (shown as wordmarks).
+const BIG_BRANDS = ["Nike", "Airbnb", "Spotify", "Sephora", "Lululemon", "Glossier", "Peloton", "Netflix", "Notion", "Canva"];
+function BrandStrip({ label }) {
+  return (
+    <section style={{ background: "#fff" }}>
+      <div className="er-wrap" style={{ padding: "6px 22px 40px", textAlign: "center" }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.muted }}>{label}</div>
+        <div style={{ marginTop: 16, display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "14px 34px" }}>
+          {BIG_BRANDS.map((b) => <span key={b} style={{ fontFamily: "'Inter',-apple-system,system-ui,sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: "-.02em", color: "#9A9AA0" }}>{b}</span>)}
+        </div>
+      </div>
+    </section>
+  );
+}
+function CreatorVideos() {
+  return (
+    <section style={{ background: C.paper }}>
+      <div className="er-wrap" style={{ padding: "10px 22px 56px", textAlign: "center" }}>
+        <span className="er-eyebrow">Watch it work</span>
+        <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>See real creators in action</h2>
+        <p style={{ margin: "10px auto 14px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short clips of creators showing off apps, tools, and products, and earning on every signup.</p>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "7px 15px", fontSize: 12.5, fontWeight: 600, color: C.inkSoft, marginBottom: 26 }}>
+          <Play size={13} /> Videos are high-definition, so they may take a few seconds to load.
+        </div>
+        <div className="er-videos-grid">
+          {ER_VIDEOS.map((v, i) => <VidTile key={v.src || v.title || i} v={v} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* The three ways a brand grows on Easy Recommend, shown as tabs. */
+const WAYS = [
+  { key: "list", tab: "Recommendation lists", tag: "The main one",
+    title: "Get added to creators' recommendation lists",
+    body: "Creators add your brand to their list, one link in their bio that their audience shops from. You set the commission and only pay when someone buys.",
+    steps: ["List your brand free and set your commission.", "Creators add you to their list and share their link.", "Their audience shops, and you pay only on the sale."] },
+  { key: "aff", tab: "Affiliate content", tag: "More reach",
+    title: "Creators make content about you, on commission",
+    body: "Creators who want to earn more make posts, reels and stories about your product with their tracked link, and earn a commission on every sale it drives.",
+    steps: ["Set the commission creators earn per sale.", "Creators post content with their tracked link.", "Every sale is tracked, and you pay per sale, never for views."] },
+  { key: "share", tab: "Share & get a discount", tag: "Word of mouth",
+    title: "Your customers share you, their friends save",
+    body: "Any shopper can share your brand with friends on Instagram. Friends get your discount, the sharer earns a reward, and you get a new customer.",
+    steps: ["Add a customer perk, like 10% off.", "Shoppers tap “Share on Instagram & earn” on your page.", "Friends buy with the discount, and you pay only on the sale."] },
+];
+function WayVisual({ k }) {
+  const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
+  if (k === "aff") return (
+    <div className="er-videos-grid" style={{ maxWidth: 520 }}>
+      {ER_VIDEOS.slice(0, 3).map((v, i) => <VidTile key={v.src || i} v={v} />)}
+    </div>
+  );
+  if (k === "share") return (
+    <div style={{ maxWidth: 380, margin: "0 auto", width: "100%" }}>
+      <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${C.line}`, background: "#fff", boxShadow: "0 12px 30px rgba(28,26,23,.10)" }}>
+        <div style={{ background: igGrad, padding: "11px 16px", display: "flex", alignItems: "center", gap: 9, color: "#fff" }}><Seal size={16} /><span style={{ fontWeight: 700, fontSize: 14 }}>Easy Recommend</span><IgIcon size={16} style={{ marginLeft: "auto" }} /></div>
+        <div style={{ padding: "16px" }}>
+          <div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink, lineHeight: 1.35 }}>Share Glow Co. with friends and earn $12 on every sale.</div>
+          <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, background: C.accentSoft, color: C.accentD, borderRadius: 999, padding: "6px 12px", fontSize: 12.5, fontWeight: 700 }}><Check size={13} /> Friends get 15% off</div>
+          <div style={{ marginTop: 14, borderRadius: 999, background: igGrad, color: "#fff", textAlign: "center", padding: "11px 0", fontWeight: 700, fontSize: 14 }}>Share on Instagram &amp; earn</div>
+        </div>
+      </div>
+      <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 14px", fontSize: 13, color: C.inkSoft }}>
+        <span style={{ width: 28, height: 28, borderRadius: "50%", background: C.panel, display: "grid", placeItems: "center", color: C.accentD, flexShrink: 0 }}><Spark size={14} /></span>
+        <span>Friend checks out: <b style={{ color: C.ink }}>15% off applied</b></span>
+      </div>
+    </div>
+  );
+  const rows = [["Glow Co.", "Beauty", "15% off"], ["Focusly", "Apps", "Free trial"], ["Peak Run", "Fitness", "10% off"]];
+  return (
+    <div style={{ maxWidth: 380, margin: "0 auto", width: "100%", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 18, padding: 18, boxShadow: "0 12px 30px rgba(28,26,23,.10)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ width: 40, height: 40, borderRadius: "50%", background: C.accentSoft, color: C.accentD, display: "grid", placeItems: "center", fontWeight: 700 }}>S</span>
+        <div><div style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>@siya</div><div style={{ fontSize: 12, color: C.muted }}>easyrecommend.co/@siya</div></div>
+      </div>
+      <div style={{ marginTop: 14, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted }}>Brands I back</div>
+      <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+        {rows.map(([n, c, perk]) => { const cc = CATS[c] || CATS.Other; return (
+          <div key={n} style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 12px" }}>
+            <span style={{ width: 30, height: 30, borderRadius: 8, background: cc.bg, color: cc.color, display: "grid", placeItems: "center", flexShrink: 0 }}><Store size={14} /></span>
+            <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 14, color: C.ink }}>{n}</div><div style={{ fontSize: 11.5, color: C.muted }}>{c}</div></div>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>{perk}</span>
+          </div>); })}
+      </div>
+      <div style={{ marginTop: 12, textAlign: "center", fontSize: 12.5, fontWeight: 600, color: C.accentD }}>Shop my picks →</div>
+    </div>
+  );
+}
+function WaysToGrow({ onList, onCreator }) {
+  const [tab, setTab] = useState("list");
+  const w = WAYS.find((x) => x.key === tab) || WAYS[0];
+  return (
+    <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+      <div className="er-wrap" style={{ padding: "60px 22px" }}>
+        <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto" }}>
+          <span className="er-eyebrow">For brands</span>
+          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>Three ways to grow with creators</h2>
+          <p style={{ margin: 0, fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>List once and get all three. You only pay when a sale happens.</p>
+        </div>
+        <div style={{ marginTop: 26, display: "flex", justifyContent: "center" }}>
+          <div className="er-ways-tabs" role="tablist">
+            {WAYS.map((x) => <button key={x.key} role="tab" aria-selected={tab === x.key} onClick={() => setTab(x.key)} className={`er-ways-tab${tab === x.key ? " on" : ""}`}>{x.tab}</button>)}
+          </div>
+        </div>
+        <div className="er-ways-grid">
+          <div>
+            <span style={{ display: "inline-block", fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "4px 10px" }}>{w.tag}</span>
+            <h3 className="er-serif" style={{ margin: "12px 0 0", fontSize: "clamp(22px,3vw,30px)", fontWeight: 500, lineHeight: 1.2, color: C.ink }}>{w.title}</h3>
+            <p style={{ margin: "10px 0 0", fontSize: 15.5, lineHeight: 1.6, color: C.inkSoft }}>{w.body}</p>
+            <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+              {w.steps.map((st, i) => (
+                <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", background: C.ink, color: C.paper, display: "grid", placeItems: "center", fontSize: 12.5, fontWeight: 700 }}>{i + 1}</span>
+                  <span style={{ fontSize: 14.5, lineHeight: 1.5, color: C.ink, paddingTop: 3 }}>{st}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 22, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
+              {onCreator && <button className="er-btn er-btn-ghost" onClick={onCreator}>I'm a creator</button>}
+            </div>
+          </div>
+          <WayVisual k={w.key} />
+        </div>
+      </div>
+    </section>
+  );
+}
+function BrandsPage({ onHome, onList, onCreator, onLogin, onLegal }) {
+  return (
+    <div>
+      <PageHeader onHome={onHome} onLogin={onLogin} right={<button className="er-btn er-btn-primary er-btn-sm" onClick={onList}>List your business</button>} />
+      <LumaHero
+        title={<>Your brand,<br />recommended<br /><span className="er-luma-grad">everywhere.</span></>}
+        sub="Creators add you to their lists, make content about you as affiliates, and shoppers share you with friends for a discount. You only pay when it sells."
+        pill="List free · pay only on sales"
+        cta={["List Your Business", onList]}
+        cta2={["Join as a Creator", onCreator]}
+      />
+      <BrandStrip label="Listed alongside 1,000+ brands, including" />
+      <WaysToGrow onList={onList} />
+      <CreatorVideos />
+      <section style={{ background: C.ink }}>
+        <div className="er-wrap" style={{ padding: "56px 22px", textAlign: "center" }}>
+          <h2 className="er-serif" style={{ margin: 0, fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, color: C.paper, letterSpacing: "-.01em" }}>Get recommended by creators this week</h2>
+          <p style={{ margin: "10px auto 0", maxWidth: 520, fontSize: 15.5, color: "rgba(253,252,250,.72)", lineHeight: 1.55 }}>List free, set your commission and customer perk, and go live once we review your listing.</p>
+          <button className="er-btn" style={{ marginTop: 22, background: C.paper, color: C.ink }} onClick={onList}>List your business <Arrow size={16} /></button>
+        </div>
+      </section>
+      <PageFooter onLegal={onLegal} />
+    </div>
+  );
+}
+/* "Join" asks who you are before opening the right signup. */
+function JoinChooser({ onClose, onCreator, onList }) {
+  const opt = (icon, title, sub, go) => (
+    <button className="er-card er-row-h" onClick={() => { onClose(); go(); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: 16, textAlign: "left", cursor: "pointer", width: "100%" }}>
+      <span style={{ width: 40, height: 40, borderRadius: 10, display: "grid", placeItems: "center", background: C.panel, color: C.ink, flexShrink: 0 }}>{icon}</span>
+      <span style={{ flex: 1 }}><span style={{ display: "block", fontWeight: 600 }}>{title}</span><span style={{ fontSize: 13, color: C.muted }}>{sub}</span></span><ChevR size={18} color={C.muted} />
+    </button>
+  );
+  return (
+    <Modal onClose={onClose}>
+      <div style={{ padding: "30px 28px" }}>
+        <span className="er-eyebrow">Join Easy Recommend</span>
+        <h2 className="er-serif" style={{ margin: "8px 0 16px", fontSize: 27, fontWeight: 500 }}>How are you joining?</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {opt(<Spark size={18} />, "I'm a creator", "Build your list and earn on every sale", onCreator)}
+          {opt(<Store size={18} />, "I'm a business", "Get recommended, pay only on sales", onList)}
+        </div>
+      </div>
+    </Modal>
+  );
+}
 function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage }) {
   const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
+  const [joinOpen, setJoinOpen] = useState(false);
   const seatsLeft = 8 - ((new Date().getDay() + 6) % 7); // Mon 8 → Sun 2, resets Monday
   const steps = [
     { t: "Businesses apply", d: "They add their details and a customer perk. We review every one before it's listed." },
@@ -2532,6 +2956,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
   ];
   return (
     <div>
+      {joinOpen && <JoinChooser onClose={() => setJoinOpen(false)} onCreator={onCreator} onList={onList} />}
       <button onClick={onCreator} style={{ display: "block", width: "100%", border: "none", cursor: "pointer", fontFamily: "inherit", background: C.ink, color: C.paper, textAlign: "center", fontSize: 13.5, fontWeight: 600, padding: "9px 16px", letterSpacing: ".01em" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap" }}><Spark size={14} /> Get paid for sharing recommendations →</span>
       </button>
@@ -2549,13 +2974,14 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
               <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onBusinessPage}>For business</button>
               <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onInfluencerPage}>For creators</button>
               <button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogin}>Log in</button>
-              <button className="er-btn er-btn-primary er-btn-sm" onClick={onCreator}>Join</button>
+              <button className="er-btn er-btn-primary er-btn-sm" onClick={() => setJoinOpen(true)}>Join</button>
             </>}
           </div>
         </div>
       </header>
 
       <LumaHero title={<>Share what<br />you love,<br /><span className="er-luma-grad">get paid.</span></>} onCreator={onCreator} onList={onList} />
+      <BrandStrip label="Recommend 1,000+ brands, including" />
 
       <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ padding: "64px 22px" }}>
@@ -2575,19 +3001,9 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
 
       <PlatformSteps />
 
-      <section style={{ background: C.paper }}>
-        <div className="er-wrap" style={{ padding: "10px 22px 56px", textAlign: "center" }}>
-          <span className="er-eyebrow">Watch it work</span>
-          <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>See real creators in action</h2>
-          <p style={{ margin: "10px auto 14px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short clips of creators showing off apps, tools, and products, and earning on every signup.</p>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "7px 15px", fontSize: 12.5, fontWeight: 600, color: C.inkSoft, marginBottom: 26 }}>
-            <Play size={13} /> Videos are high-definition, so they may take a few seconds to load.
-          </div>
-          <div className="er-videos-grid">
-            {ER_VIDEOS.map((v, i) => <VidTile key={v.src || v.title || i} v={v} />)}
-          </div>
-        </div>
-      </section>
+      <WaysToGrow onList={onList} onCreator={onCreator} />
+
+      <CreatorVideos />
 
       <LockedPreview onList={onList} />
 
@@ -2749,6 +3165,11 @@ const STYLES = `
 .er-luma-cta{margin-top:0;height:calc(45 * var(--u));padding:0 calc(19 * var(--u));border:none;border-radius:999px;background:#131517;color:#fff;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(17 * var(--u));font-weight:500;cursor:pointer}
 .er-luma-link{margin-top:calc(19 * var(--u));display:inline-flex;align-items:center;gap:calc(6 * var(--u));background:none;border:none;padding:0;cursor:pointer;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(16 * var(--u));line-height:calc(24 * var(--u));font-weight:500;color:#A1A2A3}
 @media(prefers-reduced-motion:reduce){.er-luma-tile{animation:none}}
+.er-ways-tabs{display:inline-flex;gap:4px;padding:4px;background:#fff;border:1px solid ${C.line};border-radius:999px;flex-wrap:wrap;justify-content:center}
+.er-ways-tab{border:none;background:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:${C.inkSoft};padding:9px 16px;border-radius:999px}
+.er-ways-tab.on{background:${C.ink};color:${C.paper}}
+.er-ways-grid{margin-top:30px;display:grid;grid-template-columns:1fr;gap:32px;align-items:center}
+@media(min-width:900px){.er-ways-grid{grid-template-columns:1fr 1fr;gap:56px}}
 @media(max-width:760px){
   .er-luma{height:auto;padding:56px 0 64px}
   .er-luma-tile,.er-luma-fade{display:none}
@@ -3041,7 +3462,7 @@ function EasyApp() {
   const [brandDone, setBrandDone] = useState(null);
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [creatorPreselect, setCreatorPreselect] = useState(null);
-  const [detailId, setDetailId] = useState(null);
+  const [detailId, setDetailId] = useState(null); const [detailMode, setDetailMode] = useState(null);
 
   const login = (s) => { saveSession(s); setSessionState(s); };
   const logout = () => { clearSession(); setSessionState(null); setView("home"); nav("/"); };
@@ -3072,6 +3493,17 @@ function EasyApp() {
     finally { setLoading(false); }
   };
   useEffect(() => { refresh(); }, []);
+  // Visitors arriving from a brand's "Share & earn" button: ?earn=<businessId>&mode=share|aff
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search); const earn = q.get("earn"); if (!earn) return;
+      const mode = q.get("mode") === "aff" ? "aff" : "share";
+      window.history.replaceState({}, "", window.location.pathname);
+      const sNow = getSession();
+      if (sNow && sNow.role === "creator") { setDetailMode(mode); setDetailId(earn); }
+      else { setCreatorPreselect(earn); setCreatorOpen(true); }
+    } catch (e) {}
+  }, []);
 
   const nav = (path) => { try { window.history.pushState({}, "", path); } catch (e) {} window.scrollTo(0, 0); };
   const goProfile = (h) => { setProfileHandle(h); setView("profile"); nav(`/@${h}`); };
@@ -3090,6 +3522,8 @@ function EasyApp() {
       {view === "home" && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session}
         onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)}
         onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} />}
+      {view === "claim" && <ClaimPage />}
+      {view === "brands" && <BrandsPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "business" && <BusinessPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "influencers" && <InfluencerPage onHome={goHome} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onList={() => setBrandOpen(true)} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "admin" && <AdminPanel onBack={goHome} onRefresh={refresh} />}
@@ -3101,7 +3535,7 @@ function EasyApp() {
       <CookieBar onLearnMore={() => setLegalOpen(true)} />
       {legalOpen && <LegalModal onClose={() => setLegalOpen(false)} />}
 
-      {detailId != null && <BusinessDetail id={detailId} onClose={() => setDetailId(null)} onProfile={(h) => { setDetailId(null); goProfile(h); }} onRecommend={(id) => { setDetailId(null); setCreatorPreselect(id); setCreatorOpen(true); }} />}
+      {detailId != null && <BusinessDetail id={detailId} autoLink={detailMode} onClose={() => { setDetailId(null); setDetailMode(null); }} onProfile={(h) => { setDetailId(null); goProfile(h); }} onRecommend={(id) => { setDetailId(null); setCreatorPreselect(id); setCreatorOpen(true); }} />}
       {loginOpen && <LoginModal onClose={() => setLoginOpen(false)} onLogin={login} onAfterCreator={(u) => { setLoginOpen(false); goProfile(u); }} onAfterBrand={() => { setLoginOpen(false); setView("mybiz"); nav("/my-business"); }} />}
       {brandOpen && <BrandModal onClose={() => setBrandOpen(false)} onDone={(name) => { setBrandOpen(false); setBrandDone(name); }} onRefresh={refresh} onLogin={login} />}
       {brandDone && <BrandSuccess name={brandDone} onClose={() => setBrandDone(null)} onDashboard={() => { setBrandDone(null); setView("mybiz"); nav("/my-business"); }} />}
