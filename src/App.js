@@ -511,7 +511,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               <button type="button" onClick={() => set("online", !f.online)} style={{ position: "relative", width: 46, height: 27, borderRadius: 99, border: "none", cursor: "pointer", background: f.online ? C.accent : "#CFC8BA", transition: "background .15s" }}>
                 <span style={{ position: "absolute", top: 3, left: f.online ? 22 : 3, width: 21, height: 21, borderRadius: "50%", background: "#fff", transition: "left .15s" }} /></button>
             </div>
-            <Field label="City" hint={f.online ? "Optional for online businesses." : "Where customers visit you."}><input className="er-input" placeholder="San Francisco" value={f.city} onChange={(e) => set("city", e.target.value)} /></Field>
+            <Field label="Country" hint={f.online ? "Optional for online businesses." : "Where your business is based."}><input className="er-input" placeholder="United States" value={f.city} onChange={(e) => set("city", e.target.value)} /></Field>
           </>}
           {step === 2 && <>
             <Field label="How you'll reward creators" hint="Kept private, creators see it only when they generate a link.">
@@ -679,7 +679,7 @@ function BizEditCard({ b, token, reload }) {
           </div>
         </Field>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <Field label="City"><input className="er-input" style={{ width: 160 }} value={d.city} onChange={(e) => set("city", e.target.value)} /></Field>
+          <Field label="Country"><input className="er-input" style={{ width: 160 }} placeholder="United States" value={d.city} onChange={(e) => set("city", e.target.value)} /></Field>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600 }}>
             <button type="button" onClick={() => set("online", !d.online)} style={{ position: "relative", width: 44, height: 26, borderRadius: 99, border: "none", cursor: "pointer", background: d.online ? C.accent : "#CFC8BA" }}><span style={{ position: "absolute", top: 3, left: d.online ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff" }} /></button> Online Global
           </label>
@@ -1094,19 +1094,16 @@ function SetupTab({ token, business }) {
   );
 }
 function fmtFol(n) { n = Number(n) || 0; if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M"; return n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "K" : String(n); }
-function InfluencerDirectory({ token, approved }) {
+function InfluencerDirectory({ token }) {
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [cat, setCat] = useState("");
-  const [asked, setAsked] = useState({}); const [busy, setBusy] = useState(null);
   useEffect(() => { setData(null); api(`/business/me/directory?token=${encodeURIComponent(token)}${cat ? `&cat=${encodeURIComponent(cat)}` : ""}`).then(setData).catch((e) => { setErr(e.message); setData({ items: [], cats: {} }); }); }, [token, cat]);
-  const intro = async (id) => { setBusy(id); try { await api("/business/me/intro", { method: "POST", body: { token, id } }); setAsked((a) => ({ ...a, [id]: true })); } catch (e) { alert(e.message || "Couldn't send."); } finally { setBusy(null); } };
   if (data === null) return <p style={{ color: C.muted }}>Loading…</p>;
   const counts = data.cats || {};
   const cats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
   const chip = (key, label) => <button key={key || "all"} className="er-btn er-btn-sm" onClick={() => setCat(key)} style={{ border: `1px solid ${cat === key ? C.ink : C.line}`, background: cat === key ? C.ink : "#fff", color: cat === key ? C.paper : C.inkSoft, textTransform: "capitalize" }}>{label}</button>;
   return (
     <div>
-      <p style={{ margin: "0 0 14px", fontSize: 14, color: C.muted }}>1,000+ creators open to brand work. To protect them from spam, handles are hidden. Request an intro and we'll connect you.</p>
-      {!approved && <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 600, color: "#B26A00", background: "#FFF6E5", border: "1px solid #F3D9A4", borderRadius: 10, padding: "9px 12px" }}>You can request intros once our team approves your business.</p>}
+      <p style={{ margin: "0 0 14px", fontSize: 14, color: C.muted }}>1,000+ creators open to brand work. To protect them from spam, handles are hidden.</p>
       {err && <p style={{ color: "#9B3024", fontSize: 13 }}>{err}</p>}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
         {chip("", "All")}
@@ -1121,9 +1118,7 @@ function InfluencerDirectory({ token, approved }) {
               <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{x.niche} · {x.location}</div>
             </div>
             <span style={{ fontSize: 12, fontWeight: 700, color: C.inkSoft, background: C.panel, borderRadius: 999, padding: "4px 10px", flexShrink: 0 }}>{fmtFol(x.followers)} followers</span>
-            {asked[x.id]
-              ? <span style={{ fontSize: 12.5, fontWeight: 700, color: C.accentD, display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0 }}><Check size={14} /> Intro requested</span>
-              : <button className="er-btn er-btn-light er-btn-sm" style={{ flexShrink: 0 }} disabled={!approved || busy === x.id} title={approved ? "" : "Available after your business is approved"} onClick={() => intro(x.id)}><Send size={13} /> {busy === x.id ? "Sending…" : "Request intro"}</button>}
+            <button type="button" className="er-btn er-btn-light er-btn-sm" style={{ flexShrink: 0 }}><Send size={13} /> Request intro</button>
           </div>); })}
       </div>
       <div style={{ marginTop: 14, background: C.panel, border: `1px dashed ${C.line}`, borderRadius: 14, padding: "16px", textAlign: "center" }}>
@@ -1172,6 +1167,9 @@ function MyBusiness({ session, onBack, onRefresh }) {
       <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>My business</h1>
       <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>{pricingOn ? "Edit your listing for free. Unlock creator promotion and requests with a one-time plan." : "Edit your listing, review creator requests, and go live for promotion — all free."}</p>
+      <div className="er-card" style={{ padding: "26px 18px 22px", marginBottom: 26 }}>
+        <CreatorVideos eyebrow="" title="Get 1,000+ creators to promote your brand on commission" sub="Creators make content about your brand and earn only when it sells. You pay nothing upfront." limit={3} bare />
+      </div>
       <div style={{ display: "flex", gap: 26, borderBottom: `1px solid ${C.line}`, marginBottom: 22, flexWrap: "wrap" }}>
         {tabs.map(([k, step, lbl, note]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "10px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2.5px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, textAlign: "left" }}>
           {step && <span style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: tab === k ? C.accentD : C.muted }}>{step}</span>}
@@ -1214,7 +1212,7 @@ function MyBusiness({ session, onBack, onRefresh }) {
           </>
           : business ? <Paywall business={business} sessionToken={session.token} onPaid={onPaid} /> : <p style={{ color: C.muted }}>No business found.</p>)}
 
-      {tab === "inf" && <InfluencerDirectory token={session.token} approved={(rows || []).some((b) => b.status === "approved")} />}
+      {tab === "inf" && <InfluencerDirectory token={session.token} />}
 
       {tab === "hire" && hireOn && (rows === null
         ? <p style={{ color: C.muted }}>Loading…</p>
@@ -1638,7 +1636,7 @@ function AdminRow({ b, reload }) {
           </div>
         </Field>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <Field label="City"><input className="er-input" style={{ width: 150 }} value={d.city} onChange={(e) => set("city", e.target.value)} /></Field>
+          <Field label="Country"><input className="er-input" style={{ width: 150 }} placeholder="United States" value={d.city} onChange={(e) => set("city", e.target.value)} /></Field>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600 }}>
             <button type="button" onClick={() => set("online", !d.online)} style={{ position: "relative", width: 44, height: 26, borderRadius: 99, border: "none", cursor: "pointer", background: d.online ? C.accent : "#CFC8BA" }}><span style={{ position: "absolute", top: 3, left: d.online ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff" }} /></button> Online Global
           </label>
@@ -2824,22 +2822,24 @@ function BrandStrip({ label }) {
     </section>
   );
 }
-function CreatorVideos() {
-  return (
-    <section style={{ background: C.paper }}>
-      <div className="er-wrap" style={{ padding: "10px 22px 56px", textAlign: "center" }}>
-        <span className="er-eyebrow">Watch it work</span>
-        <h2 className="er-serif" style={{ margin: "10px 0 0", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>See real creators in action</h2>
-        <p style={{ margin: "10px auto 14px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>Short clips of creators showing off apps, tools, and products, and earning on every signup.</p>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "7px 15px", fontSize: 12.5, fontWeight: 600, color: C.inkSoft, marginBottom: 26 }}>
-          <Play size={13} /> Videos are high-definition, so they may take a few seconds to load.
-        </div>
-        <div className="er-videos-grid">
-          {ER_VIDEOS.map((v, i) => <VidTile key={v.src || v.title || i} v={v} />)}
-        </div>
+function CreatorVideos({ eyebrow = "Watch it work", title = "See real creators in action", sub = "Short clips of creators showing off apps, tools, and products, and earning on every signup.", limit, bare }) {
+  const [more, setMore] = useState(false);
+  const vids = limit && !more ? ER_VIDEOS.slice(0, limit) : ER_VIDEOS;
+  const body = (
+    <div className="er-wrap" style={{ padding: bare ? 0 : "10px 22px 56px", textAlign: "center" }}>
+      {eyebrow && <span className="er-eyebrow">{eyebrow}</span>}
+      <h2 className="er-serif" style={{ margin: eyebrow ? "10px 0 0" : 0, fontSize: bare ? "clamp(22px,3.4vw,30px)" : "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>{title}</h2>
+      {sub && <p style={{ margin: "10px auto 14px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>{sub}</p>}
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "7px 15px", fontSize: 12.5, fontWeight: 600, color: C.inkSoft, marginBottom: 26, marginTop: sub ? 0 : 14 }}>
+        <Play size={13} /> Videos are high-definition, so they may take a few seconds to load.
       </div>
-    </section>
+      <div className="er-videos-grid">
+        {vids.map((v, i) => <VidTile key={v.src || v.title || i} v={v} />)}
+      </div>
+      {limit && ER_VIDEOS.length > limit && <button className="er-btn er-btn-ghost er-btn-sm" style={{ marginTop: 16 }} onClick={() => setMore(!more)}>{more ? "Show fewer" : `Show all ${ER_VIDEOS.length} videos`}</button>}
+    </div>
   );
+  return bare ? body : <section style={{ background: C.paper }}>{body}</section>;
 }
 
 /* The three ways a brand grows on Easy Recommend, shown as tabs. */
@@ -2937,7 +2937,7 @@ function WaysToGrow({ onList, onCreator }) {
       <div className="er-wrap" style={{ padding: "60px 22px" }}>
         <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto" }}>
           <span className="er-eyebrow">For brands</span>
-          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>Three ways to grow with creators and AI agents</h2>
+          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>Four ways to grow with creators and AI agents</h2>
           <p style={{ margin: 0, fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>List once and get all three. You only pay when a sale happens.</p>
         </div>
         <div style={{ marginTop: 26, display: "flex", justifyContent: "center" }}>
