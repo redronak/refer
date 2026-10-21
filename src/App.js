@@ -1184,7 +1184,14 @@ function MyBusiness({ session, onBack, onRefresh }) {
       {tab === "info" && <>
         {awaiting && <div style={{ background: "#FFF6E5", border: "1px solid #F1D29A", borderRadius: 14, padding: "13px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#D98A00", flexShrink: 0 }} />
-          <div style={{ fontSize: 13.5, color: "#7A4B00" }}><b>Waiting on approval.</b> We review every business before it goes live, usually within 24 hours. Meanwhile, set up tracking in Step 2.</div>
+          <div style={{ fontSize: 13.5, color: "#7A4B00" }}><b>Waiting on approval.</b> We review every business before it goes live, usually within 24 hours.</div>
+        </div>}
+        {awaiting && <div className="er-card" style={{ padding: "16px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>Book a slot to set up commission tracking</div>
+            <p style={{ margin: "4px 0 0", fontSize: 13.5, lineHeight: 1.55, color: C.inkSoft }}>Self-setup isn't ready yet, so we'll set it up with you. I'm Ronak Joshi, founder (US-based). The call is audio-only. Once it's set up, influencers can start promoting your brand!</p>
+          </div>
+          <a className="er-btn er-btn-primary" href="https://calendly.com/ronakjoshil/new-meeting" target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, textDecoration: "none" }}>Book a slot <Arrow size={16} /></a>
         </div>}
         {rows === null && !err && <p style={{ color: C.muted }}>Loading…</p>}
         {rows && rows.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No business found on this account.</p>}
@@ -2746,10 +2753,43 @@ function PlatformSteps() {
 }
 /* Luma-inspired hero, shared by the homepage and creator profile pages. */
 const LUMA_SUB = "From skincare to software, build a list of brands you love and earn on every sale from your link. Wanna earn more? Create content and earn commission on every sale.";
+/* Every listed brand, searchable. Opened from the "1,000+ brands to choose from" pill. */
+function AllBrandsModal({ onClose }) {
+  const [list, setList] = useState(null); const [q, setQ] = useState(""); const [cat, setCat] = useState("");
+  useEffect(() => { api("/businesses").then((r) => setList(Array.isArray(r) ? r : [])).catch(() => setList([])); }, []);
+  const all = list || [];
+  const cats = [...new Set(all.flatMap((b) => b.categories || []))].sort();
+  const t = q.trim().toLowerCase();
+  const shown = all.filter((b) => (!cat || (b.categories || []).includes(cat)) && (!t || [b.name, b.blurb, ...(b.categories || [])].join(" ").toLowerCase().includes(t)));
+  const open = (id) => { onClose(); window.dispatchEvent(new CustomEvent("er:open-business", { detail: id })); };
+  return (
+    <Modal wide onClose={onClose}>
+      <div style={{ padding: "26px 22px 22px", textAlign: "left", color: C.ink, fontFamily: "inherit" }}>
+        <h2 className="er-serif" style={{ margin: 0, fontSize: 26, fontWeight: 500 }}>Brands to choose from</h2>
+        <p style={{ margin: "4px 0 0", fontSize: 13.5, color: C.muted }}>{list ? `${all.length} brands listed right now` : "Loading brands…"}</p>
+        <input className="er-input" autoFocus placeholder="Search brands or categories" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginTop: 14 }} />
+        {cats.length > 1 && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 2px" }}>
+          {["", ...cats].map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{c || "All"}</button>)}
+        </div>}
+        <div style={{ marginTop: 10, maxHeight: "55vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+          {list && shown.length === 0 && <p style={{ margin: "18px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No brands match “{q}”.</p>}
+          {shown.map((b) => { const cc = catOf(b); const ph = (b.photos || [])[0]; return (
+            <button key={b.id} type="button" onClick={() => open(b.id)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, padding: "9px 11px" }}>
+              <span style={{ width: 38, height: 38, borderRadius: 9, flexShrink: 0, overflow: "hidden", display: "grid", placeItems: "center", background: cc.bg, color: cc.color }}>{ph ? <img src={ph} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={16} />}</span>
+              <span style={{ flex: 1, minWidth: 0 }}><span style={{ display: "block", fontSize: 14.5, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span><span style={{ display: "block", fontSize: 12, color: C.muted }}>{(b.categories || []).join(" · ")}</span></span>
+              {b.discount > 0 && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>{b.discount}% off</span>}
+            </button>); })}
+        </div>
+      </div>
+    </Modal>
+  );
+}
 function LumaHero({ title, onCreator, onList, sub = LUMA_SUB, pill = "1,000+ brands to choose from", cta, cta2 }) {
   const c1 = cta || ["Create Your First List", onCreator];
   const c2 = cta2 || ["List Your Business", onList];
-  return (
+  const [allOpen, setAllOpen] = useState(false);
+  return (<>
+    {allOpen && <AllBrandsModal onClose={() => setAllOpen(false)} />}
     <section className="er-luma">
       {/* Tile slots measured from luma.com at 1440px wide: [x, y, w, h] of the image inside each frame. */}
       {LUMA_TILES.map(([x, y, w, h], i) => (
@@ -2761,14 +2801,14 @@ function LumaHero({ title, onCreator, onList, sub = LUMA_SUB, pill = "1,000+ bra
       <div className="er-luma-copy">
         <h1 className="er-luma-h1">{title}</h1>
         <p className="er-luma-sub">{sub}</p>
-        {pill && <div className="er-luma-pill">{pill}</div>}
+        {pill && <button type="button" className="er-luma-pill er-luma-pill-btn" onClick={() => setAllOpen(true)}>{pill} <Arrow size={13} /></button>}
         <div className="er-luma-actions">
           <button className="er-luma-cta" onClick={c1[1]}>{c1[0]}</button>
           <button className="er-luma-cta2" onClick={c2[1]}>{c2[0]} <Arrow size={17} /></button>
         </div>
       </div>
     </section>
-  );
+  </>);
 }
 // Big brands listed on Easy Recommend that creators can recommend (shown as wordmarks).
 const BIG_BRANDS = ["Nike", "Airbnb", "Spotify", "Sephora", "Lululemon", "Glossier", "Peloton", "Netflix", "Notion", "Canva"];
@@ -2816,9 +2856,38 @@ const WAYS = [
     title: "Your customers share you, their friends save",
     body: "Any shopper can share your brand with friends on Instagram. Friends get your discount, the sharer earns a reward, and you get a new customer.",
     steps: ["Add a customer perk, like 10% off.", "Shoppers tap “Share on Instagram & earn” on your page.", "Friends buy with the discount, and you pay only on the sale."] },
+  { key: "agent", tab: "AI agents", tag: "New",
+    title: "AI agents recommend you, on commission",
+    body: "AI agents are free to use, and ads don't work inside them, so agents earn by taking a commission on the sales they drive. When an agent recommends your brand and the user buys, you pay only on that sale.",
+    steps: ["List your brand and set your commission, same as for creators.", "AI agents find you when users ask for a recommendation.", "Each recommendation carries a tracked link, so you pay only on the sale."] },
 ];
+/* Early access for people building AI agents (stored + texted to admin). */
+function AgentAccessForm() {
+  const [f, setF] = useState({ name: "", email: "", agent: "" }); const [st, setSt] = useState(""); const [err, setErr] = useState("");
+  const submit = async (e) => { e.preventDefault(); setErr(""); setSt("busy"); try { await api("/agent-waitlist", { method: "POST", body: f }); setSt("done"); } catch (x) { setErr(x.message); setSt(""); } };
+  if (st === "done") return <div style={{ marginTop: 18, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 14, padding: "13px 15px", fontSize: 14, color: C.accentD }}><b>You're on the list.</b> We'll reach out with access for your agent.</div>;
+  return (
+    <form onSubmit={submit} style={{ marginTop: 18, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, display: "flex", flexDirection: "column", gap: 9 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>Building an AI agent? Get early access and earn commission.</div>
+      <div style={{ display: "grid", gap: 9, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,150px),1fr))" }}>
+        <input className="er-input" placeholder="Your name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+        <input className="er-input" type="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+      </div>
+      <input className="er-input" placeholder="Agent name or link (optional)" value={f.agent} onChange={(e) => setF({ ...f, agent: e.target.value })} />
+      {err && <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "#C0392B" }}>{err}</p>}
+      <button className="er-btn er-btn-light er-btn-sm" type="submit" disabled={st === "busy"} style={{ alignSelf: "flex-start" }}>{st === "busy" ? "Sending…" : <>Request agent access <Arrow size={14} /></>}</button>
+    </form>
+  );
+}
 function WayVisual({ k }) {
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
+  if (k === "agent") { const bub = (mine, ch) => <div style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "88%", background: mine ? C.ink : C.panel, color: mine ? C.paper : C.ink, borderRadius: mine ? "16px 16px 4px 16px" : "16px 16px 16px 4px", padding: "10px 13px", fontSize: 14, lineHeight: 1.5 }}>{ch}</div>; return (
+    <div style={{ maxWidth: 400, margin: "0 auto", width: "100%", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 18, padding: 16, boxShadow: "0 12px 30px rgba(28,26,23,.10)", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#3BB273" }} /> AI agent</div>
+      {bub(true, "What's a good project tool for a 5-person team?")}
+      {bub(false, <>I'd go with <b>Notion</b>. Docs and tasks in one place, with a free plan for small teams.<div style={{ marginTop: 7, fontSize: 12.5, fontWeight: 600, color: C.accentD, wordBreak: "break-all" }}>easyrecommend.co/r/agent/notion →</div></>)}
+      <div style={{ alignSelf: "center", marginTop: 2, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "5px 12px" }}><Check size={13} /> Sale tracked · agent earns commission</div>
+    </div>); }
   if (k === "aff") return (
     <div className="er-videos-grid" style={{ maxWidth: 520 }}>
       {ER_VIDEOS.slice(0, 3).map((v, i) => <VidTile key={v.src || i} v={v} />)}
@@ -2868,7 +2937,7 @@ function WaysToGrow({ onList, onCreator }) {
       <div className="er-wrap" style={{ padding: "60px 22px" }}>
         <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto" }}>
           <span className="er-eyebrow">For brands</span>
-          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>Three ways to grow with creators</h2>
+          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>Three ways to grow with creators and AI agents</h2>
           <p style={{ margin: 0, fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>List once and get all three. You only pay when a sale happens.</p>
         </div>
         <div style={{ marginTop: 26, display: "flex", justifyContent: "center" }}>
@@ -2891,8 +2960,9 @@ function WaysToGrow({ onList, onCreator }) {
             </div>
             <div style={{ marginTop: 22, display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button className="er-btn er-btn-primary" onClick={onList}>List your business <Arrow size={16} /></button>
-              {onCreator && <button className="er-btn er-btn-ghost" onClick={onCreator}>I'm a creator</button>}
+              {onCreator && w.key !== "agent" && <button className="er-btn er-btn-ghost" onClick={onCreator}>I'm a creator</button>}
             </div>
+            {w.key === "agent" && <AgentAccessForm />}
           </div>
           <WayVisual k={w.key} />
         </div>
@@ -3160,6 +3230,7 @@ const STYLES = `
 .er-luma-h1{font-family:'Inter',-apple-system,system-ui,sans-serif;font-optical-sizing:auto;margin:0;font-size:calc(76 * var(--u));line-height:calc(74 * var(--u));font-weight:560;letter-spacing:-.012em;color:#131517}
 .er-luma-grad{background:linear-gradient(90deg,#C83BB3 0%,#E22C91 24%,#F1277A 36%,#F3455A 43%,#F57737 55%,#EE9137 68%,#E9AA38 81%,#E9AA38 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 .er-luma-sub{font-family:'Inter',-apple-system,system-ui,sans-serif;margin:calc(27 * var(--u)) auto 0;max-width:calc(520 * var(--u));font-size:calc(18.8 * var(--u));line-height:calc(30 * var(--u));font-weight:400;color:#8D8E8F}
+.er-luma-pill.er-luma-pill-btn{border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .15s}.er-luma-pill.er-luma-pill-btn:hover{background:#E6E6E8}
 .er-luma-pill{display:inline-block;margin-top:calc(16 * var(--u));padding:calc(5 * var(--u)) calc(13 * var(--u));border-radius:999px;background:#F2F2F3;color:#131517;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(13.5 * var(--u));font-weight:600}
 .er-luma-actions{margin-top:calc(22 * var(--u));display:flex;gap:calc(12 * var(--u));justify-content:center;flex-wrap:wrap}
 .er-luma-cta2{display:inline-flex;align-items:center;gap:calc(7 * var(--u));height:calc(45 * var(--u));padding:0 calc(20 * var(--u));border:1px solid #D6D6DA;border-radius:999px;background:#fff;color:#131517;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(17 * var(--u));font-weight:500;cursor:pointer}
@@ -3464,6 +3535,7 @@ function EasyApp() {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [creatorPreselect, setCreatorPreselect] = useState(null);
   const [detailId, setDetailId] = useState(null); const [detailMode, setDetailMode] = useState(null);
+  useEffect(() => { const h = (e) => { setDetailMode(null); setDetailId(e.detail); }; window.addEventListener("er:open-business", h); return () => window.removeEventListener("er:open-business", h); }, []);
 
   const login = (s) => { saveSession(s); setSessionState(s); };
   const logout = () => { clearSession(); setSessionState(null); setView("home"); nav("/"); };
