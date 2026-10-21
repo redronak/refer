@@ -2984,6 +2984,8 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
       <LumaHero title={<>Share what<br />you love,<br /><span className="er-luma-grad">get paid.</span></>} onCreator={onCreator} onList={onList} />
       <BrandStrip label="Recommend 1,000+ brands, including" />
 
+      <WaysToGrow onList={onList} onCreator={onCreator} />
+
       <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ padding: "64px 22px" }}>
           <div style={{ textAlign: "center", marginBottom: 34, maxWidth: 600, marginLeft: "auto", marginRight: "auto" }}>
@@ -3001,8 +3003,6 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
       <BigPayouts onCreator={onCreator} />
 
       <PlatformSteps />
-
-      <WaysToGrow onList={onList} onCreator={onCreator} />
 
       <CreatorVideos />
 
