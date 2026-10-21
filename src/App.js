@@ -1167,9 +1167,6 @@ function MyBusiness({ session, onBack, onRefresh }) {
       <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>My business</h1>
       <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>{pricingOn ? "Edit your listing for free. Unlock creator promotion and requests with a one-time plan." : "Edit your listing, review creator requests, and go live for promotion — all free."}</p>
-      <div className="er-card" style={{ padding: "26px 18px 22px", marginBottom: 26 }}>
-        <CreatorVideos eyebrow="" title="Get 1,000+ creators to promote your brand on commission" sub="Creators make content about your brand and earn only when it sells. You pay nothing upfront." limit={3} bare />
-      </div>
       <div style={{ display: "flex", gap: 26, borderBottom: `1px solid ${C.line}`, marginBottom: 22, flexWrap: "wrap" }}>
         {tabs.map(([k, step, lbl, note]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "10px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2.5px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, textAlign: "left" }}>
           {step && <span style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: tab === k ? C.accentD : C.muted }}>{step}</span>}
@@ -1194,6 +1191,9 @@ function MyBusiness({ session, onBack, onRefresh }) {
         {rows === null && !err && <p style={{ color: C.muted }}>Loading…</p>}
         {rows && rows.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No business found on this account.</p>}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(rows || []).map((b) => <BizEditCard key={b.id} b={b} token={session.token} reload={reload} />)}</div>
+        <div className="er-card" style={{ padding: "26px 18px 22px", marginTop: 26 }}>
+          <CreatorVideos eyebrow="" title="Get 1,000+ creators to promote your brand on commission" sub="Creators make content about your brand and earn only when it sells. You pay nothing upfront." limit={3} bare />
+        </div>
       </>}
 
       {tab === "setup" && (business ? <SetupTab token={session.token} business={business} /> : <p style={{ color: C.muted }}>Loading…</p>)}
