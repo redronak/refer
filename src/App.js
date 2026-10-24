@@ -128,6 +128,7 @@ function parseRoute() {
   if (p === "/business") return { view: "business", handle: null };
   if (p === "/brands") return { view: "brands", handle: null };
   if (p === "/share") return { view: "share", handle: null };
+  if (p === "/affiliate") return { view: "affiliate", handle: null };
   if (p === "/influencers") return { view: "influencers", handle: null };
   // Creator links (easyrecommend.co/r/name/brand) are tracked + redirected by the backend.
   if (/^\/r\/[^/]+\/[^/]+/.test(p)) { window.location.replace(API_BASE + window.location.pathname + (window.location.search || "")); return { view: "redirecting", handle: null }; }
@@ -3131,6 +3132,128 @@ function QuickJoin({ brand, onClose, onDone }) {
     </Modal>
   );
 }
+/* Affiliate page animation: copy link → make content → paste link in caption/description → earn. */
+function AffiliateHowTo() {
+  const [f, setF] = useState(0);
+  const frames = ["Copy your affiliate link", "Make your post, reel or video", "Paste the link in your caption or description", "Viewers buy, you earn"];
+  useEffect(() => { const t = setTimeout(() => setF((x) => (x + 1) % frames.length), 2600); return () => clearTimeout(t); }, [f]);
+  const link = "easyrecommend.co/r/you/notion";
+  const tap = (style) => <span className="er-tap" style={{ position: "absolute", width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,.55)", border: "2px solid #fff", boxShadow: "0 0 0 6px rgba(15,107,79,.18)", ...style }} />;
+  const screens = [
+    <div key="0" style={{ position: "absolute", inset: 0, background: "#fff", padding: "34px 14px 14px" }}>
+      <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}><BrandArt b={{ name: "Notion", photos: [] }} style={{ width: "100%", aspectRatio: "16/10" }} />
+        <div style={{ padding: 9 }}><div style={{ fontSize: 12, fontWeight: 700 }}>Notion</div><div style={{ fontSize: 10, color: C.accentD, fontWeight: 600, marginTop: 2 }}>You earn 20% per sale</div>
+          <div style={{ marginTop: 8, borderRadius: 8, background: C.panel, padding: "6px 8px", fontSize: 9, fontWeight: 700, color: C.inkSoft, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{link}</div>
+          <div style={{ position: "relative", marginTop: 6, height: 26, borderRadius: 8, background: C.ink, color: "#fff", fontSize: 10, fontWeight: 800, display: "grid", placeItems: "center" }}>Copy affiliate link{tap({ right: 18, top: -4 })}</div></div></div>
+      <div className="er-pop" style={{ position: "absolute", left: 0, right: 0, bottom: 22, textAlign: "center" }}><span style={{ background: C.accentD, color: "#fff", borderRadius: 999, padding: "6px 12px", fontSize: 11, fontWeight: 800 }}>✓ Link copied</span></div>
+    </div>,
+    <div key="1" style={{ position: "absolute", inset: 0, background: "linear-gradient(170deg,#2B2F3A,#111)" }}>
+      <div style={{ position: "absolute", left: 16, right: 16, top: "18%", borderRadius: 14, overflow: "hidden", boxShadow: "0 10px 24px rgba(0,0,0,.4)" }}><BrandArt b={{ name: "Notion", photos: [] }} style={{ width: "100%", aspectRatio: "4/5" }} /></div>
+      <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "center", gap: 5, background: "rgba(255,59,48,.9)", color: "#fff", borderRadius: 999, padding: "3px 8px", fontSize: 9.5, fontWeight: 800 }}><span className="er-tap" style={{ position: "static", width: 6, height: 6, border: "none", boxShadow: "none", background: "#fff" }} /> REC 0:12</div>
+      <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", width: 44, height: 44, borderRadius: "50%", border: "4px solid #fff", display: "grid", placeItems: "center" }}><span style={{ width: 18, height: 18, borderRadius: 4, background: "#FF3B30" }} /></div>
+    </div>,
+    <div key="2" style={{ position: "absolute", inset: 0, background: "#fff", padding: "30px 12px 12px" }}>
+      <div style={{ borderRadius: 10, background: "#111", aspectRatio: "16/9", display: "grid", placeItems: "center", color: "#fff", fontSize: 18 }}>▶</div>
+      <div style={{ marginTop: 8, fontSize: 11, fontWeight: 800 }}>My honest Notion setup</div>
+      <div style={{ marginTop: 8, borderRadius: 9, background: C.panel, padding: 9, fontSize: 9.5, lineHeight: 1.5, color: C.inkSoft }}>
+        <div style={{ fontWeight: 800, color: C.ink }}>Description</div>
+        Everything I use to plan my week.<br />Try Notion here 👉 <span className="er-type" style={{ color: "#065FD4", fontWeight: 700 }}>{link}</span>
+      </div>
+      <div className="er-pop" style={{ marginTop: 10, display: "inline-block", background: C.ink, color: "#fff", borderRadius: 7, padding: "5px 10px", fontSize: 10, fontWeight: 800 }}>Paste</div>
+    </div>,
+    <div key="3" style={{ position: "absolute", inset: 0, background: "#fff", padding: "34px 14px" }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: C.muted, letterSpacing: ".06em" }}>YOUR EARNINGS</div>
+      {[["Notion", "$24.00"], ["Notion", "$24.00"], ["Canva", "$12.50"]].map(([n, v], k) => (
+        <div key={k} className="er-pop" style={{ animationDelay: `${0.3 + k * 0.4}s`, marginTop: 10, display: "flex", alignItems: "center", gap: 8, border: `1px solid ${C.line}`, borderRadius: 10, padding: "8px 9px" }}>
+          <BrandArt b={{ name: n, photos: [] }} mini style={{ width: 24, height: 24, borderRadius: 6, flexShrink: 0 }} />
+          <span style={{ flex: 1, fontSize: 11, fontWeight: 700 }}>Sale · {n}</span><span style={{ fontSize: 11, fontWeight: 800, color: C.accentD }}>+{v}</span>
+        </div>))}
+      <div className="er-pop" style={{ animationDelay: "1.6s", marginTop: 14, textAlign: "center", fontSize: 20, fontWeight: 800, color: C.ink }}>$60.50</div>
+    </div>,
+  ];
+  const steps = [["Pick a brand and copy your affiliate link", "Every brand below has your own tracked link."], ["Make content about it", "Posts, reels, YouTube videos, blog posts, newsletters, podcasts."], ["Paste the link in your caption, description or bio", "Viewers who buy within 6 months earn you a commission, tracked automatically."]];
+  return (
+    <div className="er-howto" style={{ maxWidth: 860, margin: "26px auto 0", display: "grid", gap: 26, alignItems: "center", textAlign: "left" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {steps.map(([t, d], k) => (
+          <div key={t} style={{ display: "flex", gap: 13 }}>
+            <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: "#fff", fontWeight: 800, fontSize: 14 }}>{k + 1}</span>
+            <div><div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>Step {k + 1}</div><div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 1 }}>{t}</div><div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.5, marginTop: 2 }}>{d}</div></div>
+          </div>))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        <div style={{ position: "relative", width: 210, aspectRatio: "9/17", borderRadius: 28, border: "7px solid #111", overflow: "hidden", background: "#fff", boxShadow: "0 24px 50px -24px rgba(0,0,0,.45)" }}>
+          <div key={f} className="er-frame" style={{ position: "absolute", inset: 0 }}>{screens[f]}</div>
+        </div>
+        <div style={{ minHeight: 20, fontSize: 13.5, fontWeight: 700, color: C.ink, textAlign: "center" }}><span style={{ color: C.muted, fontWeight: 600 }}>{f + 1}/{frames.length} · </span>{frames[f]}</div>
+        <div style={{ display: "flex", gap: 6 }}>{frames.map((_, k) => <button key={k} type="button" aria-label={frames[k]} onClick={() => setF(k)} style={{ width: f === k ? 18 : 7, height: 7, borderRadius: 99, border: "none", padding: 0, background: f === k ? C.ink : C.line, cursor: "pointer", transition: "width .2s" }} />)}</div>
+      </div>
+    </div>
+  );
+}
+/* Affiliate links for content creators: every brand with a copyable tracked link. */
+function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
+  const isCreator = session && session.role === "creator";
+  const [list, setList] = useState(() => cachedBusinesses()); const [q, setQ] = useState(""); const [cat, setCat] = useState("");
+  const [links, setLinks] = useState({}); const [busy, setBusy] = useState(""); const [joinFor, setJoinFor] = useState(undefined);
+  useEffect(() => { fetchBusinesses(isCreator ? session.token : "").then(setList).catch(() => setList((l) => l || [])); }, [isCreator]);
+  const all = list || [];
+  const cats = CAT_LIST.filter((c) => all.some((b) => (b.categories || []).includes(c)));
+  const t = q.trim().toLowerCase();
+  const shown = all.filter((b) => (!cat || (b.categories || []).includes(cat)) && (!t || [b.name, b.blurb, ...(b.categories || [])].join(" ").toLowerCase().includes(t)));
+  const getLink = async (b) => {
+    if (!isCreator) { setJoinFor(b); return; }
+    if (links[b.id]) { const ok = await copyText(links[b.id]); toast(ok ? "✓ Affiliate link copied" : "Couldn't copy, tap Copy again"); return; }
+    setBusy(b.id);
+    try {
+      const r = await api("/creator/link", { method: "POST", body: { token: session.token, businessId: b.id } });
+      setLinks((m) => ({ ...m, [b.id]: r.referralUrl }));
+      const ok = await copyText(r.referralUrl); toast(ok ? "✓ Affiliate link copied" : "Your link is ready. Tap Copy to copy it");
+    } catch (e) { toast(e.message || "Couldn't get your link. Try again."); } finally { setBusy(""); }
+  };
+  return (
+    <div>
+      {joinFor !== undefined && <QuickJoin brand={joinFor} onClose={() => setJoinFor(undefined)} onDone={(sess) => { setJoinFor(undefined); onAuth(sess); toast("✓ You're in! Tap Copy on any brand to get your link"); }} />}
+      <PageHeader onHome={onHome} onLogin={isCreator ? null : onLogin} right={!isCreator && <button className="er-btn er-btn-primary er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => setJoinFor(null)}>Join</button>} />
+      <section className="er-wrap" style={{ padding: "46px 22px 18px", textAlign: "center" }}>
+        <span className="er-eyebrow">Affiliate links</span>
+        <h1 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(30px,5vw,48px)", fontWeight: 500, letterSpacing: "-.015em" }}>Create content. Earn on every sale.</h1>
+        <p style={{ margin: "0 auto", maxWidth: 560, fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>For serious creators, bloggers, YouTubers and more. Copy your affiliate link for any brand, put it in your content, and earn a commission when your audience buys.</p>
+        <AffiliateHowTo />
+      </section>
+      <section className="er-wrap" style={{ padding: "8px 22px 70px" }}>
+        <div style={{ maxWidth: 640, margin: "0 auto" }}>
+          <input className="er-input" placeholder="Search brands or categories" value={q} onChange={(e) => setQ(e.target.value)} />
+          {cats.length > 1 && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 2px" }}>
+            {["", ...cats].map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{c || "All"}</button>)}
+          </div>}
+        </div>
+        {list === null && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
+          {[0, 1, 2, 3, 4, 5].map((k) => <div key={k} className="er-card er-skel" style={{ padding: 0, overflow: "hidden" }}><div style={{ aspectRatio: "16/9", background: C.panel }} /><div style={{ padding: 14 }}><div style={{ height: 14, width: "55%", borderRadius: 6, background: C.panel }} /><div style={{ height: 36, borderRadius: 10, background: C.panel, marginTop: 16 }} /></div></div>)}
+        </div>}
+        {list && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>No brands match{q ? ` “${q}”` : ""}.</p>}
+        <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
+          {shown.map((b) => { const earns = b.earns && b.earns !== "0%" && b.earns !== "$0" ? b.earns : ""; const url = links[b.id]; return (
+            <div key={b.id} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <BrandArt b={b} style={{ width: "100%", aspectRatio: "16/9" }} />
+              <div style={{ padding: "12px 14px 14px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</div>
+                  <div style={{ fontSize: 12.5, color: C.muted }}>{(b.categories || []).join(" · ")}</div>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: earns ? C.accentD : C.muted }}>{isCreator ? (earns ? `You earn ${earns} per sale` : "Commission set by the brand") : "Join free to see your commission"}</div>
+                <button type="button" onClick={() => getLink(b)} disabled={busy === b.id} style={{ marginTop: "auto", width: "100%", display: "flex", alignItems: "center", gap: 8, background: url ? C.accentSoft : C.panel, border: `1.5px solid ${url ? C.accent : C.line}`, borderRadius: 12, padding: "9px 10px 9px 12px", cursor: "pointer", fontFamily: "inherit" }}>
+                  <span style={{ flex: 1, minWidth: 0, textAlign: "left", fontSize: 12.5, fontWeight: 600, color: url ? C.ink : C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url ? url.replace(/^https?:\/\/(www\.)?/i, "") : `easyrecommend.co/r/${isCreator ? session.username : "you"}/${slugify(b.name)}`}</span>
+                  <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, background: C.ink, color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: 12.5, fontWeight: 800 }}><Copy size={13} /> {busy === b.id ? "…" : url ? "Copy" : "Get link"}</span>
+                </button>
+              </div>
+            </div>); })}
+        </div>
+      </section>
+      <PageFooter onLegal={onLegal} />
+    </div>
+  );
+}
 /* Share page: how-to steps + an animated phone showing copy link → Instagram story → link sticker → paste. */
 function ShareHowTo() {
   const [f, setF] = useState(0);
@@ -3360,12 +3483,12 @@ function ShareStorySlide({ onShare }) {
   );
 }
 /* Homepage "How it works": the three ways to earn. */
-function ThreeWaysSlide({ onCreator, onShare, go }) {
+function ThreeWaysSlide({ onCreator, onShare, onAffiliate, go }) {
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
   const ways = [
     { n: "1", tag: "Make a list & share", title: "Build a list of brands you love", body: "Pick your favourite brands, put one link in your bio, and earn on every sale from your list.", cta: "Create my list", act: onCreator, more: 1, bg: C.ink, color: C.paper },
     { n: "2", tag: "Share & earn", title: "Share one brand on your story", body: "No list needed. Share a brand to your Instagram story with your own link and earn when friends buy.", cta: "Share a brand", act: onShare, more: 2, bg: igGrad, color: "#fff" },
-    { n: "3", tag: "Create content", title: "Interested in creating content?", body: "Get your affiliate link, make posts, reels or videos about brands you love, and earn a commission on every sale.", cta: "Get my affiliate link", act: onShare, more: 3, bg: C.accent, color: "#fff" },
+    { n: "3", tag: "Create content", title: "Interested in creating content?", body: "Get your affiliate link, make posts, reels or videos about brands you love, and earn a commission on every sale.", note: "For serious creators, bloggers, YouTubers and more", cta: "Get my affiliate link", act: onAffiliate, more: 3, bg: C.accent, color: "#fff" },
   ];
   return (
     <section style={{ background: C.paper, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
@@ -3385,6 +3508,7 @@ function ThreeWaysSlide({ onCreator, onShare, go }) {
               <div style={{ padding: "18px 20px 20px", display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
                 <h3 className="er-serif" style={{ margin: 0, fontSize: 21, fontWeight: 500, lineHeight: 1.2 }}>{w.title}</h3>
                 <p style={{ margin: 0, fontSize: 14, color: C.inkSoft, lineHeight: 1.55 }}>{w.body}</p>
+                {w.note && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.accentD }}>{w.note}</p>}
                 <div style={{ marginTop: "auto", paddingTop: 10, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <button className="er-btn er-btn-primary er-btn-sm" onClick={w.act}>{w.cta} <Arrow size={14} /></button>
                   <button type="button" className="er-link" onClick={() => go(w.more)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: C.muted }}>See how →</button>
@@ -3398,7 +3522,7 @@ function ThreeWaysSlide({ onCreator, onShare, go }) {
   );
 }
 /* Homepage sections as one slider, so the page stays short. Tabs, arrows and swipe. */
-function HomeSlides({ onCreator, onShare }) {
+function HomeSlides({ onCreator, onShare, onAffiliate }) {
   const AUTO_MS = 7000;
   const [i, setI] = useState(0); const touch = useRef(null); const top = useRef(null);
   const [hold, setHold] = useState(false); const [seen, setSeen] = useState(false); const [nudge, setNudge] = useState(0);
@@ -3417,7 +3541,7 @@ function HomeSlides({ onCreator, onShare }) {
   useEffect(() => { setVid(false); }, [i]);   // a playing video unmounts when the slide changes
   const playing = !hold && !paused && seen && !vid;
   const slides = [
-    ["How it works", <ThreeWaysSlide onCreator={onCreator} onShare={onShare} go={(k) => go(k)} />],
+    ["How it works", <ThreeWaysSlide onCreator={onCreator} onShare={onShare} onAffiliate={onAffiliate} go={(k) => go(k)} />],
     ["Make a list", (
     <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
       <div className="er-wrap" style={{ padding: "64px 22px" }}>
@@ -3434,7 +3558,7 @@ function HomeSlides({ onCreator, onShare }) {
     </section>
     )],
     ["Share & earn", <ShareStorySlide onShare={onShare} />],
-    ["Create content", <CreatorVideos limit={3} eyebrow="Create content" title="Interested in creating content? Get your affiliate link" sub="Make posts, reels and videos about brands you love with your own affiliate link, and earn a commission on every sale. Here's what creators are making." cta={["Get my affiliate link", onShare]} />],
+    ["Create content", <CreatorVideos limit={3} eyebrow="Create content" title="Interested in creating content? Get your affiliate link" sub="For serious creators, bloggers, YouTubers and more. Make posts, reels and videos about brands you love with your own affiliate link, and earn a commission on every sale." cta={["Get my affiliate link", onAffiliate]} />],
     ["Big payouts", <BigPayouts onCreator={onCreator} />],
   ];
   const n = slides.length;
@@ -3463,7 +3587,7 @@ function HomeSlides({ onCreator, onShare }) {
     </div>
   );
 }
-function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage, onBrands, onShare }) {
+function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage, onBrands, onShare, onAffiliate }) {
   const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
   const [joinOpen, setJoinOpen] = useState(false);
   return (
@@ -3498,7 +3622,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         sub="Three ways to earn: make a list of brands you love, share a brand on your story, or create content with your affiliate link. Get a commission on every sale." />
       <BrandStrip label="Recommend 1,000+ brands, including" />
 
-      <HomeSlides onCreator={onCreator} onShare={onShare} />
+      <HomeSlides onCreator={onCreator} onShare={onShare} onAffiliate={onAffiliate} />
 
       <footer style={{ borderTop: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ padding: "44px 22px 6px", display: "grid", gap: 28, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
@@ -3509,7 +3633,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           {[
             { h: "For creators", links: [["Join as a creator", onCreator], ["Creator log in", onLogin]] },
             { h: "For businesses", links: [["List your business", onList], ["Business log in", onLogin]] },
-            { h: "Explore", links: [["Share a brand & earn", onShare], ["For businesses", onBusinessPage], ["For creators", onInfluencerPage], ["Back to top", () => window.scrollTo({ top: 0, behavior: "smooth" })]] },
+            { h: "Explore", links: [["Share a brand & earn", onShare], ["Affiliate links for creators", onAffiliate], ["For businesses", onBusinessPage], ["For creators", onInfluencerPage], ["Back to top", () => window.scrollTo({ top: 0, behavior: "smooth" })]] },
           ].map((col) => (
             <div key={col.h}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>{col.h}</p>
@@ -3928,6 +4052,7 @@ function EasyApp() {
   const goInfluencerPage = () => { setView("influencers"); nav("/influencers"); window.scrollTo(0, 0); };
   const goBrands = () => { setView("brands"); nav("/brands"); window.scrollTo(0, 0); };
   const goShare = () => { setView("share"); nav("/share"); window.scrollTo(0, 0); };
+  const goAffiliate = () => { setView("affiliate"); nav("/affiliate"); window.scrollTo(0, 0); };
 
   useEffect(() => {
     try { if (!sessionStorage.getItem("er_pv")) { sessionStorage.setItem("er_pv", "1"); api("/pageview", { method: "POST" }).catch(() => {}); } } catch (e) {}
@@ -3982,8 +4107,9 @@ function EasyApp() {
       <GlobalAlerts />
       {view === "home" && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session}
         onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)}
-        onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} onBrands={goBrands} onShare={goShare} />}
+        onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} onBrands={goBrands} onShare={goShare} onAffiliate={goAffiliate} />}
       {view === "claim" && <ClaimPage />}
+      {view === "affiliate" && <AffiliatePage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onAuth={login} onLegal={() => setLegalOpen(true)} />}
       {view === "share" && <SharePage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onAuth={login} onLegal={() => setLegalOpen(true)} />}
       {view === "brands" && <BrandsPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "business" && <BusinessPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
@@ -3991,7 +4117,7 @@ function EasyApp() {
       {view === "admin" && <AdminPanel onBack={goHome} onRefresh={refresh} />}
       {view === "mybiz" && session && <MyBusiness session={session} onBack={goHome} onRefresh={refresh} />}
       {view === "settings" && session && <AccountSettings session={session} onBack={goHome} onLogout={logout} onEditProfile={() => goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onLegal={() => setLegalOpen(true)} onDeleted={() => { logout(); }} />}
-      {view === "settings" && !session && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => {}} onMyBiz={() => {}} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} onBrands={goBrands} onShare={goShare} />}
+      {view === "settings" && !session && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => {}} onMyBiz={() => {}} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} onBrands={goBrands} onShare={goShare} onAffiliate={goAffiliate} />}
       {view === "profile" && <InfluencerProfile handle={profileHandle} session={session} onAuth={login} dataVersion={ver} onBack={goHome} onBrowse={goHome} onOpenBusiness={(id) => setDetailId(id)} onAddBrand={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onRefresh={refresh} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onList={() => setBrandOpen(true)} />}
 
       <CookieBar onLearnMore={() => setLegalOpen(true)} />
