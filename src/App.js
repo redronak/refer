@@ -263,73 +263,111 @@ function ClaimPage() {
   const to = q.get("to") || ""; const ok = /^https?:\/\//i.test(to);
   const code = q.get("code") || ""; const name = q.get("name") || "this brand"; const pct = Number(q.get("pct")) || 0; const by = (q.get("by") || "").replace(/[^a-z0-9_.-]/gi, "");
   const id = (q.get("id") || "").replace(/[^a-f0-9]/gi, "");
-  const [copied, setCopied] = useState(false); const [img, setImg] = useState("");
-  useEffect(() => { if (id) api(`/business/${id}`).then((b) => setImg(b.offerImage || "")).catch(() => {}); }, [id]);
+  const [copied, setCopied] = useState(false); const [img, setImg] = useState(""); const [biz, setBiz] = useState(null);
+  useEffect(() => { if (id) api(`/business/${id}`).then((b) => { setBiz(b); setImg(b.offerImage || ""); }).catch(() => {}); }, [id]);
+  const site = to ? to.replace(/^https?:\/\/(www\.)?/i, "").split(/[/?#]/)[0] : "";
   const copy = async () => { try { await navigator.clipboard.writeText(code); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1500); };
   const go = async () => { if (code) { try { await navigator.clipboard.writeText(code); } catch (e) {} } if (ok) window.location.href = to; };
   return (
     <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: C.panel, padding: 20 }}>
-      <div className="er-card" style={{ maxWidth: 420, width: "100%", padding: img ? 0 : "30px 26px", textAlign: "center", overflow: "hidden" }}>
-        {img && <img src={img} alt={name} style={{ display: "block", width: "100%", aspectRatio: "16/9", objectFit: "cover" }} />}
-        <div style={{ padding: img ? "22px 26px 28px" : 0 }}>
-        {!img && <div style={{ display: "flex", justifyContent: "center" }}><Seal size={34} /></div>}
+      <div className="er-card" style={{ maxWidth: 420, width: "100%", padding: 0, textAlign: "center", overflow: "hidden" }}>
+        {img ? <img src={img} alt={name} style={{ display: "block", width: "100%", aspectRatio: "16/9", objectFit: "cover" }} />
+          : <BrandArt b={biz || { name, photos: [] }} style={{ width: "100%", aspectRatio: "16/9" }} />}
+        <div style={{ padding: "22px 26px 28px" }}>
         {by && <p style={{ margin: "12px 0 0", fontSize: 13.5, color: C.muted }}>@{by} {code || pct > 0 ? "sent you a discount" : "recommends this"}</p>}
         <h1 className="er-serif" style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 500 }}>{pct > 0 ? `${pct}% off ${name}` : code ? `A discount for ${name}` : name}</h1>
+        {biz && biz.blurb && <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.5, color: C.inkSoft }}>{biz.blurb}</p>}
         {code && <>
-        <p style={{ margin: "10px 0 0", fontSize: 14, color: C.inkSoft }}>Use this code at checkout:</p>
+        <p style={{ margin: "12px 0 0", fontSize: 14, color: C.inkSoft }}>Use this code at checkout:</p>
         <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, border: `2px dashed ${C.accent}`, borderRadius: 12, padding: "12px 14px", background: C.accentSoft }}>
           <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 20, fontWeight: 700, letterSpacing: ".08em", color: C.accentD }}>{code}</span>
           <button className="er-btn er-btn-sm" onClick={copy} style={{ background: copied ? C.accent : C.ink, color: "#fff", border: "none" }}>{copied ? "Copied" : "Copy"}</button>
         </div></>}
-        <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 18 }} disabled={!ok} onClick={go}>{code ? <>Copy code &amp; shop {name}</> : <>Shop {name}</>} <Arrow size={16} /></button>
-        <p style={{ margin: "14px 0 0", fontSize: 12, color: C.muted }}>Powered by Easy Recommend</p>
+        <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 18 }} disabled={!ok} onClick={go}>{code ? <>Copy code &amp; continue to {name}</> : <>Continue to {name}</>} <Arrow size={16} /></button>
+        {site && <p style={{ margin: "8px 0 0", fontSize: 12, color: C.muted }}>Takes you to {site}</p>}
+        <p style={{ margin: "14px 0 0", fontSize: 12, color: C.muted }}>Powered by <a href="/" style={{ color: C.inkSoft, fontWeight: 600 }}>Easy Recommend</a></p>
         </div>
       </div>
     </div>
   );
 }
 
-/* Creator's unique links for one brand: affiliate link + share link (friends get the discount). */
-function LinkPopup({ business, mode = "share", onClose }) {
+/* Story image (1080×1920) for ONE brand: its colours, big name, and the discount. */
+async function drawBrandStory(b) {
+  const W = 1080, H = 1920, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const g = cv.getContext("2d"); const name = String(b.name || "Brand").trim(); const { pal } = artFor(name);
+  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, pal[0]); bg.addColorStop(1, pal[1]); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  const blob = (x, y, r, a) => { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fillStyle = `rgba(255,255,255,${a})`; g.fill(); };
+  blob(W * 0.92, H * 0.1, 420, 0.18); blob(W * 0.05, H * 0.86, 360, 0.14); blob(W * 0.15, H * 0.2, 120, 0.12);
+  const round = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  const sans = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  g.textAlign = "center"; g.textBaseline = "alphabetic";
+  g.fillStyle = "rgba(255,255,255,0.9)"; g.font = `800 40px ${sans}`; g.fillText("MY PICK", W / 2, 300);
+  // brand photo (only data: URLs are safe to draw), framed in a rounded card
+  const photo = (b.photos || [])[0];
+  let y = 420;
+  if (photo && /^data:image\//.test(photo)) {
+    try {
+      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = photo; });
+      const cw = 760, ch = 560, cx = (W - cw) / 2; g.save(); round(cx, y, cw, ch, 48); g.clip();
+      const sc = Math.max(cw / img.width, ch / img.height); g.drawImage(img, cx + (cw - img.width * sc) / 2, y + (ch - img.height * sc) / 2, img.width * sc, img.height * sc); g.restore();
+      y += ch + 140;
+    } catch (e) { y = 820; }
+  } else y = 860;
+  let fs = 170; g.font = `900 ${fs}px ${sans}`; while (fs > 70 && g.measureText(name).width > W - 140) { fs -= 6; g.font = `900 ${fs}px ${sans}`; }
+  g.fillStyle = "#fff"; g.shadowColor = "rgba(0,0,0,.18)"; g.shadowBlur = 30; g.fillText(name, W / 2, y); g.shadowBlur = 0;
+  const cat = (b.categories || [])[0]; if (cat) { g.fillStyle = "rgba(255,255,255,0.85)"; g.font = `600 44px ${sans}`; g.fillText(cat, W / 2, y + 80); }
+  if (b.discount > 0) {
+    const txt = `${b.discount}% OFF`; g.font = `900 92px ${sans}`; const bw = g.measureText(txt).width + 120, bx = (W - bw) / 2, by = y + 150;
+    round(bx, by, bw, 150, 75); g.fillStyle = "#fff"; g.fill(); g.fillStyle = pal[0]; g.fillText(txt, W / 2, by + 108);
+    g.fillStyle = "#fff"; g.font = `600 42px ${sans}`; g.fillText(b.discountCode ? `with code ${b.discountCode}` : "with my link", W / 2, by + 220);
+  }
+  const pw = 640, ph = 116, px = (W - pw) / 2, py = H - 300; round(px, py, pw, ph, 58); g.fillStyle = "rgba(17,17,17,0.85)"; g.fill();
+  g.fillStyle = "#fff"; g.font = `800 46px ${sans}`; g.fillText("Tap the link to shop →", W / 2, py + 74);
+  g.fillStyle = "rgba(255,255,255,0.85)"; g.font = `600 36px ${sans}`; g.fillText("easyrecommend.co", W / 2, H - 110);
+  return cv;
+}
+async function shareBrandToStory(b, url) {
+  try { await navigator.clipboard.writeText(url); } catch (e) {}
+  const cv = await drawBrandStory(b);
+  const blob = await new Promise((res) => cv.toBlob(res, "image/png")); if (!blob) throw new Error("render failed");
+  const file = new File([blob], slugify(b.name || "brand") + "-story.png", { type: "image/png" });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: b.name, text: url }); return "shared"; }
+  const u = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = u; a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 5000);
+  return "saved";
+}
+/* Share one brand to your Instagram story with your own link (auto-copied for the link sticker). */
+function LinkPopup({ business, onClose }) {
   const sess = getSession();
-  const [url, setUrl] = useState(""); const [err, setErr] = useState(""); const [copied, setCopied] = useState("");
+  const [url, setUrl] = useState(""); const [err, setErr] = useState(""); const [copied, setCopied] = useState(false);
+  const [preview, setPreview] = useState(""); const [igState, setIgState] = useState("");
   useEffect(() => {
-    if (!sess || sess.role !== "creator") { setErr("Log in as a creator to get your link."); return; }
-    api("/creator/link", { method: "POST", body: { token: sess.token, businessId: business.id } }).then((r) => setUrl(r.referralUrl)).catch((e) => setErr(e.message));
+    if (!sess || sess.role !== "creator") { setErr("Log in to get your link."); return; }
+    api("/creator/link", { method: "POST", body: { token: sess.token, businessId: business.id } }).then((r) => setUrl(r.referralUrl + "?src=share")).catch((e) => setErr(e.message));
+    drawBrandStory(business).then((cv) => setPreview(cv.toDataURL("image/jpeg", 0.8))).catch(() => {});
   }, [business.id]);
-  const affUrl = url; const shareUrl = url ? url + "?src=share" : "";
-  const copy = async (k, v) => { try { await navigator.clipboard.writeText(v); } catch (e) {} setCopied(k); setTimeout(() => setCopied(""), 1500); };
-  const [igState, setIgState] = useState("");
-  const shareIg = async () => {   // story image of this brand + your link copied for the link sticker
+  const copy = async () => { try { await navigator.clipboard.writeText(url); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1800); };
+  const shareIg = async () => {
     setIgState("busy");
-    try { const r = await shareListToStory(sess.username, "", [business], shareUrl); setIgState(r === "saved" ? "saved" : "copied"); }
+    try { const r = await shareBrandToStory(business, url); setIgState(r === "saved" ? "saved" : "copied"); }
     catch (e) { setIgState(e && e.name === "AbortError" ? "copied" : "err"); }
   };
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
-  const linkRow = (k, label, hint, v) => (
-    <div style={{ marginTop: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>{label}</div>
-      <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "6px 6px 6px 12px" }}>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v ? v.replace(/^https?:\/\//i, "") : "Creating your link…"}</span>
-        <button className="er-btn er-btn-sm" disabled={!v} onClick={() => copy(k, v)} style={{ flexShrink: 0, background: copied === k ? C.accent : C.ink, color: "#fff", border: "none" }}>{copied === k ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}</button>
-      </div>
-      <div style={{ marginTop: 5, fontSize: 12, color: C.muted }}>{hint}</div>
-    </div>
-  );
   return (
     <Modal onClose={onClose}>
-      <div style={{ padding: "28px 26px" }}>
-        <span className="er-eyebrow">{mode === "aff" ? "Affiliate link" : "Share & earn"}</span>
-        <h2 className="er-serif" style={{ margin: "8px 0 4px", fontSize: 24, fontWeight: 500 }}>{mode === "aff" ? `Your link for ${business.name}` : `Share ${business.name} & earn`}</h2>
-        <p style={{ margin: 0, fontSize: 13.5, color: C.muted }}>Every click and sale on these links is tracked to you{business.discount > 0 ? `, and shoppers get ${business.discount}% off` : ""}.</p>
+      <div style={{ padding: "26px 24px", textAlign: "center" }}>
+        <h2 className="er-serif" style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 500 }}>Share {business.name} on your story</h2>
+        <p style={{ margin: 0, fontSize: 13.5, color: C.muted }}>{business.discount > 0 ? `Friends get ${business.discount}% off, and you earn when they buy.` : "You earn when friends buy through your link."}</p>
+        <div style={{ margin: "16px auto 0", width: 170, aspectRatio: "9/16", borderRadius: 16, overflow: "hidden", background: C.panel, boxShadow: "0 14px 30px -14px rgba(0,0,0,.4)" }}>
+          {preview ? <img src={preview} alt={`${business.name} story`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <BrandArt b={business} style={{ width: "100%", height: "100%" }} />}
+        </div>
         {err ? <p style={{ marginTop: 14, fontSize: 13.5, color: "#9B3024" }}>{err}</p> : <>
-          {mode === "aff"
-            ? <>{linkRow("aff", "Affiliate link", "Put it in your bio, posts, reels and videos.", affUrl)}{linkRow("share", "Share link for friends", "Send this one in DMs and stories.", shareUrl)}</>
-            : <>{linkRow("share", "Your share link", "Friends who shop through it get the discount.", shareUrl)}{linkRow("aff", "Affiliate link", "For your bio and content.", affUrl)}</>}
-          {business.discountCode && <p style={{ margin: "12px 0 0", fontSize: 12.5, color: C.inkSoft }}>Shoppers will see the code <b>{business.discountCode}</b> before they shop.</p>}
-          <button className="er-btn er-btn-block" disabled={!shareUrl || igState === "busy"} onClick={shareIg} style={{ marginTop: 18, border: "none", color: "#fff", background: igGrad, boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}><IgIcon size={15} /> {igState === "busy" ? "Creating image…" : "Share on Instagram story"}</button>
-          {igState && igState !== "busy" && <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, textAlign: "center", color: igState === "err" ? "#9B3024" : C.accentD }}>{igState === "err" ? "Couldn't create the image. Try again." : igState === "saved" ? "Image saved and link copied. Post it as a story and paste the link in a link sticker." : "Link copied. Paste it in a link sticker on your story."}</p>}
-          <p style={{ margin: "8px 0 0", fontSize: 12, color: C.muted, textAlign: "center" }}>In your story, add a link sticker and paste your link.</p>
+          <button className="er-btn er-btn-block" disabled={!url || igState === "busy"} onClick={shareIg} style={{ marginTop: 18, border: "none", color: "#fff", background: igGrad, boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}><IgIcon size={15} /> {igState === "busy" ? "Creating image…" : "Share on Instagram story"}</button>
+          <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: igState && igState !== "busy" ? 600 : 400, color: igState === "err" ? "#9B3024" : igState ? C.accentD : C.muted }}>{igState === "err" ? "Couldn't create the image. Try again." : igState === "saved" ? "Image saved and link copied. Post it as a story and paste the link in a link sticker." : igState === "copied" ? "Link copied. Paste it in a link sticker on your story." : "Your link is copied automatically. Paste it in a link sticker."}</p>
+          <button type="button" onClick={copy} disabled={!url} style={{ marginTop: 12, width: "100%", display: "flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "9px 12px", cursor: url ? "pointer" : "default", fontFamily: "inherit" }}>
+            <span style={{ flex: 1, minWidth: 0, textAlign: "left", fontSize: 13, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url ? url.replace(/^https?:\/\/(www\.)?/i, "") : "Creating your link…"}</span>
+            <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: copied ? C.accentD : C.ink, display: "inline-flex", alignItems: "center", gap: 4 }}>{copied ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}</span>
+          </button>
         </>}
       </div>
     </Modal>
@@ -399,9 +437,8 @@ function BusinessDetail({ id, onClose, onRecommend, autoLink, onAuth }) {
               <div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink, lineHeight: 1.35 }}>Share {b.name} with friends on Instagram{reward ? <> and earn <span style={{ color: C.accentD }}>{reward}</span></> : " and earn"} on every sale.</div>
               <p style={{ margin: "6px 0 0", fontSize: 13, color: C.muted, lineHeight: 1.5 }}>Drop your link in a story, friends tap through and shop, and you get paid, no following required.</p>
               <button className="er-btn er-btn-block" style={{ marginTop: 12, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }} onClick={() => openLink("share")}>
-                <IgIcon size={15} /> Share on Instagram &amp; earn
+                <IgIcon size={15} /> Share on Instagram story
               </button>
-              <button className="er-btn er-btn-light er-btn-block" style={{ marginTop: 8 }} onClick={() => openLink("aff")}><Copy size={14} /> Get my affiliate link</button>
             </div>
           </div>
           {b.website && <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
@@ -431,7 +468,7 @@ function BusinessDetail({ id, onClose, onRecommend, autoLink, onAuth }) {
             </div>
           )}
         </div>
-        {linkMode && <LinkPopup business={b} mode={linkMode} onClose={() => setLinkMode(null)} />}
+        {linkMode && <LinkPopup business={b} onClose={() => setLinkMode(null)} />}
         {joinMode && <QuickJoin brand={b} onClose={() => setJoinMode(null)} onDone={(sess) => { const m = joinMode; setJoinMode(null); onAuth(sess); setLinkMode(m); }} />}
       </>)}
     </Modal>
@@ -2372,8 +2409,8 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
   const recs = data.recommendations || [];
   return (
     <div>
-      {linkBiz && <LinkPopup business={linkBiz} mode="aff" onClose={() => setLinkBiz(null)} />}
-      {shareBiz && <LinkPopup business={shareBiz} mode="share" onClose={() => setShareBiz(null)} />}
+      {linkBiz && <LinkPopup business={linkBiz} onClose={() => setLinkBiz(null)} />}
+      {shareBiz && <LinkPopup business={shareBiz} onClose={() => setShareBiz(null)} />}
       {joinBiz && <QuickJoin brand={joinBiz} onClose={() => setJoinBiz(null)} onDone={(sess) => { const b = joinBiz; setJoinBiz(null); onAuth(sess); setShareBiz(b); }} />}
       {editing && <EditProfileModal token={session.token} current={data} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.line}` }}>
@@ -2435,7 +2472,6 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                   <BrandArt b={b} style={{ width: "100%", aspectRatio: "16/9" }} />
                   {b.discount > 0 && <span style={{ position: "absolute", left: 12, bottom: 12, fontSize: 12, fontWeight: 800, color: C.ink, background: "#fff", borderRadius: 999, padding: "5px 11px", boxShadow: "0 2px 8px rgba(0,0,0,.15)" }}>{b.discount}% off for you</span>}
                   {isOwner && <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 6 }}>
-                    <button type="button" style={pill} onClick={() => setLinkBiz(b)}><Copy size={13} /> Link</button>
                     <button type="button" style={pill} aria-label={`Remove ${b.name}`} onClick={() => removeBrand(b.id)}><Close size={13} /></button>
                   </div>}
                 </div>
@@ -2449,6 +2485,10 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                     {b.review.text && <p className="er-serif" style={{ margin: "6px 0 0", fontSize: 15.5, lineHeight: 1.45, color: C.inkSoft }}>&ldquo;{b.review.text}&rdquo;</p>}
                   </div>}
                   {b.discountCode && <div style={{ fontSize: 12.5, color: C.inkSoft }}>Code: <b style={{ fontFamily: "ui-monospace, Menlo, monospace", color: C.accentD }}>{b.discountCode}</b></div>}
+                  {isOwner && <div style={{ marginTop: "auto", display: "flex", gap: 8 }}>
+                    {b.website && <button className="er-btn er-btn-light er-btn-sm" style={{ flex: 1, minWidth: 0 }} onClick={() => window.open(/^https?:\/\//i.test(b.website) ? b.website : `https://${b.website}`, "_blank", "noopener")}><Globe size={14} /> {site || "Visit site"}</button>}
+                    <button className="er-btn er-btn-sm" onClick={() => setLinkBiz(b)} style={{ flex: b.website ? "0 0 auto" : 1, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }}><IgIcon size={14} /> Share</button>
+                  </div>}
                   {!isOwner && <div style={{ marginTop: "auto", display: "flex", gap: 8 }}>
                     {b.website
                       ? <button className="er-btn er-btn-primary er-btn-sm" style={{ flex: 1, minWidth: 0 }} onClick={() => goToBrand(data.username, b.id, b.website)}>Shop {site || b.name} <Arrow size={14} /></button>
@@ -2788,7 +2828,7 @@ function LumaHero({ title, onCreator, onList, sub = LUMA_SUB, pill = "1,000+ bra
         <div className="er-luma-actions">
           <button className="er-luma-cta" onClick={c1[1]}>{c1[0]}</button>
           {onShare
-            ? <button className="er-luma-cta2 er-luma-ig" onClick={onShare}><IgIcon size={17} /> Share &amp; earn</button>
+            ? <><span className="er-luma-or">or</span><button className="er-luma-cta2 er-luma-ig" onClick={onShare}><IgIcon size={17} /> Share &amp; earn</button></>
             : <button className="er-luma-cta2" onClick={c2[1]}>{c2[0]} <Arrow size={17} /></button>}
         </div>
         {link && <div><button type="button" className="er-luma-link" onClick={link[1]}>{link[0]} <Arrow size={14} /></button></div>}
@@ -2810,7 +2850,7 @@ function BrandStrip({ label }) {
     </section>
   );
 }
-function CreatorVideos({ eyebrow = "Watch it work", title = "See real creators in action", sub = "Short clips of creators showing off apps, tools, and products, and earning on every signup.", limit, bare }) {
+function CreatorVideos({ eyebrow = "Watch it work", title = "See real creators in action", sub = "Short clips of creators showing off apps, tools, and products, and earning on every signup.", limit, bare, cta }) {
   const [more, setMore] = useState(false);
   const vids = limit && !more ? ER_VIDEOS.slice(0, limit) : ER_VIDEOS;
   const body = (
@@ -2818,6 +2858,7 @@ function CreatorVideos({ eyebrow = "Watch it work", title = "See real creators i
       {eyebrow && <span className="er-eyebrow">{eyebrow}</span>}
       <h2 className="er-serif" style={{ margin: eyebrow ? "10px 0 0" : 0, fontSize: bare ? "clamp(22px,3.4vw,30px)" : "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>{title}</h2>
       {sub && <p style={{ margin: "10px auto 14px", fontSize: 15.5, color: C.muted, maxWidth: 600 }}>{sub}</p>}
+      {cta && <div style={{ margin: "4px 0 18px" }}><button className="er-btn er-btn-primary" onClick={cta[1]}>{cta[0]} <Arrow size={16} /></button></div>}
       <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "7px 15px", fontSize: 12.5, fontWeight: 600, color: C.inkSoft, marginBottom: 26, marginTop: sub ? 0 : 14 }}>
         <Play size={13} /> Videos are high-definition, so they may take a few seconds to load.
       </div>
@@ -3064,7 +3105,7 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
       if (where === "x") win.location.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
       else if (where === "fb") win.location.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
       else if (where === "copy") { try { await navigator.clipboard.writeText(url); } catch (e) {} say(b.id, "Link copied"); }
-      else { const r = await shareListToStory(session.username, "", [b], url); say(b.id, r === "saved" ? "Image saved & link copied. Add it to your story with a link sticker." : "Link copied. Paste it in a link sticker."); }
+      else { const r = await shareBrandToStory(b, url); say(b.id, r === "saved" ? "Image saved & link copied. Add it to your story with a link sticker." : "Link copied. Paste it in a link sticker."); }
     } catch (e) { if (win) win.close(); if (!(e && e.name === "AbortError")) say(b.id, e.message || "Couldn't share. Try again."); }
     finally { setBusy(""); }
   };
@@ -3205,15 +3246,53 @@ function ShareStorySlide({ onShare }) {
     </section>
   );
 }
+/* Homepage "How it works": the three ways to earn. */
+function ThreeWaysSlide({ onCreator, onShare, go }) {
+  const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
+  const ways = [
+    { n: "1", tag: "Make a list & share", title: "Build a list of brands you love", body: "Pick your favourite brands, put one link in your bio, and earn on every sale from your list.", cta: "Create my list", act: onCreator, more: 1, bg: C.ink, color: C.paper },
+    { n: "2", tag: "Share & earn", title: "Share one brand on your story", body: "No list needed. Share a brand to your Instagram story with your own link and earn when friends buy.", cta: "Share a brand", act: onShare, more: 2, bg: igGrad, color: "#fff" },
+    { n: "3", tag: "Create content", title: "Interested in creating content?", body: "Get your affiliate link, make posts, reels or videos about brands you love, and earn a commission on every sale.", cta: "Get my affiliate link", act: onShare, more: 3, bg: C.accent, color: "#fff" },
+  ];
+  return (
+    <section style={{ background: C.paper, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+      <div className="er-wrap" style={{ padding: "56px 22px" }}>
+        <div style={{ textAlign: "center", maxWidth: 620, margin: "0 auto 30px" }}>
+          <span className="er-eyebrow">How it works</span>
+          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em" }}>Three ways to earn</h2>
+          <p style={{ margin: 0, fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>Free to join. Pick one or do all three, you earn a commission on every sale either way.</p>
+        </div>
+        <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,260px),1fr))" }}>
+          {ways.map((w) => (
+            <div key={w.n} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <div style={{ background: w.bg, color: w.color, padding: "18px 20px", display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,.22)", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 15, flexShrink: 0 }}>{w.n}</span>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>{w.tag}</span>
+              </div>
+              <div style={{ padding: "18px 20px 20px", display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+                <h3 className="er-serif" style={{ margin: 0, fontSize: 21, fontWeight: 500, lineHeight: 1.2 }}>{w.title}</h3>
+                <p style={{ margin: 0, fontSize: 14, color: C.inkSoft, lineHeight: 1.55 }}>{w.body}</p>
+                <div style={{ marginTop: "auto", paddingTop: 10, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <button className="er-btn er-btn-primary er-btn-sm" onClick={w.act}>{w.cta} <Arrow size={14} /></button>
+                  <button type="button" className="er-link" onClick={() => go(w.more)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: C.muted }}>See how →</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 /* Homepage sections as one slider, so the page stays short. Tabs, arrows and swipe. */
 function HomeSlides({ onCreator, onShare }) {
   const AUTO_MS = 7000;
   const [i, setI] = useState(0); const touch = useRef(null); const top = useRef(null);
   const [hold, setHold] = useState(false); const [seen, setSeen] = useState(false); const [nudge, setNudge] = useState(0);
-  const reduce = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const [paused, setPaused] = useState(false);   // visitor's own pause/play toggle
   useEffect(() => {   // only auto-play while the slider is on screen
     const el = top.current; if (!el || typeof IntersectionObserver === "undefined") { setSeen(true); return; }
-    const io = new IntersectionObserver(([e]) => setSeen(e.isIntersecting), { threshold: 0.35 }); io.observe(el); return () => io.disconnect();
+    const io = new IntersectionObserver(([e]) => setSeen(e.isIntersecting), { threshold: 0 }); io.observe(el); return () => io.disconnect();
   }, []);
   const [vid, setVid] = useState(false);   // never auto-advance while a video is playing
   useEffect(() => {
@@ -3223,9 +3302,10 @@ function HomeSlides({ onCreator, onShare }) {
     return () => { el.removeEventListener("play", on, true); el.removeEventListener("pause", off, true); el.removeEventListener("ended", off, true); };
   }, []);
   useEffect(() => { setVid(false); }, [i]);   // a playing video unmounts when the slide changes
-  const playing = !hold && seen && !reduce && !vid;
+  const playing = !hold && !paused && seen && !vid;
   const slides = [
-    ["Link in bio", (
+    ["How it works", <ThreeWaysSlide onCreator={onCreator} onShare={onShare} go={(k) => go(k)} />],
+    ["Make a list", (
     <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
       <div className="er-wrap" style={{ padding: "64px 22px" }}>
         <div style={{ textAlign: "center", marginBottom: 34, maxWidth: 600, marginLeft: "auto", marginRight: "auto" }}>
@@ -3240,17 +3320,16 @@ function HomeSlides({ onCreator, onShare }) {
       </div>
     </section>
     )],
-    ["Share to story", <ShareStorySlide onShare={onShare} />],
+    ["Share & earn", <ShareStorySlide onShare={onShare} />],
+    ["Create content", <CreatorVideos limit={3} eyebrow="Create content" title="Interested in creating content? Get your affiliate link" sub="Make posts, reels and videos about brands you love with your own affiliate link, and earn a commission on every sale. Here's what creators are making." cta={["Get my affiliate link", onShare]} />],
     ["Big payouts", <BigPayouts onCreator={onCreator} />],
-    ["How it works", <PlatformSteps />],
-    ["Real creators", <CreatorVideos limit={3} />],
   ];
   const n = slides.length;
   const go = (k, scroll) => { setI((k + n) % n); setNudge((x) => x + 1); if (scroll && top.current) top.current.scrollIntoView({ behavior: "smooth", block: "start" }); };
   useEffect(() => { if (!playing) return; const t = setTimeout(() => setI((x) => (x + 1) % n), AUTO_MS); return () => clearTimeout(t); }, [i, playing, nudge, n]);
   const arrow = (dir) => <button type="button" aria-label={dir < 0 ? "Previous" : "Next"} onClick={() => go(i + dir)} style={{ flexShrink: 0, width: 38, height: 38, borderRadius: "50%", border: `1px solid ${C.line}`, background: "#fff", display: "grid", placeItems: "center", cursor: "pointer", color: C.ink }}>{dir < 0 ? <ChevL size={18} /> : <ChevR size={18} />}</button>;
   return (
-    <div ref={top} style={{ scrollMarginTop: 70 }} onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} onFocusCapture={() => setHold(true)} onBlurCapture={() => setHold(false)}>
+    <div ref={top} style={{ scrollMarginTop: 70 }}>
       <div className="er-wrap" style={{ padding: "26px 22px 14px", display: "flex", alignItems: "center", gap: 10, justifyContent: "center" }}>
         {arrow(-1)}
         <div className="er-ways-tabs" role="tablist" style={{ flexWrap: "nowrap", overflowX: "auto", maxWidth: "100%" }}>
@@ -3258,13 +3337,14 @@ function HomeSlides({ onCreator, onShare }) {
         </div>
         {arrow(1)}
       </div>
-      <div key={i} className="er-slide" onTouchStart={(e) => { touch.current = e.touches[0].clientX; setHold(true); }} onTouchEnd={(e) => { setTimeout(() => setHold(false), 8000); if (touch.current == null) return; const dx = e.changedTouches[0].clientX - touch.current; touch.current = null; if (Math.abs(dx) > 60) go(i + (dx < 0 ? 1 : -1)); }}>
+      <div key={i} className="er-slide" onTouchStart={(e) => { touch.current = e.touches[0].clientX; setHold(true); }} onTouchEnd={(e) => { setTimeout(() => setHold(false), 4000); if (touch.current == null) return; const dx = e.changedTouches[0].clientX - touch.current; touch.current = null; if (Math.abs(dx) > 60) go(i + (dx < 0 ? 1 : -1)); }}>
         {slides[i][1]}
       </div>
       <div className="er-wrap" style={{ padding: "16px 22px 30px", display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
         <div style={{ display: "flex", gap: 6 }}>{slides.map((_, k) => <button key={k} aria-label={`Slide ${k + 1}`} onClick={() => go(k, true)} style={{ position: "relative", overflow: "hidden", width: i === k ? 28 : 8, height: 8, borderRadius: 99, border: "none", padding: 0, background: i === k ? (playing ? C.line : C.ink) : C.line, cursor: "pointer", transition: "width .2s" }}>
           {i === k && playing && <span key={`${i}-${nudge}`} style={{ position: "absolute", inset: 0, background: C.ink, transformOrigin: "left", animation: `er-fill ${AUTO_MS}ms linear forwards` }} />}
         </button>)}</div>
+        <button type="button" aria-label={paused ? "Play slideshow" : "Pause slideshow"} onClick={() => setPaused(!paused)} style={{ width: 30, height: 30, borderRadius: "50%", border: `1px solid ${C.line}`, background: "#fff", display: "grid", placeItems: "center", cursor: "pointer", color: C.ink, fontSize: 11, fontWeight: 800 }}>{paused ? "▶" : "❚❚"}</button>
         <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => go(i + 1, true)}>Next: {slides[(i + 1) % n][0]} <ChevR size={14} /></button>
       </div>
     </div>
@@ -3301,7 +3381,8 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         </div>
       </header>
 
-      <LumaHero title={<>Share what<br />you love,<br /><span className="er-luma-grad">get paid.</span></>} onCreator={onCreator} onList={onList} onShare={onShare} link={["Are you a brand? See more", onBrands]} />
+      <LumaHero title={<>Share what<br />you love,<br /><span className="er-luma-grad">get paid.</span></>} onCreator={onCreator} onList={onList} onShare={onShare} link={["Are you a brand? See more", onBrands]}
+        sub="Three ways to earn: make a list of brands you love, share a brand on your story, or create content with your affiliate link. Get a commission on every sale." />
       <BrandStrip label="Recommend 1,000+ brands, including" />
 
       <HomeSlides onCreator={onCreator} onShare={onShare} />
@@ -3408,11 +3489,13 @@ const STYLES = `
 .er-luma-actions{margin-top:calc(22 * var(--u));display:flex;gap:calc(12 * var(--u));justify-content:center;flex-wrap:wrap}
 .er-luma-cta2{display:inline-flex;align-items:center;gap:calc(7 * var(--u));height:calc(45 * var(--u));padding:0 calc(20 * var(--u));border:1px solid #D6D6DA;border-radius:999px;background:#fff;color:#131517;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(17 * var(--u));font-weight:500;cursor:pointer}
 .er-luma-cta{margin-top:0;height:calc(45 * var(--u));padding:0 calc(19 * var(--u));border:none;border-radius:999px;background:#131517;color:#fff;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(17 * var(--u));font-weight:500;cursor:pointer}
+.er-luma-or{align-self:center;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(15 * var(--u));font-weight:600;color:#A1A2A3;text-transform:uppercase;letter-spacing:.08em}
+@media(max-width:560px){.er-luma-or{font-size:13px;flex-basis:100%;text-align:center;margin:-2px 0}}
 .er-luma-cta2.er-luma-ig{border:none;color:#fff;background:linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%);box-shadow:0 4px 16px rgba(214,41,118,.3);font-weight:600}
 .er-luma-link:hover{color:#131517}
 .er-luma-link{margin-top:calc(19 * var(--u));display:inline-flex;align-items:center;gap:calc(6 * var(--u));background:none;border:none;padding:0;cursor:pointer;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:calc(16 * var(--u));line-height:calc(24 * var(--u));font-weight:500;color:#A1A2A3}
 @media(prefers-reduced-motion:reduce){.er-luma-tile{animation:none}}
-@keyframes er-slide-in{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}.er-slide{animation:er-slide-in .28s ease}
+@keyframes er-slide-in{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}.er-slide{animation:er-slide-in .28s ease}@media (prefers-reduced-motion: reduce){.er-slide{animation:none}}
 @media(max-width:560px){.er-prof-actions{flex-direction:row !important;flex-wrap:wrap;align-items:center !important;width:100%}}
 @keyframes er-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .er-ways-tabs{display:inline-flex;gap:4px;padding:4px;background:#fff;border:1px solid ${C.line};border-radius:999px;flex-wrap:wrap;justify-content:center}
