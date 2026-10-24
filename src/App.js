@@ -302,6 +302,61 @@ function ClaimPage() {
   );
 }
 
+/* ---------- Global share alerts ----------
+   toast("…")                     → big "✓ Link copied" style confirmation
+   startIgShare(url, run)         → copies the link, then a clear "add a LINK sticker" guide;
+                                     its Continue button runs the actual Instagram share */
+const erEmit = (type, detail) => { try { window.dispatchEvent(new CustomEvent(type, { detail })); } catch (e) {} };
+function toast(msg) { erEmit("er:toast", msg); }
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch (e) {}
+  try {   // fallback for browsers/contexts without the async clipboard API
+    const ta = document.createElement("textarea"); ta.value = t; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, t.length); const ok = document.execCommand("copy"); document.body.removeChild(ta); return !!ok;
+  } catch (e) { return false; }
+}
+async function startIgShare(url, run) { const copied = await copyText(url); erEmit("er:igshare", { url, run, copied }); }
+function GlobalAlerts() {
+  const [msg, setMsg] = useState(""); const [ig, setIg] = useState(null); const [busy, setBusy] = useState(false); const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    let t; const onT = (e) => { setMsg(e.detail || ""); clearTimeout(t); t = setTimeout(() => setMsg(""), 3200); };
+    const onI = (e) => { setIg(e.detail); setCopied(!!(e.detail && e.detail.copied)); setBusy(false); };
+    window.addEventListener("er:toast", onT); window.addEventListener("er:igshare", onI);
+    return () => { clearTimeout(t); window.removeEventListener("er:toast", onT); window.removeEventListener("er:igshare", onI); };
+  }, []);
+  const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
+  const go = async () => {
+    setBusy(true);
+    try { await copyText(ig.url); const r = await ig.run(); setIg(null); toast(r === "saved" ? "✓ Image saved · link copied. Add the LINK sticker in your story!" : "✓ Link copied · add the LINK sticker and paste it"); }
+    catch (e) { setBusy(false); if (e && e.name === "AbortError") { setIg(null); toast("✓ Link copied · add the LINK sticker and paste it"); } else toast("Couldn't create the image. Try again."); }
+  };
+  const step = (n, body) => <div style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left" }}><span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: "50%", background: C.ink, color: "#fff", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 800 }}>{n}</span><div style={{ fontSize: 14, color: C.ink, lineHeight: 1.4 }}>{body}</div></div>;
+  return (<>
+    {msg && <div role="status" aria-live="polite" className="er-toast" style={{ background: msg.startsWith("✓") ? C.accentD : "#111" }}>{msg}</div>}
+    {ig && <div className="er-modal-overlay" style={{ zIndex: 80 }} onClick={() => !busy && setIg(null)}>
+      <div className="er-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
+        <div style={{ padding: "26px 22px 22px", textAlign: "center" }}>
+          <div style={{ margin: "0 auto", width: 58, height: 58, borderRadius: "50%", background: copied ? C.accent : C.ink, color: "#fff", display: "grid", placeItems: "center" }}>{copied ? <Check size={30} /> : <Copy size={26} />}</div>
+          <h2 className="er-serif" style={{ margin: "12px 0 0", fontSize: 26, fontWeight: 500 }}>{copied ? "Your link is copied!" : "Copy your link"}</h2>
+          <button type="button" onClick={async () => { const ok = await copyText(ig.url); setCopied(ok); if (ok) toast("✓ Link copied"); }} style={{ marginTop: 12, width: "100%", display: "flex", alignItems: "center", gap: 8, background: copied ? C.accentSoft : C.panel, border: `1.5px solid ${copied ? C.accent : C.line}`, borderRadius: 12, padding: "10px 12px", cursor: "pointer", fontFamily: "inherit" }}>
+            <span style={{ flex: 1, minWidth: 0, textAlign: "left", fontSize: 13, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ig.url.replace(/^https?:\/\/(www\.)?/i, "")}</span>
+            <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 800, color: copied ? C.accentD : C.ink }}>{copied ? "Copied ✓" : "Copy"}</span>
+          </button>
+          <div style={{ marginTop: 16, background: "#FFF7ED", border: "1.5px solid #FDBA74", borderRadius: 14, padding: "13px 14px", textAlign: "left" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#9A3412", marginBottom: 10 }}>⚠️ Don't forget the link sticker, or friends can't tap through</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              {step(1, <>Tap <b>Continue</b> and pick <b>Instagram → Story</b></>)}
+              {step(2, <>Tap the sticker icon <span style={{ display: "inline-grid", placeItems: "center", width: 20, height: 20, borderRadius: 5, border: `1.5px solid ${C.ink}`, fontSize: 11, verticalAlign: "middle" }}>☺</span> and choose <span style={{ display: "inline-block", background: "#fff", color: "#0095F6", border: "1px solid #CFE6FB", borderRadius: 6, padding: "1px 7px", fontSize: 12, fontWeight: 800 }}>🔗 LINK</span></>)}
+              {step(3, <><b>Paste</b> your link and tap <b>Done</b></>)}
+            </div>
+          </div>
+          <button className="er-btn er-btn-block" disabled={busy} onClick={go} style={{ marginTop: 16, border: "none", color: "#fff", background: igGrad, boxShadow: "0 4px 14px rgba(214,41,118,.3)" }}><IgIcon size={16} /> {busy ? "Creating image…" : "Continue to Instagram"}</button>
+          <button type="button" className="er-link" disabled={busy} onClick={() => setIg(null)} style={{ marginTop: 10, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: C.muted }}>Not now</button>
+        </div>
+      </div>
+    </div>}
+  </>);
+}
 /* Story image (1080×1920) for ONE brand: its colours, big name, and the discount. */
 async function drawBrandStory(b) {
   const W = 1080, H = 1920, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
@@ -350,18 +405,14 @@ async function shareBrandToStory(b, url) {
 function LinkPopup({ business, onClose }) {
   const sess = getSession();
   const [url, setUrl] = useState(""); const [err, setErr] = useState(""); const [copied, setCopied] = useState(false);
-  const [preview, setPreview] = useState(""); const [igState, setIgState] = useState("");
+  const [preview, setPreview] = useState("");
   useEffect(() => {
     if (!sess || sess.role !== "creator") { setErr("Log in to get your link."); return; }
     api("/creator/link", { method: "POST", body: { token: sess.token, businessId: business.id } }).then((r) => setUrl(r.referralUrl + "?src=share")).catch((e) => setErr(e.message));
     drawBrandStory(business).then((cv) => setPreview(cv.toDataURL("image/jpeg", 0.8))).catch(() => {});
   }, [business.id]);
-  const copy = async () => { try { await navigator.clipboard.writeText(url); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1800); };
-  const shareIg = async () => {
-    setIgState("busy");
-    try { const r = await shareBrandToStory(business, url); setIgState(r === "saved" ? "saved" : "copied"); }
-    catch (e) { setIgState(e && e.name === "AbortError" ? "copied" : "err"); }
-  };
+  const copy = async () => { const ok = await copyText(url); if (ok) toast("✓ Link copied"); setCopied(ok); setTimeout(() => setCopied(false), 1800); };
+  const shareIg = () => startIgShare(url, () => shareBrandToStory(business, url));
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
   return (
     <Modal onClose={onClose}>
@@ -372,8 +423,8 @@ function LinkPopup({ business, onClose }) {
           {preview ? <img src={preview} alt={`${business.name} story`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <BrandArt b={business} style={{ width: "100%", height: "100%" }} />}
         </div>
         {err ? <p style={{ marginTop: 14, fontSize: 13.5, color: "#9B3024" }}>{err}</p> : <>
-          <button className="er-btn er-btn-block" disabled={!url || igState === "busy"} onClick={shareIg} style={{ marginTop: 18, border: "none", color: "#fff", background: igGrad, boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}><IgIcon size={15} /> {igState === "busy" ? "Creating image…" : "Share on Instagram story"}</button>
-          <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: igState && igState !== "busy" ? 600 : 400, color: igState === "err" ? "#9B3024" : igState ? C.accentD : C.muted }}>{igState === "err" ? "Couldn't create the image. Try again." : igState === "saved" ? "Image saved and link copied. Post it as a story and paste the link in a link sticker." : igState === "copied" ? "Link copied. Paste it in a link sticker on your story." : "Your link is copied automatically. Paste it in a link sticker."}</p>
+          <button className="er-btn er-btn-block" disabled={!url} onClick={shareIg} style={{ marginTop: 18, border: "none", color: "#fff", background: igGrad, boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}><IgIcon size={15} /> Share on Instagram story</button>
+          <p style={{ margin: "8px 0 0", fontSize: 12.5, color: C.muted }}>We copy your link. In your story, add a <b>🔗 LINK</b> sticker and paste it.</p>
           <button type="button" onClick={copy} disabled={!url} style={{ marginTop: 12, width: "100%", display: "flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "9px 12px", cursor: url ? "pointer" : "default", fontFamily: "inherit" }}>
             <span style={{ flex: 1, minWidth: 0, textAlign: "left", fontSize: 13, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url ? url.replace(/^https?:\/\/(www\.)?/i, "") : "Creating your link…"}</span>
             <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: copied ? C.accentD : C.ink, display: "inline-flex", alignItems: "center", gap: 4 }}>{copied ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}</span>
@@ -1470,7 +1521,6 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const [step, setStep] = useState(1); // 1 pick → 2 reviews → (4 create account, if new) → 3 done
   const [username, setUsername] = useState(loggedIn ? sess.username : "");
   const [signupEmail, setSignupEmail] = useState(""); const [signupPass, setSignupPass] = useState("");
-  const [shareState, setShareState] = useState("");
   const contactIsEmail = signupEmail.includes("@");
   const contactOk = contactIsEmail ? emailOk(signupEmail) : signupEmail.replace(/\D/g, "").length >= 7;
   const [token, setToken] = useState(loggedIn ? sess.token : "");
@@ -1719,10 +1769,9 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
               <a href="https://www.instagram.com/nycdesihangouts/" target="_blank" rel="noopener noreferrer" className="er-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 13, fontWeight: 600, color: C.accentD, textDecoration: "none" }}><IgIcon size={14} /> See how a creator uses theirs</a>
             </div>
           </div>
-          <button className="er-btn er-btn-block" style={{ marginTop: 16, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }} disabled={shareState === "busy"}
-            onClick={async () => { setShareState("busy"); try { const r = await shareListToStory(handle, "", picked.map((id) => approved.find((x) => x.id === id)).filter(Boolean)); setShareState(r === "saved" ? "saved" : "copied"); } catch (e) { setShareState(e && e.name === "AbortError" ? "copied" : "err"); } }}>
-            <IgIcon size={16} /> {shareState === "busy" ? "Creating image…" : "Share on Instagram story"}</button>
-          {shareState && shareState !== "busy" && <p style={{ margin: "8px 0 0", fontSize: 12.5, color: shareState === "err" ? "#9B3024" : C.accentD, textAlign: "center" }}>{shareState === "err" ? "Couldn't create the image. Try again." : shareState === "saved" ? "Link copied and image saved. Add it to your story and paste the link in a link sticker." : "Link copied. Paste it in a link sticker on your story."}</p>}
+          <button className="er-btn er-btn-block" style={{ marginTop: 16, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }}
+            onClick={() => startIgShare(`${window.location.origin}/@${handle}`, () => shareListToStory(handle, "", picked.map((id) => approved.find((x) => x.id === id)).filter(Boolean)))}>
+            <IgIcon size={16} /> Share on Instagram story</button>
           <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
             <button className="er-btn er-btn-ghost" onClick={onClose}>Close</button>
             <button className="er-btn er-btn-primary" onClick={() => { onViewProfile(handle); onClose(); }}>View my page <Arrow size={16} /></button></div>
@@ -2395,20 +2444,12 @@ async function shareListToStory(username, bio, recs, link) {
 }
 function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh, onCreator, onList, onAuth }) {
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false); const [photoBusy, setPhotoBusy] = useState(false);
-  const [sharing, setSharing] = useState("");
   const [linkBiz, setLinkBiz] = useState(null); const [shareBiz, setShareBiz] = useState(null); const [joinBiz, setJoinBiz] = useState(null);
   const shareBrand = (b) => { if (session && session.role === "creator") setShareBiz(b); else setJoinBiz(b); };
   const isOwner = session && session.role === "creator" && session.username === handle;
   const profileUrl = `${window.location.origin}/@${handle}`;
-  const copyLink = async () => { try { await navigator.clipboard.writeText(profileUrl); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
-  const shareStory = async () => {
-    if (!data) return;
-    setSharing("busy");
-    try {
-      const r = await shareListToStory(data.username, data.bio, recs);
-      setSharing(r === "saved" ? "saved" : "copied"); setTimeout(() => setSharing(""), 6000);
-    } catch (e) { if (e && e.name === "AbortError") { setSharing(""); return; } setSharing("err"); setTimeout(() => setSharing(""), 3000); }
-  };
+  const copyLink = async () => { const ok = await copyText(profileUrl); if (ok) toast("✓ Link copied"); setCopied(ok); setTimeout(() => setCopied(false), 1600); };
+  const shareStory = () => { if (data) startIgShare(profileUrl, () => shareListToStory(data.username, data.bio, recs)); };
   const load = () => api(`/creator/${handle}${session && session.role === "creator" && session.username === handle ? `?token=${encodeURIComponent(session.token)}` : ""}`).then(setData).catch((e) => setErr(e.message));
   const onProfilePhoto = async (e) => { const file = e.target.files && e.target.files[0]; e.target.value = ""; if (!file) return; setPhotoBusy(true); try { const img = await fileToDataURL(file, 400, 0.85); await api("/creator/me", { method: "PATCH", body: { token: session.token, image: img } }); await load(); } catch (x) { alert(x.message || "Couldn't update photo"); } finally { setPhotoBusy(false); } };
   useEffect(() => { setData(null); setErr(""); load(); }, [handle, dataVersion]);
@@ -2439,10 +2480,9 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
               <p style={{ margin: "2px 0 0", fontSize: 14.5, color: C.muted }}>{data.bio || "Curating businesses worth trusting."}</p>
               <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{isOwner && data.followers > 0 ? `${data.followersLabel} followers · ` : ""}{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
               <div style={{ marginTop: 12 }}>
-                <button className="er-btn er-btn-sm" disabled={sharing === "busy"} onClick={shareStory} style={{ border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}>
-                  <IgIcon size={14} /> {sharing === "busy" ? "Creating image…" : "Share on Instagram story"}
+                <button className="er-btn er-btn-sm" onClick={shareStory} style={{ border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}>
+                  <IgIcon size={14} /> Share on Instagram story
                 </button>
-                {sharing && sharing !== "busy" && <p style={{ margin: "6px 0 0", fontSize: 12, fontWeight: 600, color: sharing === "err" ? "#9B3024" : C.accentD }}>{sharing === "err" ? "Couldn't create the image. Try again." : sharing === "saved" ? "Image saved and link copied. Post it as a story and paste the link in a link sticker." : "Link copied. Paste it in a link sticker on your story."}</p>}
               </div>
               {(data.channels && data.channels.length > 0)
                 ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
@@ -3174,8 +3214,8 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
       if (where === "wa") win.location.href = `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`;
       else if (where === "x") win.location.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
       else if (where === "fb") win.location.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-      else if (where === "copy") { try { await navigator.clipboard.writeText(url); } catch (e) {} say(b.id, "Link copied"); }
-      else { const r = await shareBrandToStory(b, url); say(b.id, r === "saved" ? "Image saved & link copied. Add it to your story with a link sticker." : "Link copied. Paste it in a link sticker."); }
+      else if (where === "copy") { const ok = await copyText(url); toast(ok ? "✓ Link copied" : "Couldn't copy, tap Copy again"); }
+      else startIgShare(url, () => shareBrandToStory(b, url));
     } catch (e) { if (win) win.close(); if (!(e && e.name === "AbortError")) say(b.id, e.message || "Couldn't share. Try again."); }
     finally { setBusy(""); }
   };
@@ -3578,6 +3618,8 @@ const STYLES = `
 @keyframes er-tap-k{0%,100%{transform:scale(.6);opacity:0}40%{transform:scale(1);opacity:1}70%{transform:scale(.85);opacity:.8}}.er-tap{animation:er-tap-k 1.4s ease .2s infinite;pointer-events:none}
 @keyframes er-type-k{from{max-width:0}to{max-width:100%}}.er-type{display:inline-block;overflow:hidden;vertical-align:bottom;white-space:nowrap;animation:er-type-k 1.2s steps(30) .3s both}
 .er-howto{grid-template-columns:1fr}@media(min-width:760px){.er-howto{grid-template-columns:1.2fr 1fr}}
+@keyframes er-toast-in{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+.er-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:90;max-width:min(92vw,420px);background:#111;color:#fff;border-radius:14px;padding:16px 22px;font-size:16.5px;font-weight:800;line-height:1.35;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,.3);animation:er-toast-in .25s ease}
 .er-ways-tabs{display:inline-flex;gap:4px;padding:4px;background:#fff;border:1px solid ${C.line};border-radius:999px;flex-wrap:wrap;justify-content:center}
 .er-ways-tab{border:none;background:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:${C.inkSoft};padding:9px 16px;border-radius:999px}
 .er-ways-tab.on{background:${C.ink};color:${C.paper}}
@@ -3937,6 +3979,7 @@ function EasyApp() {
 
   return (
     <div className="er-root">
+      <GlobalAlerts />
       {view === "home" && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session}
         onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)}
         onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} onBrands={goBrands} onShare={goShare} />}
