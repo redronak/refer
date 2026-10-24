@@ -93,6 +93,16 @@ function getSession() { try { return JSON.parse(localStorage.getItem("er_session
 function saveSession(s) { try { localStorage.setItem("er_session", JSON.stringify(s)); } catch (e) {} }
 function clearSession() { try { localStorage.removeItem("er_session"); } catch (e) {} }
 // A signed-up/logged-in creator unlocks rewards site-wide.
+// Brand list, shared across pages: instant from memory/session cache, then refreshed in the background.
+const BIZ_CACHE_KEY = "er_biz_cache_v1";
+let bizMem = null;
+function cachedBusinesses() { if (bizMem) return bizMem; try { const v = JSON.parse(sessionStorage.getItem(BIZ_CACHE_KEY) || "null"); if (Array.isArray(v)) bizMem = v; } catch (e) {} return bizMem; }
+async function fetchBusinesses(token) {
+  const r = await api(`/businesses${token ? `?token=${encodeURIComponent(token)}` : ""}`);
+  const list = Array.isArray(r) ? r : [];
+  if (!token) { bizMem = list; try { sessionStorage.setItem(BIZ_CACHE_KEY, JSON.stringify(list)); } catch (e) {} }
+  return list;
+}
 function creatorHandle() { const s = getSession(); return s && s.role === "creator" ? s.username : ""; }
 
 // Open an external website in a new tab, adding https:// if missing.
@@ -2778,8 +2788,8 @@ function PlatformSteps() {
 const LUMA_SUB = "From skincare to software, build a list of brands you love and earn on every sale from your link. Wanna earn more? Create content and earn commission on every sale.";
 /* Every listed brand, searchable. Opened from the "1,000+ brands to choose from" pill. */
 function AllBrandsModal({ onClose }) {
-  const [list, setList] = useState(null); const [q, setQ] = useState(""); const [cat, setCat] = useState("");
-  useEffect(() => { api("/businesses").then((r) => setList(Array.isArray(r) ? r : [])).catch(() => setList([])); }, []);
+  const [list, setList] = useState(() => cachedBusinesses()); const [q, setQ] = useState(""); const [cat, setCat] = useState("");
+  useEffect(() => { fetchBusinesses("").then(setList).catch(() => setList((l) => l || [])); }, []);
   const all = list || [];
   const cats = [...new Set(all.flatMap((b) => b.categories || []))].sort();
   const t = q.trim().toLowerCase();
@@ -2999,37 +3009,40 @@ function WaysToGrow({ onList, onCreator }) {
     </section>
   );
 }
-const TOP_IG_CREATORS = [["Cristiano Ronaldo", "@cristiano", "635M+", "Football/Sports/Lifestyle"], ["Ariana Grande", "@arianagrande", "375M+", "Music/Beauty/Entertainment"], ["Dwayne Johnson", "@therock", "395M+", "Film/Fitness/Business"], ["Kylie Jenner", "@kyliejenner", "400M+", "Beauty/Fashion/Reality TV"], ["Selena Gomez", "@selenagomez", "425M+", "Music/Beauty/Acting"], ["Kim Kardashian", "@kimkardashian", "365M+", "Fashion/Beauty/Media"], ["Leo Messi", "@leomessi", "505M+", "Football/Sports/Lifestyle"], ["Beyoncé", "@beyonce", "315M+", "Music/Fashion/Beauty"], ["Justin Bieber", "@justinbieber", "295M+", "Music/Fashion/Lifestyle"], ["Kendall Jenner", "@kendalljenner", "295M+", "Fashion/Modeling/Spirits"], ["Neymar Jr", "@neymarjr", "220M+", "Football/Gaming/Sports"], ["Taylor Swift", "@taylorswift", "285M+", "Music/Film/Touring"], ["Jennifer Lopez", "@jlo", "250M+", "Music/Film/Beauty"], ["Nicki Minaj", "@nickiminaj", "230M+", "Music/Fashion/Rap"], ["Khloé Kardashian", "@khloekardashian", "305M+", "Fashion/Reality TV/Fitness"], ["Miley Cyrus", "@mileycyrus", "215M+", "Music/Fashion/TV"], ["Katy Perry", "@katyperry", "205M+", "Music/TV/Beauty"], ["Kourtney Kardashian", "@kourtneykardash", "225M+", "Wellness/Reality TV/Lifestyle"], ["Kevin Hart", "@kevinhart4real", "180M+", "Comedy/Film/Media"], ["Demi Lovato", "@ddlovato", "155M+", "Music/Acting/Advocacy"], ["Ellen DeGeneres", "@theellenshow", "135M+", "Comedy/TV/Media"], ["Rihanna", "@badgalriri", "150M+", "Beauty/Music/Fashion"], ["Virat Kohli", "@virat.kohli", "270M+", "Cricket/Fitness/Sports"], ["Zendaya", "@zendaya", "185M+", "Acting/Fashion/Beauty"], ["Cardi B", "@iamcardib", "170M+", "Music/Fashion/Beauty"], ["Chris Brown", "@chrisbrownofficial", "145M+", "Music/Dance/Touring"], ["Drake", "@champagnepapi", "145M+", "Music/Sports/Business"], ["Billie Eilish", "@billieeilish", "120M+", "Music/Fashion/Sustainability"], ["Shakira", "@shakira", "90M+", "Music/Dance/Latin Pop"], ["Vin Diesel", "@vindiesel", "100M+", "Film/Production/Gaming"], ["David Beckham", "@davidbeckham", "90M+", "Football/Fashion/Business"], ["Gigi Hadid", "@gigihadid", "80M+", "Modeling/Fashion/Retail"], ["Justin Timberlake", "@justintimberlake", "75M+", "Music/Film/Hospitality"], ["Priyanka Chopra Jonas", "@priyankachopra", "90M+", "Acting/Beauty/Film"], ["Emma Watson", "@emmawatson", "75M+", "Acting/Fashion/Advocacy"], ["Shawn Mendes", "@shawnmendes", "70M+", "Music/Wellness/Fashion"], ["Dua Lipa", "@dualipa", "90M+", "Music/Fashion/Beauty"], ["Shraddha Kapoor", "@shraddhakapoor", "95M+", "Bollywood/Beauty/Fashion"], ["Maluma", "@maluma", "65M+", "Latin Music/Fashion"], ["Snoop Dogg", "@snoopdogg", "85M+", "Music/Media/Lifestyle"], ["Ronaldinho", "@ronaldinho", "75M+", "Football/Sports Legacy"], ["Deepika Padukone", "@deepikapadukone", "80M+", "Bollywood/Luxury/Beauty"], ["Camila Cabello", "@camila_cabello", "65M+", "Music/Acting/Fashion"], ["Will Smith", "@willsmith", "65M+", "Film/Media/Motivation"], ["Huda Kattan", "@hudabeauty", "55M+", "Beauty/Skincare/Fragrance"], ["Robert Downey Jr.", "@robertdowneyjr", "55M+", "Film/Production/Tech"], ["Leonardo DiCaprio", "@leonardodicaprio", "60M+", "Film/Climate/Investing"], ["James Rodríguez", "@jamesrodriguez10", "50M+", "Football/Sports"], ["Chris Hemsworth", "@chrishemsworth", "60M+", "Film/Fitness/Wellness"], ["Kylian Mbappé", "@k.mbappe", "120M+", "Football/Sports/Luxury"], ["J Balvin", "@jbalvin", "50M+", "Latin Music/Fashion"], ["Lady Gaga", "@ladygaga", "58M+", "Music/Film/Beauty"], ["Zac Efron", "@zacefron", "60M+", "Film/Travel/Fitness"], ["Anushka Sharma", "@anushkasharma", "70M+", "Bollywood/Production/Fashion"], ["Michelle Obama", "@michelleobama", "58M+", "Publishing/Media/Leadership"], ["Cara Delevingne", "@caradelevingne", "42M+", "Modeling/Acting/Fashion"], ["Gareth Bale", "@garethbale11", "53M+", "Football/Golf/Sports"], ["Lele Pons", "@lelepons", "54M+", "Comedy/Music/Digital Media"], ["Sergio Ramos", "@sergioramos", "65M+", "Football/Sports/Fashion"], ["Sunny Leone", "@sunnyleone", "55M+", "Bollywood/Beauty/TV"], ["Daddy Yankee", "@daddyyankee", "50M+", "Reggaeton/Music/Business"], ["Paulo Dybala", "@paulodybala", "58M+", "Football/Sports"], ["Millie Bobby Brown", "@milliebobbybrown", "65M+", "Acting/Beauty/Gen Z"], ["Vanessa Hudgens", "@vanessahudgens", "50M+", "Acting/Beauty/Lifestyle"], ["Adele", "@adele", "58M+", "Music/Touring/Live Events"], ["Luis Suarez", "@luissuarez9", "50M+", "Football/Sports"], ["Tom Holland", "@tomholland2013", "65M+", "Film/Theater/Franchise"], ["Dove Cameron", "@dovecameron", "48M+", "Music/Acting/Beauty"], ["Kris Jenner", "@krisjenner", "52M+", "Media/Management/Business"], ["Zayn Malik", "@zayn", "54M+", "Music/Fashion/Pop"], ["Conor McGregor", "@thenotoriousmma", "48M+", "MMA/Boxing/Spirits"], ["Marina Ruy Barbosa", "@marinaruybarbosa", "42M+", "Brazilian TV/Fashion"], ["Salman Khan", "@beingsalmankhan", "75M+", "Bollywood/TV/Philanthropy"], ["Kriti Sanon", "@kritisanon", "58M+", "Bollywood/Beauty/Fashion"], ["Bella Hadid", "@bellahadid", "60M+", "Modeling/Beauty/Fashion"], ["Karim Benzema", "@karimbenzema", "75M+", "Football/Sports"], ["Ryan Reynolds", "@vancityreynolds", "55M+", "Film/Marketing/Business"], ["Maisa", "@maisa", "45M+", "Brazilian TV/Youth Media"], ["Harry Styles", "@harrystyles", "50M+", "Music/Fashion/Beauty"], ["Barack Obama", "@barackobama", "36M+", "Politics/Publishing/Media"], ["Jennifer Aniston", "@jenniferaniston", "45M+", "Acting/Haircare/Lifestyle"], ["Cole Sprouse", "@colesprouse", "32M+", "Acting/Photography/Fashion"], ["Chrissy Teigen", "@chrissyteigen", "42M+", "Food/TV/Lifestyle"], ["Varun Dhawan", "@varundvn", "47M+", "Bollywood/Fitness/Fashion"], ["Laudya Cynthia Bella", "@laudyacynthiabella", "38M+", "Indonesian Film/Fashion"], ["Dan Bilzerian", "@danbilzerian", "30M+", "Lifestyle/Gambling/Business"], ["Stephen Curry", "@stephencurry30", "58M+", "Basketball/Sports/Media"], ["Gisella Anastasia", "@gisel_la", "40M+", "Indonesian Music/TV"], ["Nusret Gökçe", "@nusr_et", "55M+", "Food/Luxury Dining/Hospitality"], ["Wiz Khalifa", "@wizkhalifa", "40M+", "Music/Cannabis/Lifestyle"], ["Ed Sheeran", "@teddysphotos", "48M+", "Music/Touring/Publishing"], ["Parineeti Chopra", "@parineetichopra", "44M+", "Bollywood/Music/Fashion"], ["Eminem", "@eminem", "45M+", "Hip-Hop/Publishing/Music"], ["Nick Jonas", "@nickjonas", "35M+", "Music/Acting/TV"], ["Marshmello", "@marshmellomusic", "32M+", "EDM/Gaming/Music"], ["Chris Pratt", "@prattprattpratt", "45M+", "Film/Franchise/Voice Acting"], ["Shahid Kapoor", "@shahidkapoor", "50M+", "Bollywood/Fashion/Grooming"], ["Hugh Jackman", "@thehughjackman", "35M+", "Film/Theater/Fitness"], ["Shay Mitchell", "@shaymitchell", "36M+", "Acting/Travel/Ecommerce"], ["Luna Maya", "@lunamaya", "38M+", "Indonesian TV/Fashion/Ecommerce"]]; // [name, handle, followers, niche] — public figures, reference only
+const TOP_IG_CREATORS = [["Sohla El-Waylly", "@sohlae", "500K", "Food"], ["Priya Krishna", "@priyakrishna", "300K", "Food"], ["Hetty McKinnon", "@hettymckinnon", "400K", "Food/Recipes"], ["Brian Lagerstrom", "@brianlagerstrom", "600K", "Food/Recipes"], ["Internet Shaquille", "@internetshaquille", "500K", "Food"], ["Sip and Feast", "@sipandfeast", "800K", "Food/Recipes"], ["Kiki Rich", "@theblondeabroad", "501K", "Travel"], ["Alyssa Ramos", "@mylifesatravelmovie", "210K", "Travel"], ["Shivya Nath", "@shivya", "137K", "Travel"], ["Valeria Hinojosa", "@waterthruskin", "445K", "Travel/Wellness"], ["Anna Begum", "@jetset_anna", "714K", "Travel"], ["Luke Patrick Hoogmoed", "@lukepatrickh", "685K", "Travel"], ["Ines Fiorini", "@pinkines", "606K", "Travel/Photography"], ["Jess Darrington", "@whereisbriggs", "517K", "Travel/Family"], ["Laurie (Travel Tips by Laurie)", "@traveltipsbylaurie", "336K", "Travel"], ["Rilee Smith", "@rileejsmith", "168K", "Travel"], ["Jeff Jenkins", "@chubbydiaries", "146K", "Travel"], ["Alysse Dalessandro", "@readytostare", "143K", "Travel/Style"], ["Callie Thorpe", "@calliethorpe", "260K", "Travel/Food"], ["Savanna Crowell", "@solowithsav", "108K", "Travel"], ["Em Harriss", "@em.harriss", "107K", "Travel/History"], ["Sara Dietschy", "@saradietschy", "300K", "Tech"], ["Michael Fisher", "@mrmobile", "400K", "Tech"], ["Becca Farsace", "@becca", "200K", "Tech"], ["Snazzy Labs", "@snazzylabs", "900K", "Tech"], ["Tailosive Tech", "@tailosivetech", "300K", "Tech"], ["TK Bay", "@tkbay", "200K", "Tech"], ["Erica Griffin", "@ericagriffin", "150K", "Tech"], ["Tech With Lucy", "@techwithlucy", "250K", "Tech"], ["Michela Allocca", "@breakyourbudget", "400K", "Finance"], ["Haley Sacks", "@missbehelpful", "300K", "Finance"], ["Rose Han", "@rosehan", "200K", "Finance"], ["Delyanne Barros", "@delyannebarros", "300K", "Finance/Investing"], ["Berna Anat", "@heyberna", "150K", "Finance"], ["Paco de Leon", "@pacodeleon", "150K", "Finance"], ["Tonya Rapley", "@myfabfinance", "200K", "Finance"], ["Chris Browning", "@popcornfinance", "150K", "Finance"], ["Caleb Hearon", "@calebhearon", "500K", "Comedy"], ["Megan Stalter", "@meganstalter", "600K", "Comedy"], ["Joel Kim Booster", "@joelkimbooster", "400K", "Comedy"], ["Matt Rogers", "@mattrogersthat", "300K", "Comedy"], ["Patti Harrison", "@party_harrison", "300K", "Comedy"], ["John Early", "@bejohnce", "200K", "Comedy"], ["Kate Berlant", "@kateberlant", "200K", "Comedy"], ["Aparna Nancherla", "@aparnapkin", "300K", "Comedy"], ["Sam Jay", "@samjaycomic", "200K", "Comedy"]]; // [name, handle, followers, niche] — public creators, reference only
 function TopCreators() {
-  const [q, setQ] = useState(""); const [all, setAll] = useState(false);
+  const [q, setQ] = useState(""); const [all, setAll] = useState(false); const [niche, setNiche] = useState("");
   const t = q.trim().toLowerCase();
-  const list = TOP_IG_CREATORS.map((r, i) => [i + 1, ...r]).filter((r) => !t || r.slice(1).join(" ").toLowerCase().includes(t));
-  const shown = all || t ? list : list.slice(0, 12);
+  const niches = [...new Set(TOP_IG_CREATORS.map((r) => r[3].split("/")[0]))];
+  const list = TOP_IG_CREATORS.map((r, i) => [i + 1, ...r]).filter((r) => (!niche || r[4].split("/")[0] === niche) && (!t || r.slice(1).join(" ").toLowerCase().includes(t)));
+  const shown = all || t || niche ? list : list.slice(0, 12);
   return (
     <section style={{ background: "#fff" }}>
       <div className="er-wrap" style={{ padding: "60px 22px" }}>
         <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto" }}>
           <span className="er-eyebrow">Influencers</span>
-          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>The world's top 100 Instagram creators</h2>
+          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,40px)", fontWeight: 500, letterSpacing: "-.01em", color: C.ink }}>Creators across food, travel, tech, finance and comedy</h2>
           <p style={{ margin: 0, fontSize: 14, color: C.muted, lineHeight: 1.55 }}>For reference: public follower counts. These accounts aren't affiliated with Easy Recommend.</p>
         </div>
         <div style={{ maxWidth: 720, margin: "22px auto 0" }}>
           <input className="er-input" placeholder="Search by name, handle or niche" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 2px" }}>
+            {["", ...niches].map((c) => <button key={c || "all"} type="button" onClick={() => setNiche(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${niche === c ? C.ink : C.line}`, background: niche === c ? C.ink : "#fff", color: niche === c ? C.paper : C.inkSoft }}>{c || "All"}</button>)}
+          </div>
           <div style={{ marginTop: 12, display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,300px),1fr))" }}>
-            {shown.map(([rank, name, handle, fol, niche]) => (
+            {shown.map(([, name, handle, fol, nicheLabel]) => (
               <div key={handle} style={{ display: "flex", alignItems: "center", gap: 11, border: `1px solid ${C.line}`, borderRadius: 12, padding: "9px 12px", background: "#fff" }}>
-                <span style={{ width: 26, flexShrink: 0, fontSize: 12, fontWeight: 700, color: C.muted, textAlign: "right" }}>{rank}</span>
                 <span style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", background: C.panel, color: C.ink, fontWeight: 700, fontSize: 14 }}>{name[0]}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name} <span style={{ fontWeight: 500, color: C.muted, fontSize: 12.5 }}>{handle}</span></div>
-                  <div style={{ fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{niche.replace(/\//g, " · ")}</div>
+                  <div style={{ fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nicheLabel.replace(/\//g, " · ")}</div>
                 </div>
                 <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: C.inkSoft, background: C.panel, borderRadius: 999, padding: "3px 9px" }}>{fol}</span>
               </div>
             ))}
           </div>
           {list.length === 0 && <p style={{ textAlign: "center", fontSize: 14, color: C.muted }}>No one matches “{q}”.</p>}
-          {!t && <div style={{ textAlign: "center", marginTop: 14 }}><button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setAll(!all)}>{all ? "Show fewer" : "Show all 100"}</button></div>}
+          {!t && !niche && list.length > 12 && <div style={{ textAlign: "center", marginTop: 14 }}><button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setAll(!all)}>{all ? "Show fewer" : `Show all ${list.length}`}</button></div>}
         </div>
       </div>
     </section>
@@ -3078,13 +3091,69 @@ function QuickJoin({ brand, onClose, onDone }) {
     </Modal>
   );
 }
+/* Share page: how-to steps + an animated phone showing copy link → Instagram story → link sticker → paste. */
+function ShareHowTo() {
+  const [f, setF] = useState(0);
+  const frames = ["Tap Copy link", "Open Instagram, add your story", "Tap the sticker icon, pick LINK", "Paste your link, tap Done", "Friends tap it and shop"];
+  useEffect(() => { const t = setTimeout(() => setF((x) => (x + 1) % frames.length), 2600); return () => clearTimeout(t); }, [f]);
+  const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
+  const link = "easyrecommend.co/r/you/notion";
+  const tap = (style) => <span className="er-tap" style={{ position: "absolute", width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,.55)", border: "2px solid #fff", boxShadow: "0 0 0 6px rgba(255,255,255,.25)", ...style }} />;
+  const story = (children) => <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#FF8A65,#FF385C)" }}>
+    <div style={{ position: "absolute", left: 18, right: 18, top: "26%", borderRadius: 14, overflow: "hidden", boxShadow: "0 8px 20px rgba(0,0,0,.2)" }}><BrandArt b={{ name: "Notion", photos: [] }} style={{ width: "100%", aspectRatio: "16/10" }} /></div>
+    <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 8 }}>{["Aa", "☺", "▢"].map((x, k) => <span key={k} style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(0,0,0,.25)", color: "#fff", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 800 }}>{x}</span>)}</div>
+    {children}</div>;
+  const screens = [
+    <div key="0" style={{ position: "absolute", inset: 0, background: "#fff", padding: "34px 14px 14px" }}>
+      <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}><BrandArt b={{ name: "Notion", photos: [] }} style={{ width: "100%", aspectRatio: "16/10" }} />
+        <div style={{ padding: 9 }}><div style={{ fontSize: 12, fontWeight: 700 }}>Notion</div><div style={{ fontSize: 10, color: C.accentD, fontWeight: 600, marginTop: 2 }}>You earn $12 per sale</div>
+          <div style={{ marginTop: 8, height: 26, borderRadius: 8, background: igGrad }} /><div style={{ marginTop: 6, display: "flex", gap: 5 }}>{["#111", "#25D366", "#1877F2"].map((c) => <span key={c} style={{ flex: 1, height: 22, borderRadius: 7, background: c }} />)}
+            <span style={{ position: "relative", flex: 1, height: 22, borderRadius: 7, border: `1px solid ${C.line}`, fontSize: 9, fontWeight: 800, display: "grid", placeItems: "center" }}>Copy{tap({ right: -8, top: -6 })}</span></div></div></div>
+      <div className="er-pop" style={{ position: "absolute", left: "50%", bottom: 22, transform: "translateX(-50%)", background: "#111", color: "#fff", borderRadius: 999, padding: "6px 12px", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>✓ Link copied</div>
+    </div>,
+    <div key="1" style={{ position: "absolute", inset: 0 }}>{story(<div style={{ position: "absolute", bottom: 14, left: 0, right: 0, textAlign: "center", color: "#fff", fontSize: 11, fontWeight: 700 }}>Your story</div>)}</div>,
+    <div key="2" style={{ position: "absolute", inset: 0 }}>{story(<>
+      {tap({ top: 8, right: 10 })}
+      <div className="er-up" style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: "rgba(30,30,30,.92)", borderRadius: "16px 16px 0 0", padding: "12px 12px 16px", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 7 }}>
+        {["LOCATION", "LINK", "MENTION", "MUSIC", "POLL", "GIF"].map((x) => <span key={x} style={{ position: "relative", fontSize: 9, fontWeight: 800, textAlign: "center", padding: "7px 0", borderRadius: 7, background: x === "LINK" ? "#fff" : "rgba(255,255,255,.12)", color: x === "LINK" ? "#0095F6" : "#fff" }}>{x === "LINK" ? "🔗 LINK" : x}{x === "LINK" && tap({ right: -10, top: -8 })}</span>)}
+      </div></>)}</div>,
+    <div key="3" style={{ position: "absolute", inset: 0, background: "rgba(20,20,20,.96)", padding: "40px 14px", color: "#fff" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700 }}><span>Cancel</span><span style={{ color: "#0095F6" }}>Done</span></div>
+      <div style={{ marginTop: 22, fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,.6)" }}>URL</div>
+      <div style={{ marginTop: 6, borderBottom: "1px solid rgba(255,255,255,.3)", padding: "6px 0", fontSize: 11.5, fontWeight: 600, overflow: "hidden", whiteSpace: "nowrap" }}><span className="er-type">{link}</span></div>
+      <div className="er-pop" style={{ marginTop: 12, display: "inline-block", background: "#fff", color: "#111", borderRadius: 8, padding: "5px 10px", fontSize: 10.5, fontWeight: 800 }}>Paste</div>
+    </div>,
+    <div key="4" style={{ position: "absolute", inset: 0 }}>{story(<>
+      <div className="er-pop" style={{ position: "absolute", left: "50%", bottom: "16%", transform: "translateX(-50%) rotate(-4deg)", background: "#fff", color: "#0095F6", borderRadius: 9, padding: "6px 9px", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", maxWidth: "88%", overflow: "hidden", textOverflow: "ellipsis", boxShadow: "0 4px 12px rgba(0,0,0,.2)" }}>🔗 {link.toUpperCase()}</div>
+      <div className="er-pop" style={{ position: "absolute", left: 10, right: 10, bottom: 10, background: "rgba(17,17,17,.85)", color: "#fff", borderRadius: 10, padding: "6px 9px", fontSize: 10.5, fontWeight: 700 }}>✓ Sale tracked · you earned $12</div></>)}</div>,
+  ];
+  const steps = [["Select a brand you like", "Search or browse below. Each brand shows what you earn."], ["Share it on Instagram story, WhatsApp or X", "Your link is copied. On Instagram, add a Link sticker and paste it."], ["Friends shop within 6 months, you earn", "Every sale from your link pays you a commission, tracked automatically."]];
+  return (
+    <div className="er-howto" style={{ maxWidth: 860, margin: "26px auto 0", display: "grid", gap: 26, alignItems: "center", textAlign: "left" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {steps.map(([t, d], k) => (
+          <div key={t} style={{ display: "flex", gap: 13 }}>
+            <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", display: "grid", placeItems: "center", background: k === 1 ? igGrad : C.ink, color: "#fff", fontWeight: 800, fontSize: 14 }}>{k + 1}</span>
+            <div><div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>Step {k + 1}</div><div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 1 }}>{t}</div><div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.5, marginTop: 2 }}>{d}</div></div>
+          </div>))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        <div style={{ position: "relative", width: 210, aspectRatio: "9/17", borderRadius: 28, border: "7px solid #111", overflow: "hidden", background: "#fff", boxShadow: "0 24px 50px -24px rgba(0,0,0,.45)" }}>
+          <div key={f} className="er-frame" style={{ position: "absolute", inset: 0 }}>{screens[f]}</div>
+        </div>
+        <div style={{ minHeight: 20, fontSize: 13.5, fontWeight: 700, color: C.ink }}><span style={{ color: C.muted, fontWeight: 600 }}>{f + 1}/{frames.length} · </span>{frames[f]}</div>
+        <div style={{ display: "flex", gap: 6 }}>{frames.map((_, k) => <button key={k} type="button" aria-label={frames[k]} onClick={() => setF(k)} style={{ width: f === k ? 18 : 7, height: 7, borderRadius: 99, border: "none", padding: 0, background: f === k ? C.ink : C.line, cursor: "pointer", transition: "width .2s" }} />)}</div>
+      </div>
+    </div>
+  );
+}
 /* Share a brand: browse brands, share each one to Instagram story / X / Facebook with your own link. */
 function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
   const isCreator = session && session.role === "creator";
-  const [list, setList] = useState(null); const [q, setQ] = useState(""); const [cat, setCat] = useState("");
+  const [list, setList] = useState(() => cachedBusinesses()); const [q, setQ] = useState(""); const [cat, setCat] = useState("");
   const [links, setLinks] = useState({}); const [busy, setBusy] = useState(""); const [note, setNote] = useState({});
   const [joinFor, setJoinFor] = useState(undefined); // brand awaiting quick sign up (null = from header)
-  useEffect(() => { api(`/businesses${isCreator ? `?token=${encodeURIComponent(session.token)}` : ""}`).then((r) => setList(Array.isArray(r) ? r : [])).catch(() => setList([])); }, [isCreator]);
+  useEffect(() => { fetchBusinesses(isCreator ? session.token : "").then(setList).catch(() => setList((l) => l || [])); }, [isCreator]);
   const all = list || [];
   const cats = CAT_LIST.filter((c) => all.some((b) => (b.categories || []).includes(c)));
   const t = q.trim().toLowerCase();
@@ -3097,12 +3166,13 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
   };
   const share = async (b, where) => {
     if (!isCreator) { setJoinFor(b); return; }
-    const win = where === "x" || where === "fb" ? window.open("", "_blank") : null;   // open now so popup blockers allow it
+    const win = where === "x" || where === "fb" || where === "wa" ? window.open("", "_blank") : null;   // open now so popup blockers allow it
     setBusy(b.id + where);
     try {
       const url = await linkFor(b);
       const text = b.discount > 0 ? `${b.name}: ${b.discount}% off with my link` : `I recommend ${b.name}`;
-      if (where === "x") win.location.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+      if (where === "wa") win.location.href = `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`;
+      else if (where === "x") win.location.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
       else if (where === "fb") win.location.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
       else if (where === "copy") { try { await navigator.clipboard.writeText(url); } catch (e) {} say(b.id, "Link copied"); }
       else { const r = await shareBrandToStory(b, url); say(b.id, r === "saved" ? "Image saved & link copied. Add it to your story with a link sticker." : "Link copied. Paste it in a link sticker."); }
@@ -3118,8 +3188,8 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
       <section className="er-wrap" style={{ padding: "46px 22px 18px", textAlign: "center" }}>
         <span className="er-eyebrow">Share &amp; earn</span>
         <h1 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(30px,5vw,48px)", fontWeight: 500, letterSpacing: "-.015em" }}>Share a brand you love. Earn on every sale.</h1>
-        <p style={{ margin: "0 auto", maxWidth: 560, fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>Pick a brand and share it to your story, X or Facebook. Each share uses your own link, so you earn a commission when friends buy.</p>
-        {!isCreator && <p style={{ margin: "12px auto 0", maxWidth: 520, fontSize: 13.5, fontWeight: 600, color: C.accentD }}>Join free to get your own links and see what you earn per brand.</p>}
+        {!isCreator && <p style={{ margin: "4px auto 0", maxWidth: 520, fontSize: 13.5, fontWeight: 600, color: C.accentD }}>Free to join. You get your own link for every brand.</p>}
+        <ShareHowTo />
       </section>
       <section className="er-wrap" style={{ padding: "8px 22px 70px" }}>
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
@@ -3128,7 +3198,9 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
             {["", ...cats].map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{c || "All"}</button>)}
           </div>}
         </div>
-        {list === null && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>Loading brands…</p>}
+        {list === null && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
+          {[0, 1, 2, 3, 4, 5].map((k) => <div key={k} className="er-card er-skel" style={{ padding: 0, overflow: "hidden" }}><div style={{ aspectRatio: "16/9", background: C.panel }} /><div style={{ padding: 14 }}><div style={{ height: 14, width: "55%", borderRadius: 6, background: C.panel }} /><div style={{ height: 10, width: "35%", borderRadius: 6, background: C.panel, marginTop: 8 }} /><div style={{ height: 36, borderRadius: 10, background: C.panel, marginTop: 16 }} /></div></div>)}
+        </div>}
         {list && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>No brands match{q ? ` “${q}”` : ""}.</p>}
         <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
           {shown.map((b) => { const earns = b.earns && b.earns !== "0%" && b.earns !== "$0" ? b.earns : ""; return (
@@ -3145,8 +3217,9 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
                 <div style={{ fontSize: 13, fontWeight: 600, color: earns ? C.accentD : C.muted }}>{isCreator ? (earns ? `You earn ${earns} per sale` : "Commission set by the brand") : "Join free to see your commission"}</div>
                 <div style={{ marginTop: "auto", display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {sbtn(b, "ig", "Share on Instagram story", <IgIcon size={14} />, igGrad, "#fff")}
-                  {sbtn(b, "x", "𝕏 Post", null, C.ink, "#fff")}
-                  {sbtn(b, "fb", "Facebook", <span style={{ fontWeight: 900, fontFamily: "Arial, sans-serif" }}>f</span>, "#1877F2", "#fff")}
+                  {sbtn(b, "wa", "WhatsApp", null, "#25D366", "#fff")}
+                  {sbtn(b, "x", "𝕏", null, C.ink, "#fff")}
+                  {sbtn(b, "fb", "f", null, "#1877F2", "#fff")}
                   {sbtn(b, "copy", "Copy", <Copy size={13} />, "#fff", C.ink)}
                 </div>
                 {note[b.id] && <div style={{ fontSize: 12, fontWeight: 600, color: C.accentD }}>{note[b.id]}</div>}
@@ -3498,6 +3571,13 @@ const STYLES = `
 @keyframes er-slide-in{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}.er-slide{animation:er-slide-in .28s ease}@media (prefers-reduced-motion: reduce){.er-slide{animation:none}}
 @media(max-width:560px){.er-prof-actions{flex-direction:row !important;flex-wrap:wrap;align-items:center !important;width:100%}}
 @keyframes er-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes er-pulse{0%,100%{opacity:1}50%{opacity:.55}}.er-skel{animation:er-pulse 1.2s ease-in-out infinite}
+@keyframes er-frame-in{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}.er-frame{animation:er-frame-in .35s ease}
+@keyframes er-pop-in{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}.er-pop{animation:er-pop-in .4s ease .5s both}
+@keyframes er-up-in{from{transform:translateY(100%)}to{transform:none}}.er-up{animation:er-up-in .45s ease .35s both}
+@keyframes er-tap-k{0%,100%{transform:scale(.6);opacity:0}40%{transform:scale(1);opacity:1}70%{transform:scale(.85);opacity:.8}}.er-tap{animation:er-tap-k 1.4s ease .2s infinite;pointer-events:none}
+@keyframes er-type-k{from{max-width:0}to{max-width:100%}}.er-type{display:inline-block;overflow:hidden;vertical-align:bottom;white-space:nowrap;animation:er-type-k 1.2s steps(30) .3s both}
+.er-howto{grid-template-columns:1fr}@media(min-width:760px){.er-howto{grid-template-columns:1.2fr 1fr}}
 .er-ways-tabs{display:inline-flex;gap:4px;padding:4px;background:#fff;border:1px solid ${C.line};border-radius:999px;flex-wrap:wrap;justify-content:center}
 .er-ways-tab{border:none;background:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:${C.inkSoft};padding:9px 16px;border-radius:999px}
 .er-ways-tab.on{background:${C.ink};color:${C.paper}}
@@ -3784,7 +3864,7 @@ function EasyApp() {
   const initial = parseRoute();
   const [view, setView] = useState(initial.view);
   const [profileHandle, setProfileHandle] = useState(initial.handle);
-  const [businesses, setBusinesses] = useState([]);
+  const [businesses, setBusinesses] = useState(() => (cachedBusinesses() || []).filter((b) => b && b.name && b.name.trim()));
   const [creators, setCreators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -3823,8 +3903,10 @@ function EasyApp() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const [bz, cr] = await Promise.all([api("/businesses"), api("/creators")]);
-      setBusinesses((bz || []).filter((b) => b && b.name && b.name.trim())); setCreators(cr || []); setError(""); setVer((v) => v + 1);
+      // Brands first (most pages need them); creators load separately so they never hold brands up.
+      api("/creators").then((cr) => setCreators(cr || [])).catch(() => {});
+      const bz = await fetchBusinesses("");
+      setBusinesses(bz.filter((b) => b && b.name && b.name.trim())); setError(""); setVer((v) => v + 1);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   };
