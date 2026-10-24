@@ -999,118 +999,165 @@ function OrRule() {
     </div>
   );
 }
-function MethodCard({ num, title, desc, children }) {
-  return (
-    <div className="er-card" style={{ padding: "22px 22px", marginBottom: 22 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ flexShrink: 0, width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD, fontWeight: 700, fontSize: 14 }}>{num}</span>
-        <h3 className="er-serif" style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>{title}</h3>
-      </div>
-      {desc && <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.55 }}>{desc}</p>}
-      <div style={{ marginTop: 14 }}>{children}</div>
-    </div>
-  );
-}
 function SetupTab({ token, business }) {
   const [px, setPx] = useState(null);
   const [plat, setPlat] = useState("Shopify"); const [url, setUrl] = useState(business && business.website ? business.website : "");
   const [note, setNote] = useState(""); const [busy, setBusy] = useState(false); const [sent, setSent] = useState(false); const [err, setErr] = useState("");
+  const [pick, setPick] = useState("");
   useEffect(() => { api(`/business/me/pixel?token=${encodeURIComponent(token)}`).then(setPx).catch(() => {}); }, [token]);
   const key = (px && px.pixelKey) || "your-key";
   const pixelUrl = (px && px.pixelUrl) || `https://learntok-backend-2026-24c204fe508e.herokuapp.com/easyrecommend/px.js?key=${key}`;
+  const convUrl = (px && px.conversionUrl) || pixelUrl.replace(/\/px\.js.*$/, "/conversion");
   const submit = async () => {
     setBusy(true); setErr("");
     try { await api("/business/me/setup-request", { method: "POST", body: { token, platform: plat, siteUrl: url.trim(), note: note.trim() } }); setSent(true); }
     catch (e) { setErr(e.message || "Couldn't send."); } finally { setBusy(false); }
   };
   const widgetSnippet = `<script src="${pixelUrl.replace("/px.js", "/widget.js")}" data-mode="both"></script>`;
-  const universalSnippet = `<!-- 1. On every page (in your site <head>): -->\n<script src="${pixelUrl}"></script>\n\n<!-- 2. On your order-confirmation / thank-you page: -->\n<script>\n  EasyRec.conversion({ orderId: "YOUR_ORDER_ID", value: 49.00 }); // value = subtotal\n</script>`;
-  const step = (n, t) => <li style={{ marginBottom: 6 }}><b>{n}.</b> {t}</li>;
+  const headTag = `<script src="${pixelUrl}"></script>`;
+  const aiPrompt = `Add Easy Recommend affiliate tracking to this website. It needs exactly two things, nothing else:
+
+1. SAVE THE CLICK: on every page, load this script in the <head>:
+   ${headTag}
+   It stores the "er_click" URL parameter in a 180-day first-party cookie.
+
+2. REPORT THE SALE: when an order or payment succeeds, send the sale once per order.
+   - In the browser (order confirmation / thank-you page):
+     window.EasyRec && window.EasyRec.conversion({ orderId: "<order id>", value: <order subtotal before tax and shipping> });
+   - OR from the server, where payment is confirmed:
+     POST ${convUrl}
+     Content-Type: application/json
+     {"key":"${key}","clickId":"<value of the er_click cookie>","orderId":"<order id>","value":<subtotal>}
+
+Fire it only on successful orders, never twice for the same order. Don't change anything else. Show me the changes before applying.`;
+  const aiSteps = (tool, open) => [
+    { t: `Open your website's code in ${tool}. ${open}` },
+    { t: "Paste this prompt and let it make the change:", code: aiPrompt, label: "Copy prompt" },
+    { t: "Deploy your site. Then open one of your creator links and place a test order to confirm the sale shows up." },
+  ];
+  const PLATS = [
+    { k: "claude", label: "Claude", group: "ai", steps: aiSteps("Claude Code", "(In your project folder, run claude.)") },
+    { k: "codex", label: "Codex", group: "ai", steps: aiSteps("Codex", "(Open the repo in Codex or the Codex CLI.)") },
+    { k: "cursor", label: "Cursor", group: "ai", steps: aiSteps("Cursor", "(Open the project and start a chat in Agent mode.)") },
+    { k: "shopify", label: "Shopify", group: "store", steps: [
+      { t: "Shopify admin → Settings → Customer events → Add custom pixel. Name it “Easy Recommend”." },
+      { t: "Delete the sample code, paste this, then click Save and Connect:", code: `var EASYREC_KEY = "${key}";\nvar EASYREC_ENDPOINT = "${convUrl}";\nanalytics.subscribe("page_viewed", async (e) => { try { var h=(e.context.document.location.href)||""; var m=h.match(/[?&]er_click=([^&#]+)/); if(m) await browser.localStorage.setItem("er_click", decodeURIComponent(m[1])); } catch(_){} });\nanalytics.subscribe("checkout_completed", async (e) => { try { var cid=await browser.localStorage.getItem("er_click"); if(!cid) return; var co=(e.data&&e.data.checkout)||{}; var v=(co.subtotalPrice&&co.subtotalPrice.amount)||(co.totalPrice&&co.totalPrice.amount)||0; var oid=(co.order&&co.order.id)||co.token||""; await fetch(EASYREC_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({key:EASYREC_KEY,clickId:cid,orderId:String(oid),value:Number(v)}),keepalive:true}); } catch(_){} });` },
+      { t: "That's it. Shopify now saves the click and reports every checkout." },
+    ] },
+    { k: "woo", label: "WordPress / WooCommerce", group: "store", steps: [
+      { t: "Get our WooCommerce plugin. Email or message us and we'll send it with your key already filled in." },
+      { t: "WordPress admin → Plugins → Add New → Upload Plugin → choose the file → Install → Activate." },
+      { t: "Done. It saves the click and reports every order from your server (most reliable)." },
+    ] },
+    { k: "bc", label: "BigCommerce", group: "store", steps: [
+      { t: "Storefront → Script Manager → Create a Script. Location: Head. Pages: All pages. Paste:", code: headTag },
+      { t: "Create a second script. Location: Footer. Pages: Order confirmation. Paste:", code: `<script>\n(function(){function f(){if(!window.EasyRec)return setTimeout(f,300);var o=(window.BODL&&window.BODL.order)||null,id="",v=0;if(o){id=o.orderId||o.id||"";v=o.subtotal||o.grandTotal||0;}window.EasyRec.conversion({orderId:id,value:v});}f();})();\n</script>` },
+    ] },
+    { k: "html", label: "Custom website", group: "code", steps: [
+      { t: "Add this to the <head> of every page. It saves the creator's click in a 180-day cookie:", code: headTag },
+      { t: "On your order confirmation page, add one line with the order ID and subtotal:", code: `<script>\n  EasyRec.conversion({ orderId: "ORDER_ID", value: 49.00 });\n</script>` },
+    ] },
+    { k: "api", label: "Server / API", group: "code", steps: [
+      { t: "Add the script to every page so the click is saved (cookie name: er_click):", code: headTag },
+      { t: "When a payment succeeds, read the er_click cookie and send the sale from your server:", code: `curl -X POST ${convUrl} \\\n  -H "Content-Type: application/json" \\\n  -d '{"key":"${key}","clickId":"ER_CLICK_COOKIE","orderId":"ORDER_ID","value":49.00}'` },
+    ] },
+  ];
+  const groups = [["ai", "AI coding tools"], ["store", "Store platforms"], ["code", "Code it yourself"]];
+  const cur = PLATS.find((x) => x.k === pick);
+  const sectionHead = (letter, title, desc) => (
+    <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+      <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: C.paper, fontWeight: 700, fontSize: 14 }}>{letter}</span>
+      <div><h3 className="er-serif" style={{ margin: 0, fontSize: 21, fontWeight: 500 }}>{title}</h3><p style={{ margin: "4px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.55 }}>{desc}</p></div>
+    </div>
+  );
   return (
     <div>
-      <p style={{ margin: "0 0 10px", fontSize: 14, color: C.inkSoft, lineHeight: 1.55 }}>Connect sales tracking so creators get credited when their referrals buy. Pick the one that fits you — each method below is separate.</p>
-      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", marginBottom: 22 }}>
-        <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>Your tracking key</div>
-        <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13.5, fontWeight: 600, color: C.ink, marginTop: 4, wordBreak: "break-all" }}>{key}</div>
-        <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Used by every method below. Keep it private.</div>
+      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px 16px", marginBottom: 22 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>Tracking needs just two things</div>
+        <div style={{ marginTop: 8, display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))" }}>
+          {[["1", "Save the click", "When a shopper arrives from a creator link, a cookie remembers that creator for 180 days."], ["2", "Report the sale", "When they buy, your site tells us the order and its subtotal. The creator gets credited."]].map(([n, t, d]) => (
+            <div key={n} style={{ display: "flex", gap: 10 }}>
+              <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD, fontWeight: 700, fontSize: 12 }}>{n}</span>
+              <div><div style={{ fontSize: 13.5, fontWeight: 600, color: C.ink }}>{t}</div><div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>{d}</div></div>
+            </div>))}
+        </div>
+        <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.line}`, fontSize: 12.5, color: C.muted }}>Your tracking key: <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontWeight: 700, color: C.ink, wordBreak: "break-all" }}>{key}</span> · already filled into every snippet below. Keep it private.</div>
       </div>
 
-      <MethodCard num="1" title="Let our dev set it up for free" desc="Short on time? Send us your site and we'll install tracking for you at no cost, then confirm when it's live.">
-        {sent ? <div style={{ background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}><span style={{ color: C.accentD }}><Check size={18} /></span><span style={{ fontSize: 13.5, color: C.accentD }}>Got it — our team will set up tracking and email you once it's live.</span></div>
-        : <>
-          <Field label="Your store / website URL"><input className="er-input" placeholder="https://yourstore.com" value={url} onChange={(e) => setUrl(e.target.value)} /></Field>
-          <div style={{ marginTop: 12 }}><Field label="Platform"><select className="er-input" value={plat} onChange={(e) => setPlat(e.target.value)}><option>Shopify</option><option>WooCommerce / WordPress</option><option>BigCommerce</option><option>Custom / Other</option></select></Field></div>
-          <div style={{ marginTop: 12 }}><Field label="Anything we should know? (optional)"><textarea className="er-input" placeholder="Store login access, platform details, etc." value={note} onChange={(e) => setNote(e.target.value)} /></Field></div>
-          {err && <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "#9B3024" }}>{err}</p>}
-          <button className="er-btn er-btn-primary" style={{ marginTop: 14 }} disabled={busy || !url.trim()} onClick={submit}>{busy ? "Sending…" : <>Request free setup <Arrow size={15} /></>}</button>
-        </>}
-      </MethodCard>
+      <div className="er-card" style={{ padding: 22, marginBottom: 22 }}>
+        {sectionHead("A", "Let our devs do it, free", "Send us your site and we'll install tracking for you, then confirm when it's live.")}
+        <div style={{ marginTop: 16 }}>
+          {sent ? <div style={{ background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}><span style={{ color: C.accentD }}><Check size={18} /></span><span style={{ fontSize: 13.5, color: C.accentD }}>Got it. Our team will set up tracking and let you know once it's live.</span></div>
+          : <>
+            <Field label="Your store / website URL"><input className="er-input" placeholder="https://yourstore.com" value={url} onChange={(e) => setUrl(e.target.value)} /></Field>
+            <div style={{ marginTop: 12 }}><Field label="Platform"><select className="er-input" value={plat} onChange={(e) => setPlat(e.target.value)}><option>Shopify</option><option>WooCommerce / WordPress</option><option>BigCommerce</option><option>Custom / Other</option></select></Field></div>
+            <div style={{ marginTop: 12 }}><Field label="Anything we should know? (optional)"><textarea className="er-input" placeholder="Store login access, platform details, etc." value={note} onChange={(e) => setNote(e.target.value)} /></Field></div>
+            {err && <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "#9B3024" }}>{err}</p>}
+            <button className="er-btn er-btn-primary" style={{ marginTop: 14 }} disabled={busy || !url.trim()} onClick={submit}>{busy ? "Sending…" : <>Request free setup <Arrow size={15} /></>}</button>
+          </>}
+        </div>
+      </div>
 
       <OrRule />
 
-      <MethodCard num="2" title="Custom site" desc="Any site where you can edit the HTML. Add the script to every page, then fire one line on your order-confirmation page with the order subtotal.">
-        <CopyBox text={universalSnippet} />
-      </MethodCard>
-
-      <OrRule />
-
-      <MethodCard num="3" title="Shopify, BigCommerce, or WordPress" desc="Use the ready-made integration for your platform — no code changes to your theme.">
-        <div style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>Shopify</div>
-        <ol style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13, color: C.inkSoft, lineHeight: 1.5, listStyle: "none" }}>
-          {step(1, "Admin → Settings → Customer events → Add custom pixel, name it “Easy Recommend”.")}
-          {step(2, "Paste the snippet below and Save, then Connect.")}
-        </ol>
-        <CopyBox text={`var EASYREC_KEY = "${key}";\nvar EASYREC_ENDPOINT = "https://learntok-backend-2026-24c204fe508e.herokuapp.com/easyrecommend/conversion";\nanalytics.subscribe("page_viewed", async (e) => { try { var h=(e.context.document.location.href)||""; var m=h.match(/[?&]er_click=([^&#]+)/); if(m) await browser.localStorage.setItem("er_click", decodeURIComponent(m[1])); } catch(_){} });\nanalytics.subscribe("checkout_completed", async (e) => { try { var cid=await browser.localStorage.getItem("er_click"); if(!cid) return; var co=(e.data&&e.data.checkout)||{}; var v=(co.subtotalPrice&&co.subtotalPrice.amount)||(co.totalPrice&&co.totalPrice.amount)||0; var oid=(co.order&&co.order.id)||co.token||""; await fetch(EASYREC_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({key:EASYREC_KEY,clickId:cid,orderId:String(oid),value:Number(v)}),keepalive:true}); } catch(_){} });`} />
-
-        <div style={{ height: 1, background: C.line, margin: "20px 0" }} />
-        <div style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>WooCommerce / WordPress</div>
-        <ol style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13, color: C.inkSoft, lineHeight: 1.5, listStyle: "none" }}>
-          {step(1, "Install our WooCommerce plugin (ask us for the file, or use “Let our dev set it up” above).")}
-          {step(2, "Open the plugin file and paste your key where it says PASTE_YOUR_KEY_HERE:")}
-        </ol>
-        <CopyBox text={`define('EASYREC_PIXEL_KEY', '${key}');`} />
-        <p style={{ margin: "6px 0 0", fontSize: 12.5, color: C.muted }}>Then upload &amp; activate under Plugins. It reports every order automatically (most reliable method).</p>
-
-        <div style={{ height: 1, background: C.line, margin: "20px 0" }} />
-        <div style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>BigCommerce</div>
-        <ol style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13, color: C.inkSoft, lineHeight: 1.5, listStyle: "none" }}>
-          {step(1, "Storefront → Script Manager → Create a Script (Location: Head, Pages: All pages). Paste:")}
-        </ol>
-        <CopyBox text={`<script src="${pixelUrl}"></script>`} />
-        <ol style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 13, color: C.inkSoft, lineHeight: 1.5, listStyle: "none" }}>
-          {step(2, "Create a second script (Pages: Order confirmation). Paste:")}
-        </ol>
-        <CopyBox text={`<script>\n(function(){function f(){if(!window.EasyRec)return setTimeout(f,300);var o=(window.BODL&&window.BODL.order)||null,id="",v=0;if(o){id=o.orderId||o.id||"";v=o.subtotal||o.grandTotal||0;}window.EasyRec.conversion({orderId:id,value:v});}f();})();\n</script>`} />
-      </MethodCard>
+      <div className="er-card" style={{ padding: 22, marginBottom: 22 }}>
+        {sectionHead("B", "Do it yourself in a few minutes", "Pick what you use and follow the exact steps.")}
+        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          {groups.map(([g, gl]) => (
+            <div key={g}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted, marginBottom: 6 }}>{gl}</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {PLATS.filter((x) => x.group === g).map((x) => { const on = pick === x.k; return (
+                  <button key={x.k} type="button" onClick={() => setPick(on ? "" : x.k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "9px 15px", borderRadius: 999, border: `1.5px solid ${on ? C.ink : C.line}`, background: on ? C.ink : "#fff", color: on ? C.paper : C.ink }}>{x.label}</button>); })}
+              </div>
+            </div>
+          ))}
+        </div>
+        {cur ? <div style={{ marginTop: 18, borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 10 }}>Set up with {cur.label}</div>
+          <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 14 }}>
+            {cur.steps.map((st, i) => (
+              <li key={i} style={{ display: "flex", gap: 12 }}>
+                <span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD, fontWeight: 700, fontSize: 12.5 }}>{i + 1}</span>
+                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 14, color: C.ink, lineHeight: 1.5, paddingTop: 2 }}>{st.t}</div>{st.code && <CopyBox text={st.code} label={st.label} />}</div>
+              </li>))}
+          </ol>
+        </div> : <p style={{ margin: "16px 0 0", fontSize: 13, color: C.muted }}>Choose one above to see the steps.</p>}
+      </div>
 
       <div className="er-card" style={{ padding: "22px", marginTop: 8, border: `1px solid ${C.accent}` }}>
-        <span style={{ display: "inline-block", fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "4px 10px" }}>Bonus · after tracking is set up</span>
+        <span style={{ display: "inline-block", fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "4px 10px" }}>Optional · after tracking is set up</span>
         <h3 className="er-serif" style={{ margin: "12px 0 0", fontSize: 20, fontWeight: 500 }}>Add &ldquo;Share &amp; earn&rdquo; buttons to your site</h3>
-        <p style={{ margin: "8px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.55 }}>Puts a small floating button on your site. Customers can <b>share you with friends</b> (friends get your discount, they earn) or <b>become an affiliate</b> (they post about you and earn per sale). Each person gets their own tracked link.</p>
+        <p style={{ margin: "8px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.55 }}>A small floating button where customers can <b>share you with friends</b> (friends get your discount, they earn) or <b>become an affiliate</b>. Each person gets their own tracked link.</p>
         <CopyBox text={widgetSnippet} />
-        <p style={{ margin: "8px 0 0", fontSize: 12.5, color: C.muted }}>Paste it before <code>&lt;/body&gt;</code>. Use <code>data-mode="share"</code> or <code>data-mode="affiliate"</code> to show only one option, and <code>data-position="left"</code> to move it.</p>
+        <p style={{ margin: "8px 0 0", fontSize: 12.5, color: C.muted }}>Paste it before <code>&lt;/body&gt;</code>. Use <code>data-mode="share"</code> or <code>data-mode="affiliate"</code> to show one option, and <code>data-position="left"</code> to move it.</p>
       </div>
     </div>
   );
 }
 function fmtFol(n) { n = Number(n) || 0; if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M"; return n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "K" : String(n); }
 function InfluencerDirectory({ token }) {
-  const [data, setData] = useState(null); const [err, setErr] = useState(""); const [cat, setCat] = useState("");
+  const [data, setData] = useState(null); const [err, setErr] = useState(""); const [cat, setCat] = useState(""); const [q, setQ] = useState("");
   useEffect(() => { setData(null); api(`/business/me/directory?token=${encodeURIComponent(token)}${cat ? `&cat=${encodeURIComponent(cat)}` : ""}`).then(setData).catch((e) => { setErr(e.message); setData({ items: [], cats: {} }); }); }, [token, cat]);
   if (data === null) return <p style={{ color: C.muted }}>Loading…</p>;
   const counts = data.cats || {};
   const cats = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  const t = q.trim().toLowerCase();
+  const shown = (data.items || []).filter((x) => !t || [x.name, x.niche, x.location, x.category].join(" ").toLowerCase().includes(t));
   const chip = (key, label) => <button key={key || "all"} className="er-btn er-btn-sm" onClick={() => setCat(key)} style={{ border: `1px solid ${cat === key ? C.ink : C.line}`, background: cat === key ? C.ink : "#fff", color: cat === key ? C.paper : C.inkSoft, textTransform: "capitalize" }}>{label}</button>;
   return (
     <div>
       <p style={{ margin: "0 0 14px", fontSize: 14, color: C.muted }}>1,000+ creators open to brand work. To protect them from spam, handles are hidden.</p>
       {err && <p style={{ color: "#9B3024", fontSize: 13 }}>{err}</p>}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+      <input className="er-input" placeholder="Search creators by name, niche or location" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 12 }} />
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
         {chip("", "All")}
         {cats.map((c) => chip(c, c))}
       </div>
+      <p style={{ margin: "0 0 10px", fontSize: 12.5, fontWeight: 600, color: C.muted }}>Showing {shown.length} creator{shown.length === 1 ? "" : "s"}</p>
+      {shown.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "24px 0", textAlign: "center", fontSize: 14, color: C.muted, margin: 0 }}>No creators match “{q}”.</p>}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {(data.items || []).map((x) => { const capCat = (x.category || "").charAt(0).toUpperCase() + (x.category || "").slice(1); const cc = CATS[capCat] || tintFor(x.category); return (
+        {shown.map((x) => { const capCat = (x.category || "").charAt(0).toUpperCase() + (x.category || "").slice(1); const cc = CATS[capCat] || tintFor(x.category); return (
           <div key={x.id} className="er-card" style={{ padding: "13px 15px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span style={{ width: 40, height: 40, borderRadius: "50%", display: "grid", placeItems: "center", background: cc.bg, color: cc.color, fontWeight: 700, flexShrink: 0 }}>{(x.name || "?")[0]}</span>
             <div style={{ flex: "1 1 200px", minWidth: 0 }}>
@@ -1849,7 +1896,7 @@ function FeatureSwitches() {
     <div className="er-card" style={{ padding: 18, marginTop: 22 }}>
       <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Features</h2>
       <Row label="&ldquo;Hire influencers&rdquo; tab" desc="Show the hire tab to businesses. Keep it off until you have enough verified creators." on={hireOn} setOn={setHireOn} k="hireEnabled" />
-      <Row label="Pricing / paid plans" desc="OFF = free for everyone (brands unlock creator requests at no charge). Turn ON to show plans and require payment." on={pricingOn} setOn={setPricingOn} k="pricingEnabled" />
+      <Row label="Pricing / paid plans" desc="ON (default) = Online Global brands see plans and pay to unlock creator requests. Local brands are always free. OFF = free for everyone." on={pricingOn} setOn={setPricingOn} k="pricingEnabled" />
       {err && <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "#9B3024" }}>{err}</p>}
     </div>
   );
