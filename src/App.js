@@ -2415,55 +2415,74 @@ function EditProfileModal({ token, current, onClose, onSaved }) {
     </Modal>
   );
 }
-/* Story image (1080×1920) of a creator's list, shared to Instagram. Copies the profile link first
-   so it can be pasted straight into a link sticker. Returns "shared" | "saved". */
+/* Load an image for canvas drawing. Only data: URLs and our own photo URLs (which send CORS headers)
+   are used, so the canvas can still be exported. Resolves null on failure/timeout. */
+function loadStoryImage(src, ms = 5000) {
+  if (!src || !(/^data:image\//.test(src) || src.startsWith(API_BASE))) return Promise.resolve(null);
+  return new Promise((res) => { const im = new Image(); const t = setTimeout(() => res(null), ms); im.crossOrigin = "anonymous"; im.onload = () => { clearTimeout(t); res(im); }; im.onerror = () => { clearTimeout(t); res(null); }; im.src = src; });
+}
+// "15–30% off" style line for a list: a partner range if any brand has one, else the best % on offer.
+function listOfferText(recs) {
+  const ranged = recs.map((b) => b.discountText).find(Boolean); if (ranged) return ranged;
+  const max = Math.max(0, ...recs.map((b) => Number(b.discount) || 0)); return max > 0 ? `up to ${max}% off` : "";
+}
+async function drawListStory(username, recs) {
+  const W = 1080, H = 1920, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const g = cv.getContext("2d"); const sans = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, "#FF5A5F"); bg.addColorStop(0.55, "#FF385C"); bg.addColorStop(1, "#FC642D"); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  const glow = (x, y, r, col) => { const rg = g.createRadialGradient(x, y, 30, x, y, r); rg.addColorStop(0, col); rg.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = rg; g.fillRect(0, 0, W, H); };
+  glow(W * 0.9, H * 0.05, 700, "rgba(255,210,130,0.45)"); glow(W * 0.05, H * 0.95, 760, "rgba(214,41,118,0.40)");
+  const round = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  const fit = (text, weight, size, maxW, min = 26) => { let fs = size; g.font = `${weight} ${fs}px ${sans}`; while (fs > min && g.measureText(text).width > maxW) { fs -= 2; g.font = `${weight} ${fs}px ${sans}`; } return fs; };
+  g.textAlign = "center"; g.textBaseline = "alphabetic";
+  // header
+  const handle = "@" + username; g.font = `700 34px ${sans}`; const hw = g.measureText(handle).width + 56;
+  round((W - hw) / 2, 150, hw, 64, 32); g.fillStyle = "rgba(255,255,255,0.22)"; g.fill(); g.fillStyle = "#fff"; g.fillText(handle, W / 2, 194);
+  g.fillStyle = "#fff"; g.shadowColor = "rgba(0,0,0,.15)"; g.shadowBlur = 24;
+  g.font = `900 92px ${sans}`; g.fillText("Brands I like", W / 2, 340);
+  g.font = `800 64px ${sans}`; g.fillText("and would recommend :)", W / 2, 425); g.shadowBlur = 0;
+  // brand tiles with real photos
+  const items = recs.slice(0, 6), n = items.length;
+  const imgs = await Promise.all(items.map((b) => loadStoryImage((b.photos || [])[0])));
+  const M = 80, G = 28, top = 500, areaH = 860;
+  const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3, rows = Math.max(1, Math.ceil(n / cols));
+  let tw = (W - 2 * M - (cols - 1) * G) / cols; let th = Math.min(tw * (cols === 3 ? 1.2 : 1), (areaH - (rows - 1) * G) / rows);
+  if (cols === 1) { tw = Math.min(tw, 680); th = Math.min(th, 680); }
+  const gridW = cols * tw + (cols - 1) * G, x0 = (W - gridW) / 2, gridH = rows * th + (rows - 1) * G, y0 = top + (areaH - gridH) / 2;
+  items.forEach((b, i) => {
+    const r = Math.floor(i / cols), c = i % cols, inRow = Math.min(cols, n - r * cols);
+    const rowX = x0 + ((cols - inRow) * (tw + G)) / 2, x = rowX + c * (tw + G), y = y0 + r * (th + G);
+    g.save(); round(x, y, tw, th, 34); g.clip();
+    const img = imgs[i], name = String(b.name || "").trim();
+    if (img) { const sc = Math.max(tw / img.width, th / img.height); g.drawImage(img, x + (tw - img.width * sc) / 2, y + (th - img.height * sc) / 2, img.width * sc, img.height * sc); }
+    else { const { pal } = artFor(name); const gg = g.createLinearGradient(x, y, x + tw, y + th); gg.addColorStop(0, pal[0]); gg.addColorStop(1, pal[1]); g.fillStyle = gg; g.fillRect(x, y, tw, th); g.beginPath(); g.arc(x + tw * 0.9, y + th * 0.1, tw * 0.45, 0, Math.PI * 2); g.fillStyle = "rgba(255,255,255,.18)"; g.fill(); }
+    const sh = g.createLinearGradient(0, y + th * 0.45, 0, y + th); sh.addColorStop(0, "rgba(0,0,0,0)"); sh.addColorStop(1, "rgba(0,0,0,0.62)"); g.fillStyle = sh; g.fillRect(x, y, tw, th);
+    g.fillStyle = "#fff"; const fs = fit(name, 800, cols === 3 ? 38 : 50, tw - 30, 22); g.fillText(name, x + tw / 2, y + th - (cols === 3 ? 26 : 36));
+    const off = offText(b);
+    if (off) { const t = off.toUpperCase(); g.font = `800 ${cols === 3 ? 22 : 28}px ${sans}`; const pw = g.measureText(t).width + 30, ph = cols === 3 ? 40 : 48; round(x + 16, y + 16, pw, ph, ph / 2); g.fillStyle = "#fff"; g.fill(); g.fillStyle = "#FF385C"; g.textAlign = "left"; g.fillText(t, x + 31, y + 16 + ph * 0.7); g.textAlign = "center"; }
+    g.restore(); void fs;
+  });
+  let y = top + areaH + 40;
+  if (recs.length > n) { g.fillStyle = "rgba(255,255,255,0.92)"; g.font = `700 34px ${sans}`; g.fillText(`+ ${recs.length - n} more on my page`, W / 2, y); y += 30; }
+  // discount banner
+  const offer = listOfferText(recs);
+  if (offer) {
+    const bw = W - 2 * M, by = Math.max(y + 10, 1470); round(M, by, bw, 150, 40); g.fillStyle = "#fff"; g.fill();
+    g.fillStyle = "#1C1A17"; fit("Also get", 700, 34, bw - 60); g.fillText("Also get", W / 2, by + 56);
+    g.fillStyle = "#FF385C"; fit(`${offer} when you purchase`, 900, 50, bw - 60); g.fillText(`${offer} when you purchase`, W / 2, by + 118);
+  }
+  // CTA + footer
+  const pw = 600, ph = 104, px = (W - pw) / 2, py = H - 250; round(px, py, pw, ph, 52); g.fillStyle = "rgba(17,17,17,0.88)"; g.fill();
+  g.fillStyle = "#fff"; g.font = `800 42px ${sans}`; g.fillText("Tap the link to shop →", W / 2, py + 67);
+  g.fillStyle = "rgba(255,255,255,0.9)"; g.font = `600 36px ${sans}`; g.fillText("easyrecommend.co/@" + username, W / 2, H - 92);
+  return cv;
+}
+/* Story image of a creator's list, shared to Instagram. Copies the profile link first so it can be
+   pasted straight into a link sticker. Returns "shared" | "saved". */
 async function shareListToStory(username, bio, recs, link) {
   const profileUrl = link || `${window.location.origin}/@${username}`;
   try { await navigator.clipboard.writeText(profileUrl); } catch (e) {}
-  const W = 1080, H = 1920, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
-  const g = cv.getContext("2d");
-  // Airbnb-style vibrant warm gradient background.
-  const bg = g.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#FF5A5F"); bg.addColorStop(0.5, "#FF385C"); bg.addColorStop(1, "#FC642D");
-  g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  const glow = (x, y, r, col) => { const rg = g.createRadialGradient(x, y, 30, x, y, r); rg.addColorStop(0, col); rg.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = rg; g.fillRect(0, 0, W, H); };
-  glow(W * 0.85, H * 0.08, 760, "rgba(255,200,120,0.45)");
-  glow(W * 0.1, H * 0.95, 820, "rgba(214,41,118,0.40)");
-  const round = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
-  const M = 92;
-  g.textBaseline = "alphabetic"; g.textAlign = "left";
-  g.fillStyle = "rgba(255,255,255,0.8)"; g.font = "700 30px Georgia, serif";
-  g.fillText("MY RECOMMENDATIONS", M, 214);
-  g.fillStyle = "#fff"; g.font = "600 94px Georgia, serif";
-  g.fillText("@" + username, M, 326);
-  g.fillStyle = "rgba(255,255,255,0.9)"; g.font = "400 37px -apple-system, Segoe UI, Roboto, sans-serif";
-  g.fillText(String(bio || "Brands I actually trust.").slice(0, 64), M, 392);
-  const items = recs.slice(0, 5), cardH = 182, gap = 28, cardW = W - M * 2; let y = 492;
-  items.forEach((b) => {
-    round(M, y, cardW, cardH, 34); g.fillStyle = "rgba(255,255,255,0.18)"; g.fill();
-    round(M, y, cardW, cardH, 34); g.strokeStyle = "rgba(255,255,255,0.35)"; g.lineWidth = 2; g.stroke();
-    const cat = (b.categories || [])[0] || "Other", col = (CATS[cat] || CATS.Other).color;
-    g.beginPath(); g.arc(M + 72, y + cardH / 2, 40, 0, Math.PI * 2); g.fillStyle = "#fff"; g.fill();
-    g.beginPath(); g.arc(M + 72, y + cardH / 2, 22, 0, Math.PI * 2); g.fillStyle = col; g.fill();
-    g.fillStyle = "#fff"; g.font = "700 50px Georgia, serif";
-    let name = String(b.name || ""); const maxW = cardW - 440;
-    if (g.measureText(name).width > maxW) { while (name.length > 4 && g.measureText(name + "…").width > maxW) name = name.slice(0, -1); name = name.trim() + "…"; }
-    g.fillText(name, M + 142, y + 94);
-    g.fillStyle = "rgba(255,255,255,0.78)"; g.font = "500 31px -apple-system, Segoe UI, Roboto, sans-serif";
-    g.fillText(cat, M + 142, y + 142);
-    if (offText(b)) { const txt = offText(b).toUpperCase(); g.font = "800 33px -apple-system, Segoe UI, Roboto, sans-serif"; const bw = g.measureText(txt).width + 50, bx = M + cardW - bw - 42, by = y + cardH / 2 - 32; round(bx, by, bw, 64, 32); g.fillStyle = "#fff"; g.fill(); g.fillStyle = "#FF385C"; g.fillText(txt, bx + 25, by + 44); }
-    y += cardH + gap;
-  });
-  if (recs.length > items.length) { g.fillStyle = "rgba(255,255,255,0.88)"; g.font = "600 35px -apple-system, Segoe UI, Roboto, sans-serif"; g.fillText("+ " + (recs.length - items.length) + " more on my page", M + 12, y + 52); }
-  g.textAlign = "center";
-  const pillW = 580, pillH = 104, px = (W - pillW) / 2, py = H - 248;
-  round(px, py, pillW, pillH, 52); g.fillStyle = "#fff"; g.fill();
-  g.fillStyle = "#FF385C"; g.font = "800 44px -apple-system, Segoe UI, Roboto, sans-serif";
-  g.fillText("Shop my picks →", W / 2, py + 67);
-  const foot = link ? link.replace(/^https?:\/\//i, "").replace(/^www\./i, "") : "easyrecommend.co/@" + username;
-  let fs = 44; g.font = `600 ${fs}px Georgia, serif`; while (fs > 26 && g.measureText(foot).width > W - 120) { fs -= 2; g.font = `600 ${fs}px Georgia, serif`; }
-  g.fillStyle = "#fff"; g.fillText(foot, W / 2, H - 108);
-  g.textAlign = "left";
+  const cv = await drawListStory(username, recs || []);
   const blob = await new Promise((res) => cv.toBlob(res, "image/png"));
   if (!blob) throw new Error("render failed");
   const file = new File([blob], username + "-recommendations.png", { type: "image/png" });
@@ -4172,7 +4191,7 @@ function EasyApp() {
    Top-level router, Easy Recommend is the main site (the influencer landing).
    Visitors arriving on the old retentionbase.com domain see the rename notice.
    Preview the rename page anywhere with ?renamed=1.
-   ====================================================   ======================= */
+   =========================================================================== */
 function showRenameNotice() {
   const host = (window.location.hostname || "").toLowerCase();
   return host.includes("retentionbase") || /[?&]renamed=1/.test(window.location.search);
