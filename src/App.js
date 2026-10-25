@@ -4172,7 +4172,7 @@ function EasyApp() {
    Top-level router, Easy Recommend is the main site (the influencer landing).
    Visitors arriving on the old retentionbase.com domain see the rename notice.
    Preview the rename page anywhere with ?renamed=1.
-   =========================================================================== */
+   ====================================================   ======================= */
 function showRenameNotice() {
   const host = (window.location.hostname || "").toLowerCase();
   return host.includes("retentionbase") || /[?&]renamed=1/.test(window.location.search);
