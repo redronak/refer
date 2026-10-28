@@ -318,8 +318,7 @@ function ClaimPage() {
         </div>
       </div>
       <div style={{ maxWidth: 900, margin: "40px auto 0", borderTop: `1px solid ${C.line}`, paddingTop: 30 }}>
-        <div style={{ textAlign: "center" }}><span className="er-eyebrow">Share &amp; earn</span></div>
-        <ShareHowTo title={by ? `Earn like @${by} did` : "Share brands you love and earn"} sub="Share a brand on your Instagram story with your own link. Friends get the discount, you get a commission on every sale. Free to join." cta={["Start sharing free", () => { window.location.href = "/share"; }]} />
+        <ExploreHowTo initial="share" heading={by ? `Earn like @${by} did` : "Share brands you love and earn"} />
       </div>
     </div>
   );
@@ -2641,10 +2640,9 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
           <p className="er-serif" style={{ margin: 0, color: C.paper, fontSize: 19, fontWeight: 500 }}>Earn by sharing your favorite brand recommendations</p>
           <button className="er-btn er-btn-sm" style={{ marginTop: 14, background: C.paper, color: C.ink }} onClick={onBrowse}>Browse all brands <Arrow size={15} /></button></div>
       </div>
-      {!isOwner && <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, marginTop: 40 }}>
+      {<section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, marginTop: 40 }}>
         <div className="er-wrap" style={{ padding: "44px 22px 50px", textAlign: "center" }}>
-          <span className="er-eyebrow">Make your own list</span>
-          <ListHowTo title={`Like @${data.username}'s list? Make your own and earn`} sub="Put brands you love in one link, share it, and earn a commission whenever someone shops. Free, takes a minute." cta={["Create my list free", onCreator]} />
+          <ExploreHowTo heading={`Like @${data.username}'s list? Here's how you can earn too`} onCreator={onCreator} />
         </div>
       </section>}
       <div style={{ marginTop: 48 }}>
@@ -3287,6 +3285,25 @@ function ListHowTo({ title, sub, cta } = {}) {
   ];
   const steps = [["Pick brands you love", "Choose from 1,000+ brands. It takes a minute.", [0]], ["Get your own list page", "One link with every brand you recommend.", [1]], ["Put it in your bio and share", "Followers who shop within 6 months earn you a commission on every sale.", [2, 3]]];
   return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
+}
+/* All three ways to earn, as tabs, for pages people reach from Instagram (lists, shared links). */
+function ExploreHowTo({ initial = "list", heading, onCreator }) {
+  const [tab, setTab] = useState(initial);
+  const go = (path) => () => { window.location.href = path; };
+  const tabs = [["list", "Make a list"], ["share", "Share & earn"], ["aff", "Create content"]];
+  return (
+    <div style={{ textAlign: "center" }}>
+      <span className="er-eyebrow">How it works</span>
+      <h2 className="er-serif" style={{ margin: "10px auto 6px", maxWidth: 640, fontSize: "clamp(26px,4vw,38px)", fontWeight: 500, letterSpacing: "-.01em" }}>{heading || "Three ways to earn on Easy Recommend"}</h2>
+      <p style={{ margin: "0 auto", maxWidth: 520, fontSize: 14.5, color: C.muted, lineHeight: 1.55 }}>Free to join. Pick one or do all three, you earn a commission on every sale.</p>
+      <div style={{ marginTop: 18, display: "flex", justifyContent: "center" }}>
+        <div className="er-ways-tabs" role="tablist" style={{ flexWrap: "nowrap", maxWidth: "100%", overflowX: "auto" }}>{tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`er-ways-tab${tab === k ? " on" : ""}`} style={{ whiteSpace: "nowrap", padding: "9px 13px", fontSize: 13.5 }}>{l}</button>)}</div>
+      </div>
+      {tab === "list" && <ListHowTo sub="Put brands you love in one link, share it in your bio, and earn whenever someone shops." cta={["Create my list free", onCreator || go("/list")]} />}
+      {tab === "share" && <ShareHowTo sub="Share one brand on your Instagram story with your own link. Friends get the discount, you earn." cta={["Start sharing free", go("/share")]} />}
+      {tab === "aff" && <AffiliateHowTo sub="For serious creators, bloggers, YouTubers and more. Put your affiliate link in your content and earn." cta={["Get my affiliate link", go("/affiliate")]} />}
+    </div>
+  );
 }
 /* "Make a list" feature page. */
 function ListPage({ session, onHome, onLogin, onLegal, onCreator }) {
