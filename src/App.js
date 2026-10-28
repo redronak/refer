@@ -103,6 +103,21 @@ async function fetchBusinesses(token) {
   if (!token) { bizMem = list; try { sessionStorage.setItem(BIZ_CACHE_KEY, JSON.stringify(list)); } catch (e) {} }
   return list;
 }
+// ── Money in the viewer's own currency (₹ for India, $ elsewhere) ──
+const FX_USD_INR = 88;
+const VIEWER_CUR = (() => { try { const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; const lang = navigator.language || ""; return /Asia\/(Kolkata|Calcutta)/.test(tz) || /-IN$/i.test(lang) ? "INR" : "USD"; } catch (e) { return "USD"; } })();
+function money(n, cur = VIEWER_CUR) { const v = Math.round(Number(n) || 0); try { return new Intl.NumberFormat(cur === "INR" ? "en-IN" : "en-US", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(v); } catch (e) { return (cur === "INR" ? "₹" : "$") + v; } }
+const toViewer = (n, from, fx) => (from === VIEWER_CUR ? n : from === "USD" ? n * (fx || FX_USD_INR) : n / (fx || FX_USD_INR));
+// Rounded example amount for demos/mockups, given in USD.
+const demoMoney = (usd) => money(VIEWER_CUR === "INR" ? Math.max(50, Math.round((usd * FX_USD_INR) / 50) * 50) : usd);
+// What a creator earns on a brand, in the viewer's currency. null when the brand hasn't set a commission.
+function earnInfo(b) {
+  const e = b && b.earn; if (!e || (!(e.pct > 0) && !(e.flat > 0))) return null;
+  const est = money(toViewer(e.est, e.currency, e.fx)), flat = e.flat > 0 ? money(toViewer(e.flat, e.currency, e.fx)) : "";
+  const line = flat && e.pct > 0 ? `You earn ${flat} + ${e.pct}% of every sale` : flat ? `You earn ${flat} on every sale` : `You earn ${e.pct}% of every sale`;
+  const sub = e.pct > 0 ? `That's about ${est} on a ${money(toViewer(e.aov, e.currency, e.fx))} order` : "";
+  return { line, sub, est, short: `earn ${e.pct > 0 ? "≈" : ""}${est}/sale` };
+}
 // Shopper discount label: exact % when set, else the brand's range (e.g. "15–30% off" for onboarded partners).
 const offText = (b) => (b && b.discountText) || (b && b.discount > 0 ? `${b.discount}% off` : "");
 function creatorHandle() { const s = getSession(); return s && s.role === "creator" ? s.username : ""; }
@@ -131,6 +146,7 @@ function parseRoute() {
   if (p === "/brands") return { view: "brands", handle: null };
   if (p === "/share") return { view: "share", handle: null };
   if (p === "/affiliate") return { view: "affiliate", handle: null };
+  if (p === "/list") return { view: "listpage", handle: null };
   if (p === "/influencers") return { view: "influencers", handle: null };
   // Creator links (easyrecommend.co/r/name/brand) are tracked + redirected by the backend.
   if (/^\/r\/[^/]+\/[^/]+/.test(p)) { window.location.replace(API_BASE + window.location.pathname + (window.location.search || "")); return { view: "redirecting", handle: null }; }
@@ -282,8 +298,8 @@ function ClaimPage() {
   const copy = async () => { try { await navigator.clipboard.writeText(code); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1500); };
   const go = async () => { if (code) { try { await navigator.clipboard.writeText(code); } catch (e) {} } if (ok) window.location.href = to; };
   return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: C.panel, padding: 20 }}>
-      <div className="er-card" style={{ maxWidth: 420, width: "100%", padding: 0, textAlign: "center", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: C.panel, padding: "28px 20px 50px" }}>
+      <div className="er-card" style={{ maxWidth: 420, width: "100%", margin: "0 auto", padding: 0, textAlign: "center", overflow: "hidden" }}>
         {img ? <img src={img} alt={name} style={{ display: "block", width: "100%", aspectRatio: "16/9", objectFit: "cover" }} />
           : <BrandArt b={biz || { name, photos: [] }} style={{ width: "100%", aspectRatio: "16/9" }} />}
         <div style={{ padding: "22px 26px 28px" }}>
@@ -300,6 +316,10 @@ function ClaimPage() {
         {site && <p style={{ margin: "8px 0 0", fontSize: 12, color: C.muted }}>Takes you to {site}</p>}
         <p style={{ margin: "14px 0 0", fontSize: 12, color: C.muted }}>Powered by <a href="/" style={{ color: C.inkSoft, fontWeight: 600 }}>Easy Recommend</a></p>
         </div>
+      </div>
+      <div style={{ maxWidth: 900, margin: "40px auto 0", borderTop: `1px solid ${C.line}`, paddingTop: 30 }}>
+        <div style={{ textAlign: "center" }}><span className="er-eyebrow">Share &amp; earn</span></div>
+        <ShareHowTo title={by ? `Earn like @${by} did` : "Share brands you love and earn"} sub="Share a brand on your Instagram story with your own link. Friends get the discount, you get a commission on every sale. Free to join." cta={["Start sharing free", () => { window.location.href = "/share"; }]} />
       </div>
     </div>
   );
@@ -445,7 +465,7 @@ function BusinessDetail({ id, onClose, onRecommend, autoLink, onAuth }) {
   useEffect(() => { api(`/business/${id}`).then(setB).catch((e) => setErr(e.message)); }, [id]);
   useEffect(() => { if (b && autoLink && handle) setLinkMode(autoLink); }, [b, autoLink]);
   const openLink = (m) => { if (handle) setLinkMode(m); else if (onAuth) setJoinMode(m); else onRecommend(b.id); };
-  useEffect(() => { if (handle) api(`/business/${id}/reward?username=${encodeURIComponent(handle)}`).then((r) => setReward(r.earns)).catch(() => {}); }, [id, handle]);
+  useEffect(() => { if (handle) api(`/business/${id}/reward?username=${encodeURIComponent(handle)}`).then((r) => setReward(earnInfo(r))).catch(() => {}); }, [id, handle]);
   const cc = b ? catOf(b) : CATS.Beauty;
   const photo = b && (b.photos || [])[0];
   const tint = b ? tintFor(b.id || b.name) : cc;
@@ -482,7 +502,7 @@ function BusinessDetail({ id, onClose, onRecommend, autoLink, onAuth }) {
             <span style={{ width: 38, height: 38, borderRadius: 10, display: "grid", placeItems: "center", background: "#fff", color: reward ? C.accent : C.muted, border: `1px solid ${C.line}`, flexShrink: 0 }}>{reward ? <Spark size={18} /> : <Lock size={18} />}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted }}>Creator reward</div>
-              {reward ? <div style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>{reward} per sale</div>
+              {reward ? <div style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>{reward.line}{reward.sub && <div style={{ fontSize: 12.5, fontWeight: 600, color: C.muted, marginTop: 1 }}>{reward.sub}</div>}</div>
                 : <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 16, fontWeight: 700, color: C.ink, filter: "blur(5px)", userSelect: "none" }}>00% + $00</span>
                     <span style={{ fontSize: 12, color: C.muted }}>Join to view</span>
@@ -498,7 +518,7 @@ function BusinessDetail({ id, onClose, onRecommend, autoLink, onAuth }) {
               <IgIcon size={16} style={{ color: "#fff", marginLeft: "auto" }} />
             </div>
             <div style={{ padding: "15px 16px", background: "#fff" }}>
-              <div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink, lineHeight: 1.35 }}>Share {b.name} with friends on Instagram{reward ? <> and earn <span style={{ color: C.accentD }}>{reward}</span></> : " and earn"} on every sale.</div>
+              <div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink, lineHeight: 1.35 }}>Share {b.name} with friends on Instagram{reward ? <> and earn about <span style={{ color: C.accentD }}>{reward.est}</span></> : " and earn"} on every sale.</div>
               <p style={{ margin: "6px 0 0", fontSize: 13, color: C.muted, lineHeight: 1.5 }}>Drop your link in a story, friends tap through and shop, and you get paid, no following required.</p>
               <button className="er-btn er-btn-block" style={{ marginTop: 12, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }} onClick={() => openLink("share")}>
                 <IgIcon size={15} /> Share on Instagram story
@@ -743,7 +763,7 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
 /* ---------- My business (brand self-service) ---------- */
 function BizEditCard({ b, token, reload }) {
   const [edit, setEdit] = useState(false); const [busy, setBusy] = useState(false);
-  const [d, setD] = useState({ name: b.name, blurb: b.blurb || "", city: b.city || "", online: !!b.online, website: b.website || "", discount: (b.pendingOffer ? b.pendingOffer.discount : b.discount) || 0, discountCode: (b.pendingOffer ? b.pendingOffer.discountCode : b.discountCode) || "", offerImage: (b.pendingOffer ? b.pendingOffer.offerImage : b.offerImage) || "", categories: b.categories || [], commissionType: b.commissionType || "percent", commissionPct: b.commissionPct || 0, commissionFlat: b.commissionFlat || 0, photos: b.photos || [], products: b.products || [] });
+  const [d, setD] = useState({ currency: b.currency || "USD", name: b.name, blurb: b.blurb || "", city: b.city || "", online: !!b.online, website: b.website || "", discount: (b.pendingOffer ? b.pendingOffer.discount : b.discount) || 0, discountCode: (b.pendingOffer ? b.pendingOffer.discountCode : b.discountCode) || "", offerImage: (b.pendingOffer ? b.pendingOffer.offerImage : b.offerImage) || "", categories: b.categories || [], commissionType: b.commissionType || "percent", commissionPct: b.commissionPct || 0, commissionFlat: b.commissionFlat || 0, photos: b.photos || [], products: b.products || [] });
   const set = (k, v) => setD((p) => ({ ...p, [k]: v }));
   const addProduct = () => set("products", [...(d.products || []), { name: "", url: "", note: "" }]);
   const setProduct = (i, k, v) => set("products", d.products.map((p, j) => (j === i ? { ...p, [k]: v } : p)));
@@ -806,16 +826,20 @@ function BizEditCard({ b, token, reload }) {
             <Field label="Discount code" hint="Create it in your store first."><input className="er-input" style={{ maxWidth: 220 }} placeholder="EASY15" value={d.discountCode} onChange={(e) => set("discountCode", e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 30))} /></Field>
           </div>
         </div>
-        <Field label="Creator reward" hint="Private, only creators see it.">
+        <Field label="Your store's currency" hint="Creators see what they earn in their own currency.">
+          <div style={{ display: "flex", gap: 8 }}>{[["INR", "₹ INR"], ["USD", "$ USD"]].map(([k, l]) => <button key={k} type="button" onClick={() => set("currency", k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "8px 14px", borderRadius: 9, border: `1px solid ${d.currency === k ? C.accent : C.line}`, background: d.currency === k ? C.accentSoft : "#fff", color: d.currency === k ? C.accentD : C.inkSoft }}>{l}</button>)}</div>
+        </Field>
+        <Field label="Creator reward" hint="Private, only creators see it. We keep 20% of it as our fee; the creator gets the rest.">
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-            {[["percent", "%"], ["flat", "$"], ["both", "Both"]].map(([t, l]) => { const on = d.commissionType === t;
+            {[["percent", "%"], ["flat", d.currency === "INR" ? "₹" : "$"], ["both", "Both"]].map(([t, l]) => { const on = d.commissionType === t;
               return <button key={t} type="button" onClick={() => set("commissionType", t)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, padding: "8px", borderRadius: 9, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{l}</button>; })}
           </div>
           <div style={{ display: "flex", gap: 12 }}>
             {(d.commissionType === "percent" || d.commissionType === "both") && <input type="number" className="er-input" style={{ width: 100 }} placeholder="%" value={d.commissionPct} onChange={(e) => set("commissionPct", +e.target.value)} />}
-            {(d.commissionType === "flat" || d.commissionType === "both") && <input type="number" className="er-input" style={{ width: 100 }} placeholder="$" value={d.commissionFlat} onChange={(e) => set("commissionFlat", +e.target.value)} />}
+            {(d.commissionType === "flat" || d.commissionType === "both") && <input type="number" className="er-input" style={{ width: 100 }} placeholder={d.currency === "INR" ? "₹" : "$"} value={d.commissionFlat} onChange={(e) => set("commissionFlat", +e.target.value)} />}
           </div>
         </Field>
+        {!(Number(d.commissionPct) > 0) && !(Number(d.commissionFlat) > 0) && <p style={{ margin: "-6px 0 0", fontSize: 12.5, fontWeight: 600, color: "#B26A00" }}>No commission set, so the default 8% of each sale applies.</p>}
         <Field label="Photos">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             {d.photos.map((src, i) => <div key={i} style={{ position: "relative", width: 64, height: 64, borderRadius: 10, overflow: "hidden", border: `1px solid ${C.line}` }}><img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /><button type="button" onClick={() => set("photos", d.photos.filter((_, j) => j !== i))} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,.3)", cursor: "pointer", display: "grid", placeItems: "center", color: C.muted }}><Close size={10} /></button></div>)}
@@ -1501,12 +1525,12 @@ function RatesEditor({ rates, setRates }) {
    Uses the brand's own photo underneath when it has one. `mini` shows just the initial. */
 const ART_PALETTES = [["#FF385C", "#FF8A65"], ["#7B61FF", "#C084FC"], ["#00A699", "#5EEAD4"], ["#FC642D", "#FDBA74"], ["#0EA5E9", "#67E8F9"], ["#E11D48", "#FB7185"], ["#16A34A", "#A3E635"], ["#9333EA", "#F472B6"], ["#F59E0B", "#FDE047"], ["#1D4ED8", "#818CF8"], ["#DB2777", "#FDBA74"], ["#0F766E", "#A7F3D0"]];
 function artFor(key) { let h = 0; const str = String(key || ""); for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; return { pal: ART_PALETTES[h % ART_PALETTES.length], tilt: (h >> 4) % 2 ? 1 : -1, shape: (h >> 6) % 3 }; }
-function BrandArt({ b, mini, style }) {
+function BrandArt({ b, mini, style, fs }) {
   const name = String((b && b.name) || "Brand").trim();
   const { pal, tilt, shape } = artFor(name);
   const [broken, setBroken] = useState(false);
   const photo = !broken && b && (b.photos || [])[0];
-  const size = mini ? 15 : name.length <= 7 ? 24 : name.length <= 12 ? 19 : name.length <= 18 ? 16 : 13.5;
+  const size = fs || (mini ? 15 : name.length <= 7 ? 24 : name.length <= 12 ? 19 : name.length <= 18 ? 16 : 13.5);
   return (
     <span style={{ position: "relative", display: "grid", placeItems: "center", overflow: "hidden", background: `linear-gradient(${135 * tilt}deg, ${pal[0]}, ${pal[1]})`, color: "#fff", ...style }}>
       {photo && <img src={photo} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
@@ -1602,7 +1626,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       </span>
       <span style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 10px", minWidth: 0 }}>
         <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(b.categories || [])[0] || (b.online ? "Online" : (b.city || "-"))}</span>
-        {b.earns && b.earns !== "0%" && b.earns !== "$0" && <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 8px" }}>earn {b.earns}</span>}
+        {earnInfo(b) && <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 8px" }}>{earnInfo(b).short}</span>}
       </span>
     </button>; };
   const brandGrid = (arr) => <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,138px),1fr))", gap: 10, padding: 12 }}>{arr.map(brandRow)}</div>;
@@ -1734,11 +1758,11 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
                 <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "rgba(253,252,250,.6)", marginBottom: 8 }}>Average earnings in first 3 months</div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <div style={{ flex: 1, background: "rgba(253,252,250,.07)", borderRadius: 10, padding: "10px 12px" }}>
-                    <div className="er-serif" style={{ fontSize: 24, fontWeight: 500, lineHeight: 1.1 }}>~$500</div>
+                    <div className="er-serif" style={{ fontSize: 24, fontWeight: 500, lineHeight: 1.1 }}>~{demoMoney(500)}</div>
                     <div style={{ fontSize: 11.5, color: "rgba(253,252,250,.7)" }}>smaller creators</div>
                   </div>
                   <div style={{ flex: 1, background: C.accent, color: "#fff", borderRadius: 10, padding: "10px 12px" }}>
-                    <div className="er-serif" style={{ fontSize: 24, fontWeight: 500, lineHeight: 1.1 }}>~$5,000</div>
+                    <div className="er-serif" style={{ fontSize: 24, fontWeight: 500, lineHeight: 1.1 }}>~{demoMoney(5000)}</div>
                     <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.85)" }}>larger creators</div>
                   </div>
                 </div>
@@ -2617,6 +2641,12 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
           <p className="er-serif" style={{ margin: 0, color: C.paper, fontSize: 19, fontWeight: 500 }}>Earn by sharing your favorite brand recommendations</p>
           <button className="er-btn er-btn-sm" style={{ marginTop: 14, background: C.paper, color: C.ink }} onClick={onBrowse}>Browse all brands <Arrow size={15} /></button></div>
       </div>
+      {!isOwner && <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, marginTop: 40 }}>
+        <div className="er-wrap" style={{ padding: "44px 22px 50px", textAlign: "center" }}>
+          <span className="er-eyebrow">Make your own list</span>
+          <ListHowTo title={`Like @${data.username}'s list? Make your own and earn`} sub="Put brands you love in one link, share it, and earn a commission whenever someone shops. Free, takes a minute." cta={["Create my list free", onCreator]} />
+        </div>
+      </section>}
       <div style={{ marginTop: 48 }}>
         <LumaHero title={<>Create your<br />first list,<br /><span className="er-luma-grad">earn $25.</span></>} onCreator={onCreator} onList={onList} />
       </div>
@@ -2812,10 +2842,10 @@ function BioMock() {
 
 function BigPayouts({ onCreator }) {
   const rows = [
-    { brand: "Apple", cat: "Tech", note: "MacBook referral", payout: "$480", bar: 96 },
-    { brand: "Peloton", cat: "Fitness", note: "Bike + membership", payout: "$360", bar: 74 },
-    { brand: "SoFi", cat: "Finance", note: "New account", payout: "$290", bar: 60 },
-    { brand: "AG1", cat: "Wellness", note: "Subscription", payout: "$220", bar: 44 },
+    { brand: "Apple", cat: "Tech", note: "MacBook referral", payout: demoMoney(480), bar: 96 },
+    { brand: "Peloton", cat: "Fitness", note: "Bike + membership", payout: demoMoney(360), bar: 74 },
+    { brand: "SoFi", cat: "Finance", note: "New account", payout: demoMoney(290), bar: 60 },
+    { brand: "AG1", cat: "Wellness", note: "Subscription", payout: demoMoney(220), bar: 44 },
   ];
   return (
     <section style={{ background: C.ink, color: C.paper }}>
@@ -3028,7 +3058,7 @@ function WayVisual({ k }) {
       <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${C.line}`, background: "#fff", boxShadow: "0 12px 30px rgba(28,26,23,.10)" }}>
         <div style={{ background: igGrad, padding: "11px 16px", display: "flex", alignItems: "center", gap: 9, color: "#fff" }}><Seal size={16} /><span style={{ fontWeight: 700, fontSize: 14 }}>Easy Recommend</span><IgIcon size={16} style={{ marginLeft: "auto" }} /></div>
         <div style={{ padding: "16px" }}>
-          <div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink, lineHeight: 1.35 }}>Share Glow Co. with friends and earn $12 on every sale.</div>
+          <div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink, lineHeight: 1.35 }}>Share Glow Co. with friends and earn {demoMoney(12)} on every sale.</div>
           <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, background: C.accentSoft, color: C.accentD, borderRadius: 999, padding: "6px 12px", fontSize: 12.5, fontWeight: 700 }}><Check size={13} /> Friends get 15% off</div>
           <div style={{ marginTop: 14, borderRadius: 999, background: igGrad, color: "#fff", textAlign: "center", padding: "11px 0", fontWeight: 700, fontSize: 14 }}>Share on Instagram &amp; earn</div>
         </div>
@@ -3187,8 +3217,95 @@ function QuickJoin({ brand, onClose, onDone }) {
     </Modal>
   );
 }
+/* Shared "how it works" layout: the animated phone first, then Step 1 / 2 / 3.
+   The step that matches the current animation screen is highlighted; tapping a step jumps there. */
+function HowToLayout({ f, setF, frames, screens, steps, title, sub, cta }) {
+  const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
+  return (
+    <div style={{ maxWidth: 900, margin: "26px auto 0", textAlign: "center" }}>
+      {title && <h2 className="er-serif" style={{ margin: "0 0 6px", fontSize: "clamp(24px,3.6vw,34px)", fontWeight: 500, letterSpacing: "-.01em" }}>{title}</h2>}
+      {sub && <p style={{ margin: "0 auto 18px", maxWidth: 520, fontSize: 14.5, color: C.muted, lineHeight: 1.55 }}>{sub}</p>}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        <div style={{ position: "relative", width: 220, aspectRatio: "9/17", borderRadius: 30, border: "7px solid #111", overflow: "hidden", background: "#fff", boxShadow: "0 28px 56px -26px rgba(0,0,0,.45)" }}>
+          <div key={f} className="er-frame" style={{ position: "absolute", inset: 0 }}>{screens[f]}</div>
+        </div>
+        <div style={{ minHeight: 20, fontSize: 13.5, fontWeight: 700, color: C.ink }}><span style={{ color: C.muted, fontWeight: 600 }}>{f + 1}/{frames.length} · </span>{frames[f]}</div>
+        <div style={{ display: "flex", gap: 6 }}>{frames.map((_, k) => <button key={k} type="button" aria-label={frames[k]} onClick={() => setF(k)} style={{ width: f === k ? 18 : 7, height: 7, borderRadius: 99, border: "none", padding: 0, background: f === k ? C.ink : C.line, cursor: "pointer", transition: "width .2s" }} />)}</div>
+      </div>
+      <div className="er-howto-steps">
+        {steps.map(([t, d, fr], k) => { const on = fr.includes(f); return (
+          <button key={t} type="button" onClick={() => setF(fr[0])} style={{ textAlign: "left", cursor: "pointer", fontFamily: "inherit", display: "flex", gap: 12, padding: "14px 15px", borderRadius: 16, border: `1.5px solid ${on ? C.ink : C.line}`, background: on ? "#fff" : "transparent", boxShadow: on ? "0 10px 24px -14px rgba(0,0,0,.35)" : "none", transition: "all .25s" }}>
+            <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", display: "grid", placeItems: "center", background: on ? igGrad : C.panel, color: on ? "#fff" : C.inkSoft, fontWeight: 800, fontSize: 14, transition: "all .25s" }}>{k + 1}</span>
+            <span><span style={{ display: "block", fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: on ? C.accentD : C.muted }}>Step {k + 1}</span><span style={{ display: "block", fontSize: 15.5, fontWeight: 700, color: C.ink, marginTop: 1 }}>{t}</span><span style={{ display: "block", fontSize: 13, color: C.muted, lineHeight: 1.5, marginTop: 2 }}>{d}</span></span>
+          </button>); })}
+      </div>
+      {cta && <button className="er-btn er-btn-primary" style={{ marginTop: 20 }} onClick={cta[1]}>{cta[0]} <Arrow size={16} /></button>}
+    </div>
+  );
+}
+/* "Make a list" animation: pick brands → your list page → link in bio → earnings. */
+function ListHowTo({ title, sub, cta } = {}) {
+  const [f, setF] = useState(0);
+  const frames = ["Pick brands you love", "Your list page is ready", "Put the link in your bio", "Followers shop, you earn"];
+  useEffect(() => { const t = setTimeout(() => setF((x) => (x + 1) % frames.length), 2600); return () => clearTimeout(t); }, [f]);
+  const brands = ["Nykaa", "Glossier", "Notion", "Mamaearth"];
+  const screens = [
+    <div key="0" style={{ position: "absolute", inset: 0, background: "#fff", padding: "30px 12px 12px" }}>
+      <div style={{ fontSize: 11.5, fontWeight: 800 }}>Pick brands to back</div>
+      <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+        {brands.map((n, k) => <div key={n} style={{ position: "relative", borderRadius: 9, overflow: "hidden", boxShadow: k < 3 ? `0 0 0 2px ${C.accent}` : `0 0 0 1px ${C.line}` }}>
+          <BrandArt b={{ name: n, photos: [] }} fs={11} style={{ width: "100%", aspectRatio: "4/3" }} />
+          <span className={k < 3 ? "er-pop" : ""} style={{ animationDelay: `${0.3 + k * 0.35}s`, position: "absolute", top: 4, right: 4, width: 16, height: 16, borderRadius: "50%", background: k < 3 ? C.accent : "#fff", color: "#fff", display: "grid", placeItems: "center", fontSize: 9, fontWeight: 900 }}>{k < 3 ? "✓" : "+"}</span>
+        </div>)}
+      </div>
+      <div className="er-pop" style={{ animationDelay: "1.4s", marginTop: 10, borderRadius: 8, background: C.ink, color: "#fff", textAlign: "center", padding: "7px 0", fontSize: 10.5, fontWeight: 800 }}>Continue · 3</div>
+    </div>,
+    <div key="1" style={{ position: "absolute", inset: 0, background: "#fff", padding: "26px 12px 12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7 }}><span style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg,#C9847A,#7E9C74)" }} /><div><div style={{ fontSize: 11.5, fontWeight: 800 }}>@you</div><div style={{ fontSize: 9, color: C.muted }}>Brands I back</div></div></div>
+      <div style={{ marginTop: 9, display: "flex", flexDirection: "column", gap: 6 }}>
+        {brands.slice(0, 3).map((n, k) => <div key={n} className="er-pop" style={{ animationDelay: `${0.2 + k * 0.3}s`, display: "flex", alignItems: "center", gap: 7, border: `1px solid ${C.line}`, borderRadius: 9, padding: 5 }}>
+          <BrandArt b={{ name: n, photos: [] }} mini style={{ width: 26, height: 26, borderRadius: 6, flexShrink: 0 }} /><span style={{ flex: 1, fontSize: 10.5, fontWeight: 700 }}>{n}</span><span style={{ fontSize: 8.5, fontWeight: 800, color: "#fff", background: C.ink, borderRadius: 5, padding: "3px 6px" }}>Shop</span></div>)}
+      </div>
+      <div style={{ marginTop: 9, fontSize: 9.5, fontWeight: 700, color: C.accentD, textAlign: "center" }}>easyrecommend.co/@you</div>
+    </div>,
+    <div key="2" style={{ position: "absolute", inset: 0, background: "#fff", padding: "28px 12px 12px", fontFamily: "-apple-system, system-ui, sans-serif" }}>
+      <div style={{ textAlign: "center", fontSize: 11, fontWeight: 800 }}>you</div>
+      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 9 }}><span style={{ width: 44, height: 44, borderRadius: "50%", padding: 2, background: "linear-gradient(45deg,#FEDA75,#FA7E1E,#D62976,#962FBF)" }}><span style={{ display: "block", width: "100%", height: "100%", borderRadius: "50%", border: "2px solid #fff", background: "linear-gradient(135deg,#C9847A,#7E9C74)" }} /></span><div style={{ fontSize: 10, fontWeight: 700 }}>Your Name</div></div>
+      <div style={{ marginTop: 8, fontSize: 9.5, lineHeight: 1.45 }}>Things I actually use 👇<div style={{ marginTop: 4, background: C.accentSoft, border: `1.5px solid ${C.accent}`, borderRadius: 7, padding: "4px 6px", fontWeight: 800, color: "#00376B", overflow: "hidden", whiteSpace: "nowrap" }}>🔗 <span className="er-type">easyrecommend.co/@you</span></div></div>
+      <div style={{ marginTop: 8, display: "flex", gap: 4 }}>{["Edit profile", "Share profile"].map((t) => <span key={t} style={{ flex: 1, textAlign: "center", fontSize: 9, fontWeight: 700, padding: "5px 0", borderRadius: 6, background: "#EFEFEF" }}>{t}</span>)}</div>
+      <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 2 }}>{["#E8D9C7", "#C9D6C3", "#D9C6D6", "#C7D3E0", "#E5CFC0", "#D3D9C4"].map((c) => <span key={c} style={{ aspectRatio: "1/1", background: c }} />)}</div>
+    </div>,
+    <div key="3" style={{ position: "absolute", inset: 0, background: "#fff", padding: "34px 14px" }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: C.muted, letterSpacing: ".06em" }}>YOUR EARNINGS</div>
+      {[["Nykaa", 18], ["Glossier", 10], ["Notion", 24]].map(([n, v], k) => (
+        <div key={k} className="er-pop" style={{ animationDelay: `${0.3 + k * 0.4}s`, marginTop: 10, display: "flex", alignItems: "center", gap: 8, border: `1px solid ${C.line}`, borderRadius: 10, padding: "8px 9px" }}>
+          <BrandArt b={{ name: n, photos: [] }} mini style={{ width: 24, height: 24, borderRadius: 6, flexShrink: 0 }} />
+          <span style={{ flex: 1, fontSize: 11, fontWeight: 700 }}>Sale · {n}</span><span style={{ fontSize: 11, fontWeight: 800, color: C.accentD }}>+{demoMoney(v)}</span>
+        </div>))}
+      <div className="er-pop" style={{ animationDelay: "1.6s", marginTop: 14, textAlign: "center", fontSize: 20, fontWeight: 800, color: C.ink }}>{demoMoney(52)}</div>
+    </div>,
+  ];
+  const steps = [["Pick brands you love", "Choose from 1,000+ brands. It takes a minute.", [0]], ["Get your own list page", "One link with every brand you recommend.", [1]], ["Put it in your bio and share", "Followers who shop within 6 months earn you a commission on every sale.", [2, 3]]];
+  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
+}
+/* "Make a list" feature page. */
+function ListPage({ session, onHome, onLogin, onLegal, onCreator }) {
+  const isCreator = session && session.role === "creator";
+  return (
+    <div>
+      <PageHeader onHome={onHome} onLogin={isCreator ? null : onLogin} right={<button className="er-btn er-btn-primary er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={onCreator}>{isCreator ? "Add brands" : "Start"}</button>} />
+      <section className="er-wrap" style={{ padding: "46px 22px 70px", textAlign: "center" }}>
+        <span className="er-eyebrow">Make a list &amp; share</span>
+        <h1 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(30px,5vw,48px)", fontWeight: 500, letterSpacing: "-.015em" }}>One link in your bio. Every recommendation pays.</h1>
+        <p style={{ margin: "0 auto", maxWidth: 560, fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>Build a list of brands you love, share one link, and earn a commission whenever followers shop from it.</p>
+        <ListHowTo cta={[isCreator ? "Add brands to my list" : "Create my list free", onCreator]} />
+      </section>
+      <PageFooter onLegal={onLegal} />
+    </div>
+  );
+}
 /* Affiliate page animation: copy link → make content → paste link in caption/description → earn. */
-function AffiliateHowTo() {
+function AffiliateHowTo({ title, sub, cta } = {}) {
   const [f, setF] = useState(0);
   const frames = ["Copy your affiliate link", "Make your post, reel or video", "Paste the link in your caption or description", "Viewers buy, you earn"];
   useEffect(() => { const t = setTimeout(() => setF((x) => (x + 1) % frames.length), 2600); return () => clearTimeout(t); }, [f]);
@@ -3218,33 +3335,16 @@ function AffiliateHowTo() {
     </div>,
     <div key="3" style={{ position: "absolute", inset: 0, background: "#fff", padding: "34px 14px" }}>
       <div style={{ fontSize: 11, fontWeight: 800, color: C.muted, letterSpacing: ".06em" }}>YOUR EARNINGS</div>
-      {[["Notion", "$24.00"], ["Notion", "$24.00"], ["Canva", "$12.50"]].map(([n, v], k) => (
+      {[["Notion", demoMoney(24)], ["Notion", demoMoney(24)], ["Canva", demoMoney(12)]].map(([n, v], k) => (
         <div key={k} className="er-pop" style={{ animationDelay: `${0.3 + k * 0.4}s`, marginTop: 10, display: "flex", alignItems: "center", gap: 8, border: `1px solid ${C.line}`, borderRadius: 10, padding: "8px 9px" }}>
           <BrandArt b={{ name: n, photos: [] }} mini style={{ width: 24, height: 24, borderRadius: 6, flexShrink: 0 }} />
           <span style={{ flex: 1, fontSize: 11, fontWeight: 700 }}>Sale · {n}</span><span style={{ fontSize: 11, fontWeight: 800, color: C.accentD }}>+{v}</span>
         </div>))}
-      <div className="er-pop" style={{ animationDelay: "1.6s", marginTop: 14, textAlign: "center", fontSize: 20, fontWeight: 800, color: C.ink }}>$60.50</div>
+      <div className="er-pop" style={{ animationDelay: "1.6s", marginTop: 14, textAlign: "center", fontSize: 20, fontWeight: 800, color: C.ink }}>{demoMoney(60)}</div>
     </div>,
   ];
-  const steps = [["Pick a brand and copy your affiliate link", "Every brand below has your own tracked link."], ["Make content about it", "Posts, reels, YouTube videos, blog posts, newsletters, podcasts."], ["Paste the link in your caption, description or bio", "Viewers who buy within 6 months earn you a commission, tracked automatically."]];
-  return (
-    <div className="er-howto" style={{ maxWidth: 860, margin: "26px auto 0", display: "grid", gap: 26, alignItems: "center", textAlign: "left" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {steps.map(([t, d], k) => (
-          <div key={t} style={{ display: "flex", gap: 13 }}>
-            <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", display: "grid", placeItems: "center", background: C.ink, color: "#fff", fontWeight: 800, fontSize: 14 }}>{k + 1}</span>
-            <div><div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>Step {k + 1}</div><div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 1 }}>{t}</div><div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.5, marginTop: 2 }}>{d}</div></div>
-          </div>))}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-        <div style={{ position: "relative", width: 210, aspectRatio: "9/17", borderRadius: 28, border: "7px solid #111", overflow: "hidden", background: "#fff", boxShadow: "0 24px 50px -24px rgba(0,0,0,.45)" }}>
-          <div key={f} className="er-frame" style={{ position: "absolute", inset: 0 }}>{screens[f]}</div>
-        </div>
-        <div style={{ minHeight: 20, fontSize: 13.5, fontWeight: 700, color: C.ink, textAlign: "center" }}><span style={{ color: C.muted, fontWeight: 600 }}>{f + 1}/{frames.length} · </span>{frames[f]}</div>
-        <div style={{ display: "flex", gap: 6 }}>{frames.map((_, k) => <button key={k} type="button" aria-label={frames[k]} onClick={() => setF(k)} style={{ width: f === k ? 18 : 7, height: 7, borderRadius: 99, border: "none", padding: 0, background: f === k ? C.ink : C.line, cursor: "pointer", transition: "width .2s" }} />)}</div>
-      </div>
-    </div>
-  );
+  const steps = [["Pick a brand and copy your affiliate link", "Every brand has your own tracked link.", [0]], ["Make content about it", "Posts, reels, YouTube videos, blogs, newsletters, podcasts.", [1]], ["Paste the link in your caption, description or bio", "Viewers who buy within 6 months earn you a commission, tracked automatically.", [2, 3]]];
+  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
 }
 /* Affiliate links for content creators: every brand with a copyable tracked link. */
 function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
@@ -3288,7 +3388,7 @@ function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
         </div>}
         {list && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>No brands match{q ? ` “${q}”` : ""}.</p>}
         <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
-          {shown.map((b) => { const earns = b.earns && b.earns !== "0%" && b.earns !== "$0" ? b.earns : ""; const url = links[b.id]; return (
+          {shown.map((b) => { const ei = earnInfo(b); const url = links[b.id]; return (
             <div key={b.id} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <BrandArt b={b} style={{ width: "100%", aspectRatio: "16/9" }} />
               <div style={{ padding: "12px 14px 14px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
@@ -3296,7 +3396,10 @@ function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
                   <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</div>
                   <div style={{ fontSize: 12.5, color: C.muted }}>{(b.categories || []).join(" · ")}</div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: earns ? C.accentD : C.muted }}>{isCreator ? (earns ? `You earn ${earns} per sale` : "Commission set by the brand") : "Join free to see your commission"}</div>
+                <div style={{ background: ei ? C.accentSoft : C.panel, borderRadius: 10, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: ei ? C.accentD : C.muted }}>{isCreator ? (ei ? ei.line : "Commission coming soon") : "Join free to see what you earn"}</div>
+                  {isCreator && ei && ei.sub && <div style={{ fontSize: 12, color: C.accentD, marginTop: 1 }}>{ei.sub}</div>}
+                </div>
                 <button type="button" onClick={() => getLink(b)} disabled={busy === b.id} style={{ marginTop: "auto", width: "100%", display: "flex", alignItems: "center", gap: 8, background: url ? C.accentSoft : C.panel, border: `1.5px solid ${url ? C.accent : C.line}`, borderRadius: 12, padding: "9px 10px 9px 12px", cursor: "pointer", fontFamily: "inherit" }}>
                   <span style={{ flex: 1, minWidth: 0, textAlign: "left", fontSize: 12.5, fontWeight: 600, color: url ? C.ink : C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url ? url.replace(/^https?:\/\/(www\.)?/i, "") : `easyrecommend.co/r/${isCreator ? session.username : "you"}/${slugify(b.name)}`}</span>
                   <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, background: C.ink, color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: 12.5, fontWeight: 800 }}><Copy size={13} /> {busy === b.id ? "…" : url ? "Copy" : "Get link"}</span>
@@ -3310,7 +3413,7 @@ function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
   );
 }
 /* Share page: how-to steps + an animated phone showing copy link → Instagram story → link sticker → paste. */
-function ShareHowTo() {
+function ShareHowTo({ title, sub, cta } = {}) {
   const [f, setF] = useState(0);
   const frames = ["Tap Copy link", "Open Instagram, add your story", "Tap the sticker icon, pick LINK", "Paste your link, tap Done", "Friends tap it and shop"];
   useEffect(() => { const t = setTimeout(() => setF((x) => (x + 1) % frames.length), 2600); return () => clearTimeout(t); }, [f]);
@@ -3324,7 +3427,7 @@ function ShareHowTo() {
   const screens = [
     <div key="0" style={{ position: "absolute", inset: 0, background: "#fff", padding: "34px 14px 14px" }}>
       <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}><BrandArt b={{ name: "Notion", photos: [] }} style={{ width: "100%", aspectRatio: "16/10" }} />
-        <div style={{ padding: 9 }}><div style={{ fontSize: 12, fontWeight: 700 }}>Notion</div><div style={{ fontSize: 10, color: C.accentD, fontWeight: 600, marginTop: 2 }}>You earn $12 per sale</div>
+        <div style={{ padding: 9 }}><div style={{ fontSize: 12, fontWeight: 700 }}>Notion</div><div style={{ fontSize: 10, color: C.accentD, fontWeight: 600, marginTop: 2 }}>You earn {demoMoney(12)} per sale</div>
           <div style={{ marginTop: 8, height: 26, borderRadius: 8, background: igGrad }} /><div style={{ marginTop: 6, display: "flex", gap: 5 }}>{["#111", "#25D366", "#1877F2"].map((c) => <span key={c} style={{ flex: 1, height: 22, borderRadius: 7, background: c }} />)}
             <span style={{ position: "relative", flex: 1, height: 22, borderRadius: 7, border: `1px solid ${C.line}`, fontSize: 9, fontWeight: 800, display: "grid", placeItems: "center" }}>Copy{tap({ right: -8, top: -6 })}</span></div></div></div>
       <div className="er-pop" style={{ position: "absolute", left: "50%", bottom: 22, transform: "translateX(-50%)", background: "#111", color: "#fff", borderRadius: 999, padding: "6px 12px", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>✓ Link copied</div>
@@ -3343,27 +3446,10 @@ function ShareHowTo() {
     </div>,
     <div key="4" style={{ position: "absolute", inset: 0 }}>{story(<>
       <div className="er-pop" style={{ position: "absolute", left: "50%", bottom: "16%", transform: "translateX(-50%) rotate(-4deg)", background: "#fff", color: "#0095F6", borderRadius: 9, padding: "6px 9px", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", maxWidth: "88%", overflow: "hidden", textOverflow: "ellipsis", boxShadow: "0 4px 12px rgba(0,0,0,.2)" }}>🔗 {link.toUpperCase()}</div>
-      <div className="er-pop" style={{ position: "absolute", left: 10, right: 10, bottom: 10, background: "rgba(17,17,17,.85)", color: "#fff", borderRadius: 10, padding: "6px 9px", fontSize: 10.5, fontWeight: 700 }}>✓ Sale tracked · you earned $12</div></>)}</div>,
+      <div className="er-pop" style={{ position: "absolute", left: 10, right: 10, bottom: 10, background: "rgba(17,17,17,.85)", color: "#fff", borderRadius: 10, padding: "6px 9px", fontSize: 10.5, fontWeight: 700 }}>✓ Sale tracked · you earned {demoMoney(12)}</div></>)}</div>,
   ];
-  const steps = [["Select a brand you like", "Search or browse below. Each brand shows what you earn."], ["Share it on Instagram story, WhatsApp or X", "Your link is copied. On Instagram, add a Link sticker and paste it."], ["Friends shop within 6 months, you earn", "Every sale from your link pays you a commission, tracked automatically."]];
-  return (
-    <div className="er-howto" style={{ maxWidth: 860, margin: "26px auto 0", display: "grid", gap: 26, alignItems: "center", textAlign: "left" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {steps.map(([t, d], k) => (
-          <div key={t} style={{ display: "flex", gap: 13 }}>
-            <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", display: "grid", placeItems: "center", background: k === 1 ? igGrad : C.ink, color: "#fff", fontWeight: 800, fontSize: 14 }}>{k + 1}</span>
-            <div><div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>Step {k + 1}</div><div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginTop: 1 }}>{t}</div><div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.5, marginTop: 2 }}>{d}</div></div>
-          </div>))}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-        <div style={{ position: "relative", width: 210, aspectRatio: "9/17", borderRadius: 28, border: "7px solid #111", overflow: "hidden", background: "#fff", boxShadow: "0 24px 50px -24px rgba(0,0,0,.45)" }}>
-          <div key={f} className="er-frame" style={{ position: "absolute", inset: 0 }}>{screens[f]}</div>
-        </div>
-        <div style={{ minHeight: 20, fontSize: 13.5, fontWeight: 700, color: C.ink }}><span style={{ color: C.muted, fontWeight: 600 }}>{f + 1}/{frames.length} · </span>{frames[f]}</div>
-        <div style={{ display: "flex", gap: 6 }}>{frames.map((_, k) => <button key={k} type="button" aria-label={frames[k]} onClick={() => setF(k)} style={{ width: f === k ? 18 : 7, height: 7, borderRadius: 99, border: "none", padding: 0, background: f === k ? C.ink : C.line, cursor: "pointer", transition: "width .2s" }} />)}</div>
-      </div>
-    </div>
-  );
+  const steps = [["Select a brand you like", "Search or browse. Each brand shows what you earn.", [0]], ["Share it on Instagram story, WhatsApp or X", "Your link is copied. On Instagram, add a Link sticker and paste it.", [1, 2, 3]], ["Friends shop within 6 months, you earn", "Every sale from your link pays you a commission, tracked automatically.", [4]]];
+  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
 }
 /* Share a brand: browse brands, share each one to Instagram story / X / Facebook with your own link. */
 function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
@@ -3421,7 +3507,7 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
         </div>}
         {list && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>No brands match{q ? ` “${q}”` : ""}.</p>}
         <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
-          {shown.map((b) => { const earns = b.earns && b.earns !== "0%" && b.earns !== "$0" ? b.earns : ""; return (
+          {shown.map((b) => { const ei = earnInfo(b); return (
             <div key={b.id} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <BrandArt b={b} style={{ width: "100%", aspectRatio: "16/9" }} />
               <div style={{ padding: "12px 14px 14px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
@@ -3432,7 +3518,10 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
                   </div>
                   {offText(b) && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>Friends get {offText(b)}</span>}
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: earns ? C.accentD : C.muted }}>{isCreator ? (earns ? `You earn ${earns} per sale` : "Commission set by the brand") : "Join free to see your commission"}</div>
+                <div style={{ background: ei ? C.accentSoft : C.panel, borderRadius: 10, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: ei ? C.accentD : C.muted }}>{isCreator ? (ei ? ei.line : "Commission coming soon") : "Join free to see what you earn"}</div>
+                  {isCreator && ei && ei.sub && <div style={{ fontSize: 12, color: C.accentD, marginTop: 1 }}>{ei.sub}</div>}
+                </div>
                 <div style={{ marginTop: "auto", display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {sbtn(b, "ig", "Share on Instagram story", <IgIcon size={14} />, igGrad, "#fff")}
                   {sbtn(b, "wa", "WhatsApp", null, "#25D366", "#fff")}
@@ -3529,7 +3618,7 @@ function ShareStorySlide({ onShare }) {
                 </div>
               </div>
               <div style={{ position: "absolute", left: "50%", bottom: "17%", transform: "translateX(-50%) rotate(-3deg)", display: "flex", alignItems: "center", gap: 6, background: "#fff", color: "#0095F6", borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(0,0,0,.2)" }}>🔗 EASYRECOMMEND.CO/R/YOU</div>
-              <div style={{ position: "absolute", left: 12, right: 12, bottom: 12, display: "flex", alignItems: "center", gap: 8, background: "rgba(17,17,17,.82)", color: "#fff", borderRadius: 12, padding: "8px 10px", fontSize: 11.5, fontWeight: 600 }}><span style={{ width: 20, height: 20, borderRadius: "50%", background: C.accent, display: "grid", placeItems: "center", flexShrink: 0 }}><Check size={12} /></span> Sale tracked · you earned $12</div>
+              <div style={{ position: "absolute", left: 12, right: 12, bottom: 12, display: "flex", alignItems: "center", gap: 8, background: "rgba(17,17,17,.82)", color: "#fff", borderRadius: 12, padding: "8px 10px", fontSize: 11.5, fontWeight: 600 }}><span style={{ width: 20, height: 20, borderRadius: "50%", background: C.accent, display: "grid", placeItems: "center", flexShrink: 0 }}><Check size={12} /></span> Sale tracked · you earned {demoMoney(12)}</div>
             </div>
           </div>
         </div>
@@ -3538,12 +3627,12 @@ function ShareStorySlide({ onShare }) {
   );
 }
 /* Homepage "How it works": the three ways to earn. */
-function ThreeWaysSlide({ onCreator, onShare, onAffiliate, go }) {
+function ThreeWaysSlide({ onCreator, onShare, onAffiliate, onListPage }) {
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
   const ways = [
-    { n: "1", tag: "Make a list & share", title: "Build a list of brands you love", body: "Pick your favourite brands, put one link in your bio, and earn on every sale from your list.", cta: "Create my list", act: onCreator, more: 1, bg: C.ink, color: C.paper },
-    { n: "2", tag: "Share & earn", title: "Share one brand on your story", body: "No list needed. Share a brand to your Instagram story with your own link and earn when friends buy.", cta: "Share a brand", act: onShare, more: 2, bg: igGrad, color: "#fff" },
-    { n: "3", tag: "Create content", title: "Interested in creating content?", body: "Get your affiliate link, make posts, reels or videos about brands you love, and earn a commission on every sale.", note: "For serious creators, bloggers, YouTubers and more", cta: "Get my affiliate link", act: onAffiliate, more: 3, bg: C.accent, color: "#fff" },
+    { n: "1", tag: "Make a list & share", title: "Build a list of brands you love", body: "Pick your favourite brands, put one link in your bio, and earn on every sale from your list.", cta: "Create my list", act: onCreator, more: onListPage, bg: C.ink, color: C.paper },
+    { n: "2", tag: "Share & earn", title: "Share one brand on your story", body: "No list needed. Share a brand to your Instagram story with your own link and earn when friends buy.", cta: "Share a brand", act: onShare, more: onShare, bg: igGrad, color: "#fff" },
+    { n: "3", tag: "Create content", title: "Interested in creating content?", body: "Get your affiliate link, make posts, reels or videos about brands you love, and earn a commission on every sale.", note: "For serious creators, bloggers, YouTubers and more", cta: "Get my affiliate link", act: onAffiliate, more: onAffiliate, bg: C.accent, color: "#fff" },
   ];
   return (
     <section style={{ background: C.paper, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
@@ -3566,7 +3655,7 @@ function ThreeWaysSlide({ onCreator, onShare, onAffiliate, go }) {
                 {w.note && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.accentD }}>{w.note}</p>}
                 <div style={{ marginTop: "auto", paddingTop: 10, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <button className="er-btn er-btn-primary er-btn-sm" onClick={w.act}>{w.cta} <Arrow size={14} /></button>
-                  <button type="button" className="er-link" onClick={() => go(w.more)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: C.muted }}>See how →</button>
+                  <button type="button" className="er-link" onClick={w.more} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: C.muted }}>See how →</button>
                 </div>
               </div>
             </div>
@@ -3577,7 +3666,7 @@ function ThreeWaysSlide({ onCreator, onShare, onAffiliate, go }) {
   );
 }
 /* Homepage sections as one slider, so the page stays short. Tabs, arrows and swipe. */
-function HomeSlides({ onCreator, onShare, onAffiliate }) {
+function HomeSlides({ onCreator, onShare, onAffiliate, onListPage }) {
   const AUTO_MS = 7000;
   const [i, setI] = useState(0); const touch = useRef(null); const top = useRef(null);
   const [hold, setHold] = useState(false); const [seen, setSeen] = useState(false); const [nudge, setNudge] = useState(0);
@@ -3596,7 +3685,7 @@ function HomeSlides({ onCreator, onShare, onAffiliate }) {
   useEffect(() => { setVid(false); }, [i]);   // a playing video unmounts when the slide changes
   const playing = !hold && !paused && seen && !vid;
   const slides = [
-    ["How it works", <ThreeWaysSlide onCreator={onCreator} onShare={onShare} onAffiliate={onAffiliate} go={(k) => go(k)} />],
+    ["How it works", <ThreeWaysSlide onCreator={onCreator} onShare={onShare} onAffiliate={onAffiliate} onListPage={onListPage} />],
     ["Make a list", (
     <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
       <div className="er-wrap" style={{ padding: "64px 22px" }}>
@@ -3642,7 +3731,7 @@ function HomeSlides({ onCreator, onShare, onAffiliate }) {
     </div>
   );
 }
-function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage, onBrands, onShare, onAffiliate }) {
+function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage, onBrands, onShare, onAffiliate, onListPage }) {
   const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
   const [joinOpen, setJoinOpen] = useState(false);
   return (
@@ -3677,7 +3766,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
         sub="Three ways to earn: make a list of brands you love, share a brand on your story, or create content with your affiliate link. Get a commission on every sale." />
       <BrandStrip label="Recommend 1,000+ brands, including" />
 
-      <HomeSlides onCreator={onCreator} onShare={onShare} onAffiliate={onAffiliate} />
+      <HomeSlides onCreator={onCreator} onShare={onShare} onAffiliate={onAffiliate} onListPage={onListPage} />
 
       <footer style={{ borderTop: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ padding: "44px 22px 6px", display: "grid", gap: 28, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
@@ -3796,6 +3885,7 @@ const STYLES = `
 @keyframes er-up-in{from{transform:translateY(100%)}to{transform:none}}.er-up{animation:er-up-in .45s ease .35s both}
 @keyframes er-tap-k{0%,100%{transform:scale(.6);opacity:0}40%{transform:scale(1);opacity:1}70%{transform:scale(.85);opacity:.8}}.er-tap{animation:er-tap-k 1.4s ease .2s infinite;pointer-events:none}
 @keyframes er-type-k{from{max-width:0}to{max-width:100%}}.er-type{display:inline-block;overflow:hidden;vertical-align:bottom;white-space:nowrap;animation:er-type-k 1.2s steps(30) .3s both}
+.er-howto-steps{margin-top:22px;display:grid;gap:10px;grid-template-columns:1fr}@media(min-width:760px){.er-howto-steps{grid-template-columns:repeat(3,1fr)}}
 .er-howto{grid-template-columns:1fr}@media(min-width:760px){.er-howto{grid-template-columns:1.2fr 1fr}}
 @keyframes er-toast-in{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
 .er-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:90;max-width:min(92vw,420px);background:#111;color:#fff;border-radius:14px;padding:16px 22px;font-size:16.5px;font-weight:800;line-height:1.35;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,.3);animation:er-toast-in .25s ease}
@@ -4108,6 +4198,7 @@ function EasyApp() {
   const goBrands = () => { setView("brands"); nav("/brands"); window.scrollTo(0, 0); };
   const goShare = () => { setView("share"); nav("/share"); window.scrollTo(0, 0); };
   const goAffiliate = () => { setView("affiliate"); nav("/affiliate"); window.scrollTo(0, 0); };
+  const goListPage = () => { setView("listpage"); nav("/list"); window.scrollTo(0, 0); };
 
   useEffect(() => {
     try { if (!sessionStorage.getItem("er_pv")) { sessionStorage.setItem("er_pv", "1"); api("/pageview", { method: "POST" }).catch(() => {}); } } catch (e) {}
@@ -4162,8 +4253,9 @@ function EasyApp() {
       <GlobalAlerts />
       {view === "home" && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session}
         onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)}
-        onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} onBrands={goBrands} onShare={goShare} onAffiliate={goAffiliate} />}
+        onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} onBrands={goBrands} onShare={goShare} onAffiliate={goAffiliate} onListPage={goListPage} />}
       {view === "claim" && <ClaimPage />}
+      {view === "listpage" && <ListPage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} />}
       {view === "affiliate" && <AffiliatePage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onAuth={login} onLegal={() => setLegalOpen(true)} />}
       {view === "share" && <SharePage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onAuth={login} onLegal={() => setLegalOpen(true)} />}
       {view === "brands" && <BrandsPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
@@ -4172,7 +4264,7 @@ function EasyApp() {
       {view === "admin" && <AdminPanel onBack={goHome} onRefresh={refresh} />}
       {view === "mybiz" && session && <MyBusiness session={session} onBack={goHome} onRefresh={refresh} />}
       {view === "settings" && session && <AccountSettings session={session} onBack={goHome} onLogout={logout} onEditProfile={() => goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onLegal={() => setLegalOpen(true)} onDeleted={() => { logout(); }} />}
-      {view === "settings" && !session && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => {}} onMyBiz={() => {}} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} onBrands={goBrands} onShare={goShare} onAffiliate={goAffiliate} />}
+      {view === "settings" && !session && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)} onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => {}} onMyBiz={() => {}} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} onBrands={goBrands} onShare={goShare} onAffiliate={goAffiliate} onListPage={goListPage} />}
       {view === "profile" && <InfluencerProfile handle={profileHandle} session={session} onAuth={login} dataVersion={ver} onBack={goHome} onBrowse={goHome} onOpenBusiness={(id) => setDetailId(id)} onAddBrand={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onRefresh={refresh} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onList={() => setBrandOpen(true)} />}
 
       <CookieBar onLearnMore={() => setLegalOpen(true)} />
