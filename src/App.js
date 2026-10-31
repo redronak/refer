@@ -2188,11 +2188,32 @@ function FeatureSwitches() {
 /* Admin: add the onboarded popular brands (idempotent; never overwrites existing listings). */
 function AdminSeedPopular() {
   const [st, setSt] = useState("");
-  const run = async () => { if (!window.confirm("Add the 100 popular brands (15–30% off) and the 30 popular products? Existing brands are only tagged Popular, never overwritten. Safe to run again.")) return; setSt("busy"); try { const r = await api("/admin/seed-popular", { method: "POST", admin: true }); setSt(`Done: ${r.created} brands added, ${r.marked} existing tagged Popular, ${r.products || 0} products added.`); } catch (e) { setSt(e.message); } };
+  const run = async () => { if (!window.confirm("Add the 100 popular brands as live listings (15–30% off)? Existing brands are only tagged Popular, never overwritten.")) return; setSt("busy"); try { const r = await api("/admin/seed-popular", { method: "POST", admin: true }); setSt(`Done: ${r.created} added, ${r.marked} existing tagged Popular.`); } catch (e) { setSt(e.message); } };
   return (
     <div className="er-card" style={{ padding: 18, marginTop: 22, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-      <div style={{ flex: "1 1 240px" }}><div style={{ fontWeight: 700, fontSize: 15 }}>⭐ Popular brands</div><div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{st && st !== "busy" ? st : "Add the 100 onboarded India + USA brands (15–30% off) and the 30 popular products. Safe to press again: nothing is duplicated."}</div></div>
-      <button className="er-btn er-btn-primary er-btn-sm" disabled={st === "busy"} onClick={run}>{st === "busy" ? "Adding…" : "Add popular brands + products"}</button>
+      <div style={{ flex: "1 1 240px" }}><div style={{ fontWeight: 700, fontSize: 15 }}>⭐ Popular brands</div><div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{st && st !== "busy" ? st : "Add the 100 onboarded India + USA brands, shown first everywhere with 15–30% off. Set each one's exact discount, code and commission in its listing."}</div></div>
+      <button className="er-btn er-btn-primary er-btn-sm" disabled={st === "busy"} onClick={run}>{st === "busy" ? "Adding…" : "Add popular brands"}</button>
+    </div>
+  );
+}
+/* Admin: add the 30 popular products to their brands (separate from the brand seed). */
+function AdminSeedProducts() {
+  const [st, setSt] = useState(""); const [missing, setMissing] = useState([]);
+  const run = async () => {
+    setSt("busy"); setMissing([]);
+    try {
+      const r = await api("/admin/seed-products", { method: "POST", admin: true });
+      setSt(`Done: ${r.added} added, ${r.updated} already there (kept, tagged Popular)${r.brandsCreated ? `, ${r.brandsCreated} new brands created` : ""}. ${r.brandsWithProducts} brands now show popular products.`);
+      setMissing(r.missing || []);
+    } catch (e) { setSt(e.message); }
+  };
+  return (
+    <div className="er-card" style={{ padding: 18, marginTop: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ flex: "1 1 240px" }}><div style={{ fontWeight: 700, fontSize: 15 }}>🧴 Popular products</div>
+        <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{st && st !== "busy" ? st : "Add the 30 popular products to their brands. Safe to press again: nothing is duplicated."}</div>
+        {missing.length > 0 && <div style={{ fontSize: 12.5, color: "#C0392B", marginTop: 6 }}>Not added: {missing.join(", ")}</div>}
+      </div>
+      <button className="er-btn er-btn-primary er-btn-sm" disabled={st === "busy"} onClick={run}>{st === "busy" ? "Adding…" : "Add popular products"}</button>
     </div>
   );
 }
@@ -2452,6 +2473,7 @@ function AdminPanel({ onBack, onRefresh }) {
       <p style={{ margin: "6px 0 0", fontSize: 14.5, color: C.muted }}>Approve businesses to list them under their category, or adjust their terms. Commission is admin-only.</p>
       <AdminStats />
       <AdminSeedPopular />
+      <AdminSeedProducts />
       <AdminOffers />
       <AdminSetupRequests />
       <FeatureSwitches />
