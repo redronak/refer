@@ -47,7 +47,6 @@ const CATS = {
 };
 const CAT_LIST = Object.keys(CATS);
 // Shown to businesses awaiting approval.
-const WAITLIST_COUNT = "800+";
 const catOf = (b) => CATS[(b.categories || [])[0]] || CATS.Beauty;
 // Stable-but-varied light tint per brand (used when there's no cover photo).
 function hashStr(s) { let h = 0; const str = String(s || ""); for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; return h; }
@@ -592,7 +591,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
     try {
       const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, otp: otp.trim(), website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount, contacts: ["website"] } });
       if (r && r.token) onLogin({ role: "brand", token: r.token, phone: f.phone });
-      onRefresh(); onDone(f.name);
+      onRefresh(); onDone({ name: f.name, live: r && r.status === "approved" });
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
 
@@ -675,19 +674,22 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
           {step > 0 ? <button className="er-btn er-btn-ghost" onClick={() => setStep(step - 1)}><ChevL size={16} /> Back</button> : <span />}
           {step < 3
             ? <button className="er-btn er-btn-primary" disabled={!valid[step]} onClick={() => setStep(step + 1)}>Continue <ChevR size={16} /></button>
-            : <button className="er-btn er-btn-primary" disabled={busy || !valid[3]} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : "Submit for review"}</button>}
+            : <button className="er-btn er-btn-primary" disabled={busy || !valid[3]} onClick={submit}><Check size={16} /> {busy ? "Submitting…" : f.online ? "Submit for review" : "Go live"}</button>}
         </div>
       </div>
     </Modal>
   );
 }
 function BrandSuccess({ name, onClose, onDashboard }) {
+  const n = typeof name === "object" && name ? name.name : name; const live = typeof name === "object" && name ? name.live : false;
   return <Modal onClose={onClose}><div style={{ padding: 32, textAlign: "center" }}>
     <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={52} /></div>
-    <h2 className="er-serif" style={{ margin: "16px 0 0", fontSize: 24, fontWeight: 500 }}>You've joined the waitlist</h2>
-    <p style={{ margin: "10px 0 0", fontSize: 14.5, color: C.inkSoft, lineHeight: 1.5 }}><b>{name}</b> is on the waitlist for review. We approve every business before it's listed, you'll get a text once you're live.</p>
-    <div style={{ marginTop: 16, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 12, padding: "11px 14px", fontSize: 13.5, fontWeight: 600, color: C.accentD }}>{WAITLIST_COUNT} businesses have joined the waitlist</div>
-    <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 24 }} onClick={onDashboard}>Go to my dashboard <Arrow size={16} /></button>
+    <h2 className="er-serif" style={{ margin: "16px 0 0", fontSize: 24, fontWeight: 500 }}>{live ? "You're live! 🎉" : "Submitted for review"}</h2>
+    <p style={{ margin: "10px 0 0", fontSize: 14.5, color: C.inkSoft, lineHeight: 1.5 }}>{live
+      ? <><b>{n}</b> is now on Easy Recommend. Creators can add you to their lists and share you right away.</>
+      : <><b>{n}</b> is an online-only product, so we review it before it goes live, usually within 24 hours. You'll get a text once you're live.</>}</p>
+    <div style={{ marginTop: 16, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 12, padding: "11px 14px", fontSize: 13.5, fontWeight: 600, color: C.accentD }}>Next: add one line to your site so sales are tracked. Takes 2 minutes.</div>
+    <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 24 }} onClick={onDashboard}>Set up tracking <Arrow size={16} /></button>
     <button className="er-btn er-btn-ghost er-btn-block" style={{ marginTop: 10 }} onClick={onClose}>Not now</button></div></Modal>;
 }
 
@@ -777,7 +779,7 @@ function BizEditCard({ b, token, reload }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ width: 44, height: 44, borderRadius: 11, display: "grid", placeItems: "center", background: cc.bg, color: cc.color, flexShrink: 0, overflow: "hidden" }}>{(b.photos || [])[0] ? <img src={b.photos[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={18} />}</span>
         <div style={{ flex: 1, minWidth: 0 }}><p className="er-serif" style={{ margin: 0, fontSize: 17, fontWeight: 500 }}>{b.name}</p>
-          <p style={{ margin: 0, fontSize: 12.5, color: b.status === "approved" ? C.accent : "#B26A00", fontWeight: 600 }}>{b.status === "approved" ? "Live" : `On the waitlist · ${WAITLIST_COUNT} joined`}{b.status === "approved" && b.pendingOffer ? <span style={{ color: "#B26A00" }}> · New offer waiting on approval</span> : null}</p></div>
+          <p style={{ margin: 0, fontSize: 12.5, color: b.status === "approved" ? C.accent : "#B26A00", fontWeight: 600 }}>{b.status === "approved" ? "Live" : "Waiting on approval"}{b.status === "approved" && b.pendingOffer ? <span style={{ color: "#B26A00" }}> · New offer waiting on approval</span> : null}</p></div>
         {!edit && <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setEdit(true)}><Edit size={14} /> Edit</button>}
       </div>
       {edit && <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -812,7 +814,7 @@ function BizEditCard({ b, token, reload }) {
         <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, background: C.panel, display: "flex", flexDirection: "column", gap: 12 }}>
           <div>
             <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700 }}>Offer for shoppers from creator links</p>
-            <p style={{ margin: "3px 0 0", fontSize: 12.5, color: C.muted }}>People who tap a creator's link see this image and discount before they reach your site.{b.status === "approved" ? " Changes go live after our team approves them." : ""}</p>
+            <p style={{ margin: "3px 0 0", fontSize: 12.5, color: C.muted }}>People who tap a creator's link see this image and discount before they reach your site.{b.status === "approved" && b.online ? " Changes go live after our team approves them." : ""}</p>
           </div>
           {b.status === "approved" && b.pendingOffer && <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "#B26A00", background: "#FFF6E5", border: "1px solid #F3D9A4", borderRadius: 10, padding: "8px 10px" }}>Waiting on approval. Shoppers still see your current offer until then.</p>}
           <Field label="Offer image" hint="A product shot or promo banner. Wide images look best.">
@@ -1348,14 +1350,7 @@ function MyBusiness({ session, onBack, onRefresh }) {
       {tab === "info" && <>
         {awaiting && <div style={{ background: "#FFF6E5", border: "1px solid #F1D29A", borderRadius: 14, padding: "13px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#D98A00", flexShrink: 0 }} />
-          <div style={{ fontSize: 13.5, color: "#7A4B00" }}><b>Waiting on approval.</b> We review every business before it goes live, usually within 24 hours.</div>
-        </div>}
-        {awaiting && <div className="er-card" style={{ padding: "16px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>Book a slot to set up commission tracking</div>
-            <p style={{ margin: "4px 0 0", fontSize: 13.5, lineHeight: 1.55, color: C.inkSoft }}>Self-setup isn't ready yet, so we'll set it up with you. I'm Ronak Joshi, founder (US-based). The call is audio-only. Once it's set up, influencers can start promoting your brand!</p>
-          </div>
-          <a className="er-btn er-btn-primary" href="https://calendly.com/ronakjoshil/new-meeting" target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, textDecoration: "none" }}>Book a slot <Arrow size={16} /></a>
+          <div style={{ fontSize: 13.5, color: "#7A4B00" }}><b>Waiting on approval.</b> Online-only products are reviewed before they go live, usually within 24 hours. Meanwhile, set up tracking in Step 2.</div>
         </div>}
         {rows === null && !err && <p style={{ color: C.muted }}>Loading…</p>}
         {rows && rows.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No business found on this account.</p>}
@@ -3677,23 +3672,8 @@ function ThreeWaysSlide({ onCreator, onShare, onAffiliate, onListPage }) {
 }
 /* Homepage sections as one slider, so the page stays short. Tabs, arrows and swipe. */
 function HomeSlides({ onCreator, onShare, onAffiliate, onListPage }) {
-  const AUTO_MS = 7000;
+  // Manual only: tabs, arrows, dots and swipe (no auto-advance).
   const [i, setI] = useState(0); const touch = useRef(null); const top = useRef(null);
-  const [hold, setHold] = useState(false); const [seen, setSeen] = useState(false); const [nudge, setNudge] = useState(0);
-  const [paused, setPaused] = useState(false);   // visitor's own pause/play toggle
-  useEffect(() => {   // only auto-play while the slider is on screen
-    const el = top.current; if (!el || typeof IntersectionObserver === "undefined") { setSeen(true); return; }
-    const io = new IntersectionObserver(([e]) => setSeen(e.isIntersecting), { threshold: 0 }); io.observe(el); return () => io.disconnect();
-  }, []);
-  const [vid, setVid] = useState(false);   // never auto-advance while a video is playing
-  useEffect(() => {
-    const el = top.current; if (!el) return;
-    const on = () => setVid(true), off = () => setVid(false);
-    el.addEventListener("play", on, true); el.addEventListener("pause", off, true); el.addEventListener("ended", off, true);
-    return () => { el.removeEventListener("play", on, true); el.removeEventListener("pause", off, true); el.removeEventListener("ended", off, true); };
-  }, []);
-  useEffect(() => { setVid(false); }, [i]);   // a playing video unmounts when the slide changes
-  const playing = !hold && !paused && seen && !vid;
   const slides = [
     ["How it works", <ThreeWaysSlide onCreator={onCreator} onShare={onShare} onAffiliate={onAffiliate} onListPage={onListPage} />],
     ["Make a list", (
@@ -3716,8 +3696,7 @@ function HomeSlides({ onCreator, onShare, onAffiliate, onListPage }) {
     ["Big payouts", <BigPayouts onCreator={onCreator} />],
   ];
   const n = slides.length;
-  const go = (k, scroll) => { setI((k + n) % n); setNudge((x) => x + 1); if (scroll && top.current) top.current.scrollIntoView({ behavior: "smooth", block: "start" }); };
-  useEffect(() => { if (!playing) return; const t = setTimeout(() => setI((x) => (x + 1) % n), AUTO_MS); return () => clearTimeout(t); }, [i, playing, nudge, n]);
+  const go = (k, scroll) => { setI((k + n) % n); if (scroll && top.current) top.current.scrollIntoView({ behavior: "smooth", block: "start" }); };
   const arrow = (dir) => <button type="button" aria-label={dir < 0 ? "Previous" : "Next"} onClick={() => go(i + dir)} style={{ flexShrink: 0, width: 38, height: 38, borderRadius: "50%", border: `1px solid ${C.line}`, background: "#fff", display: "grid", placeItems: "center", cursor: "pointer", color: C.ink }}>{dir < 0 ? <ChevL size={18} /> : <ChevR size={18} />}</button>;
   return (
     <div ref={top} style={{ scrollMarginTop: 70 }}>
@@ -3728,14 +3707,12 @@ function HomeSlides({ onCreator, onShare, onAffiliate, onListPage }) {
         </div>
         {arrow(1)}
       </div>
-      <div key={i} className="er-slide" onTouchStart={(e) => { touch.current = e.touches[0].clientX; setHold(true); }} onTouchEnd={(e) => { setTimeout(() => setHold(false), 4000); if (touch.current == null) return; const dx = e.changedTouches[0].clientX - touch.current; touch.current = null; if (Math.abs(dx) > 60) go(i + (dx < 0 ? 1 : -1)); }}>
+      <div key={i} className="er-slide" onTouchStart={(e) => { touch.current = e.touches[0].clientX; }} onTouchEnd={(e) => { if (touch.current == null) return; const dx = e.changedTouches[0].clientX - touch.current; touch.current = null; if (Math.abs(dx) > 60) go(i + (dx < 0 ? 1 : -1)); }}>
         {slides[i][1]}
       </div>
       <div className="er-wrap" style={{ padding: "16px 22px 30px", display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
-        <div style={{ display: "flex", gap: 6 }}>{slides.map((_, k) => <button key={k} aria-label={`Slide ${k + 1}`} onClick={() => go(k, true)} style={{ position: "relative", overflow: "hidden", width: i === k ? 28 : 8, height: 8, borderRadius: 99, border: "none", padding: 0, background: i === k ? (playing ? C.line : C.ink) : C.line, cursor: "pointer", transition: "width .2s" }}>
-          {i === k && playing && <span key={`${i}-${nudge}`} style={{ position: "absolute", inset: 0, background: C.ink, transformOrigin: "left", animation: `er-fill ${AUTO_MS}ms linear forwards` }} />}
+        <div style={{ display: "flex", gap: 6 }}>{slides.map((_, k) => <button key={k} aria-label={`Slide ${k + 1}`} onClick={() => go(k, true)} style={{ position: "relative", overflow: "hidden", width: i === k ? 28 : 8, height: 8, borderRadius: 99, border: "none", padding: 0, background: i === k ? C.ink : C.line, cursor: "pointer", transition: "width .2s" }}>
         </button>)}</div>
-        <button type="button" aria-label={paused ? "Play slideshow" : "Pause slideshow"} onClick={() => setPaused(!paused)} style={{ width: 30, height: 30, borderRadius: "50%", border: `1px solid ${C.line}`, background: "#fff", display: "grid", placeItems: "center", cursor: "pointer", color: C.ink, fontSize: 11, fontWeight: 800 }}>{paused ? "▶" : "❚❚"}</button>
         <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => go(i + 1, true)}>Next: {slides[(i + 1) % n][0]} <ChevR size={14} /></button>
       </div>
     </div>
