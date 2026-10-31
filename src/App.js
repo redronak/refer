@@ -117,6 +117,10 @@ function earnInfo(b) {
   const sub = e.pct > 0 ? `That's about ${est} on a ${money(toViewer(e.aov, e.currency, e.fx))} order` : "";
   return { line, sub, est, short: `earn ${e.pct > 0 ? "≈" : ""}${est}/sale` };
 }
+// Brand sections used everywhere brands are listed.
+const SECTION_CHIPS = ["__popular", "__online", "__physical", ""];
+const SECTION_LABEL = { __popular: "⭐ Popular", __online: "💻 Online products", __physical: "🛍️ Physical brands", "": "All" };
+const inSection = (b, cat, all) => !cat || (cat === "__popular" ? (b.popular || !all.some((x) => x.popular)) : cat === "__online" ? (!b.popular && b.online) : cat === "__physical" ? (!b.popular && !b.online) : (b.categories || []).includes(cat));
 // Shopper discount label: exact % when set, else the brand's range (e.g. "15–30% off" for onboarded partners).
 const offText = (b) => (b && b.discountText) || (b && b.discount > 0 ? `${b.discount}% off` : "");
 function creatorHandle() { const s = getSession(); return s && s.role === "creator" ? s.username : ""; }
@@ -1148,7 +1152,7 @@ const PLATFORM_STEPS = {
   custom: { name: "Custom website", steps: ["Open your site's index.html (or the shared header/layout file).", "Paste the line inside <head>, then save and publish."] },
 };
 function timeAgo(d) { const s = Math.max(0, (Date.now() - new Date(d).getTime()) / 1000); return s < 90 ? "just now" : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} days ago`; }
-function SetupTab({ token, business }) {
+function SetupTab({ token, business, onLive }) {
   const [px, setPx] = useState(null);
   const [site, setSite] = useState(business && business.website ? business.website : "");
   const [det, setDet] = useState(null); const [detecting, setDetecting] = useState(false); const [platform, setPlatform] = useState("");
@@ -1166,7 +1170,7 @@ function SetupTab({ token, business }) {
     try { const r = await api(`/business/me/detect-platform?token=${encodeURIComponent(token)}&url=${encodeURIComponent(site.trim())}`); setDet(r); setPlatform(r.platform || "custom"); }
     catch (e) { setDet({ reachable: false }); setPlatform("custom"); } finally { setDetecting(false); }
   };
-  const recheck = async () => { setChecking(true); await loadPx(); setChecking(false); };
+  const recheck = async () => { setChecking(true); const r = await loadPx(); setChecking(false); if (r && r.lastPixelAt && onLive) onLive(); };
   const submit = async () => {
     setBusy(true); setErr("");
     try { await api("/business/me/setup-request", { method: "POST", body: { token, platform: plat, siteUrl: url.trim(), note: note.trim() } }); setSent(true); }
@@ -1324,10 +1328,14 @@ function MyBusiness({ session, onBack, onRefresh }) {
   useEffect(() => { if (tab === "hire" && hireOn) loadCreators(); }, [tab, hireOn]);
   const onPaid = async () => { await reload(); setTab("promo"); setShowReward(true); };
   const awaiting = (rows || []).some((b) => b.status === "pending");
+  // New brands are hidden from creators until their tracking line is live: open on the Setup tab and say so.
+  const trackingMissing = (rows || []).some((b) => b.needsTracking && !b.trackingLive);
+  const [tabChosen, setTabChosen] = useState(false);
+  useEffect(() => { if (rows && !tabChosen) { setTabChosen(true); if (trackingMissing) setTab("setup"); } }, [rows]);
   // [key, step label, title, note]
   const tabs = [
     ["info", "Step 1", "My information", awaiting ? "Waiting on approval" : ""],
-    ["setup", "Step 2", "Setup tracking", ""],
+    ["setup", "Step 2", "Setup tracking", trackingMissing ? "Needed to go visible" : ""],
     ["promo", "Step 3", `Requests${pending ? ` · ${pending}` : ""}`, "Accept or reject them"],
     ["inf", "", "Influencers", ""],
   ];
@@ -1336,13 +1344,18 @@ function MyBusiness({ session, onBack, onRefresh }) {
       {showReward && business && <RewardPrompt business={business} token={session.token} onClose={() => { setShowReward(false); setShowVerify(true); }} onSaved={async () => { await reload(); setShowReward(false); setShowVerify(true); }} />}
       {showVerify && <VerifyNotice onClose={() => setShowVerify(false)} />}
       <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 16 }}><ChevL size={15} /> Back to site</button>
+      {trackingMissing && <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "#FFF7ED", border: "1.5px solid #FDBA74", borderRadius: 14, padding: "13px 15px", marginBottom: 18 }}>
+        <span style={{ fontSize: 18 }}>⚠️</span>
+        <div style={{ flex: "1 1 240px", fontSize: 14, color: "#9A3412", lineHeight: 1.45 }}><b>Your brand isn't visible to creators yet.</b> Set up tracking first (one line on your site, about 2 minutes) and you'll appear to creators right away.</div>
+        {tab !== "setup" && <button className="er-btn er-btn-primary er-btn-sm" onClick={() => setTab("setup")}>Set up tracking <Arrow size={14} /></button>}
+      </div>}
       <h1 className="er-serif" style={{ margin: 0, fontSize: 32, fontWeight: 500 }}>My business</h1>
       <p style={{ margin: "6px 0 20px", fontSize: 14.5, color: C.muted }}>{pricingOn ? "Edit your listing for free. Unlock creator promotion and requests with a one-time plan." : "Edit your listing, review creator requests, and go live for promotion — all free."}</p>
       <div style={{ display: "flex", gap: 26, borderBottom: `1px solid ${C.line}`, marginBottom: 22, flexWrap: "wrap" }}>
         {tabs.map(([k, step, lbl, note]) => <button key={k} onClick={() => setTab(k)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "10px 0", color: tab === k ? C.ink : C.muted, borderBottom: `2.5px solid ${tab === k ? C.accent : "transparent"}`, marginBottom: -1, textAlign: "left" }}>
           {step && <span style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: tab === k ? C.accentD : C.muted }}>{step}</span>}
           <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 16.5, fontWeight: 600 }}>{lbl}{k === "promo" && !effPaid && <Lock size={15} />}</span>
-          {note && <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: k === "info" ? "#B26A00" : C.muted }}>({note})</span>}
+          {note && <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: k === "info" || k === "setup" ? "#B26A00" : C.muted }}>({note})</span>}
         </button>)}
       </div>
       {err && <p style={{ background: "#FBE9E7", border: "1px solid #F3C5BD", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: "#9B3024" }}>{err}</p>}
@@ -1360,7 +1373,7 @@ function MyBusiness({ session, onBack, onRefresh }) {
         </div>
       </>}
 
-      {tab === "setup" && (business ? <SetupTab token={session.token} business={business} /> : <p style={{ color: C.muted }}>Loading…</p>)}
+      {tab === "setup" && (business ? <SetupTab token={session.token} business={business} onLive={() => { if (trackingMissing) reload(); }} /> : <p style={{ color: C.muted }}>Loading…</p>)}
 
       {tab === "promo" && (rows === null
         ? <p style={{ color: C.muted }}>Loading…</p>
@@ -1548,7 +1561,8 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const [enriched, setEnriched] = useState(null);
   useEffect(() => { const t = loggedIn ? sess.token : token; if (!t) return; api(`/businesses?token=${encodeURIComponent(t)}`).then((r) => Array.isArray(r) && setEnriched(r)).catch(() => {}); }, [token]);
   const approved = enriched || businesses;
-  const initialCat = initialBusinessId ? ((approved.find((b) => b.id === initialBusinessId)?.categories || [])[0] || null) : null;
+  const initialBiz = initialBusinessId ? approved.find((b) => b.id === initialBusinessId) : null;
+  const initialCat = initialBiz ? (initialBiz.popular ? "__popular" : initialBiz.online ? "__online" : "__physical") : null;
   const [openCat, setOpenCat] = useState(initialCat || "__popular");
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [results, setResults] = useState(null);
   const [genId, setGenId] = useState(null);
@@ -1597,12 +1611,14 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const q = query.trim().toLowerCase();
   const match = (b) => !q || (b.name || "").toLowerCase().includes(q);
   const popular = approved.filter((b) => b.popular && b.name && b.name.trim());
-  const byCat = {}; approved.filter((b) => !b.registered && !b.popular).forEach((b) => { if (!(b && b.name && b.name.trim())) return; const c = ((b.categories || []).find((x) => CATS[x])) || "Other"; (byCat[c] = byCat[c] || []).push(b); });
-  Object.values(byCat).forEach((arr) => arr.sort((a, b) => (b.paid ? 1 : 0) - (a.paid ? 1 : 0)));
-  const cats = CAT_LIST.filter((c) => byCat[c]);
-  const recencyOf = (b) => new Date(b.approvedAt || b.createdAt || 0).getTime();
-  const builders = approved.filter((b) => b.registered && match(b)).sort((a, b) => { const ap = a.paid ? 1 : 0, bp = b.paid ? 1 : 0; if (ap !== bp) return bp - ap; return recencyOf(b) - recencyOf(a); });
-  const noMatches = q && !builders.length && !popular.some(match) && cats.every((c) => !byCat[c].filter(match).length);
+  const named = approved.filter((b) => b && b.name && b.name.trim()).sort((a, b) => (b.paid ? 1 : 0) - (a.paid ? 1 : 0));
+  // Three sections: popular partners, online products, physical (in-person/shipped) brands.
+  const sections = [
+    ["__popular", "⭐", "Popular brands", "15–30% off for your friends", popular, true],
+    ["__online", "💻", "Online products", "Apps, software and digital products", named.filter((b) => !b.popular && b.online), false],
+    ["__physical", "🛍️", "Physical brands", "Beauty, fashion, home, food and more", named.filter((b) => !b.popular && !b.online), false],
+  ];
+  const noMatches = q && !sections.some((x) => x[4].some(match));
   const brandRow = (b) => { const on = picked.includes(b.id);
     return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ display: "flex", flexDirection: "column", textAlign: "left", padding: 0, border: "none", borderRadius: 14, background: "#fff", boxShadow: on ? `0 0 0 3px ${C.accent}` : `0 0 0 1px ${C.line}`, overflow: "hidden", cursor: "pointer", fontFamily: "inherit" }}>
       <span style={{ position: "relative", display: "block" }}>
@@ -1611,9 +1627,9 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
         {offText(b) && <span style={{ position: "absolute", bottom: 8, left: 8, fontSize: 10.5, fontWeight: 800, color: C.ink, background: "rgba(255,255,255,.94)", borderRadius: 999, padding: "3px 8px" }}>{offText(b)}</span>}
         {b.paid && <span style={{ position: "absolute", top: 8, left: 8, fontSize: 9.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", color: C.ink, background: "rgba(255,255,255,.92)", borderRadius: 999, padding: "3px 7px" }}>Promoted</span>}
       </span>
-      <span style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 10px", minWidth: 0 }}>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(b.categories || [])[0] || (b.online ? "Online" : (b.city || "-"))}</span>
-        {earnInfo(b) && <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 8px" }}>{earnInfo(b).short}</span>}
+      <span style={{ display: "block", padding: "8px 10px", minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(b.categories || [])[0] || (b.online ? "Online" : (b.city || "-"))}</span>
+        {earnInfo(b) && <span style={{ display: "block", marginTop: 4, fontSize: 12, fontWeight: 800, color: C.accentD, background: C.accentSoft, borderRadius: 7, padding: "4px 7px" }}>You earn {earnInfo(b).est}/sale</span>}
       </span>
     </button>; };
   const brandGrid = (arr) => <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,138px),1fr))", gap: 10, padding: 12 }}>{arr.map(brandRow)}</div>;
@@ -1652,41 +1668,18 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
               return <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.ink, color: C.paper, borderRadius: 999, padding: "5px 6px 5px 12px", fontSize: 13, fontWeight: 600 }}>{b.name}<button onClick={() => toggle(id)} style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.22)", color: C.paper, cursor: "pointer" }}><Close size={11} /></button></span>; })}
           </div>}
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
-            {popular.length > 0 && (() => { const list = popular.filter(match); if (q && !list.length) return null; const open = q ? true : openCat === "__popular"; const selCount = popular.filter((b) => picked.includes(b.id)).length;
-              return <div style={{ border: `1.5px solid ${C.accent}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
-                <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : "__popular"); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 64, padding: "16px", background: C.accentSoft, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>⭐</span>
-                  <span style={{ flex: 1, minWidth: 0 }}><span style={{ display: "block", fontWeight: 700, fontSize: 16.5, lineHeight: 1.2, color: C.ink }}>Popular brands</span><span style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: C.accentD, marginTop: 2 }}>15–30% off for your friends</span></span>
+            {sections.map(([key, icon, title, sub, all, accent]) => { const list = all.filter(match); if (!all.length || (q && !list.length)) return null; const open = q ? true : openCat === key; const selCount = all.filter((b) => picked.includes(b.id)).length;
+              return <div key={key} style={{ border: `${accent ? 1.5 : 1}px solid ${accent ? C.accent : C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
+                <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : key); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 64, padding: "16px", background: accent ? C.accentSoft : open ? "#fff" : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
+                  <span style={{ fontSize: 17, flexShrink: 0 }}>{icon}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}><span style={{ display: "block", fontWeight: 700, fontSize: 16.5, lineHeight: 1.2, color: C.ink }}>{title}</span><span style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: accent ? C.accentD : C.muted, marginTop: 2 }}>{sub}</span></span>
                   {selCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: C.accent, borderRadius: 999, padding: "4px 11px", flexShrink: 0 }}>{selCount} picked</span>}
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: C.muted, flexShrink: 0 }}>{list.length}</span>
                   <span style={{ color: C.muted, display: "flex", flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}><ChevR size={17} /></span>
                 </button>
                 {open && <div style={{ borderTop: `1px solid ${C.line}` }}>{brandGrid(list)}</div>}
-              </div>; })()}
-            {cats.length > 0 && <>
-              {cats.map((c) => { const all = byCat[c]; const list = all.filter(match); if (q && !list.length) return null; const open = q ? true : openCat === c; const x = CATS[c] || CATS.Beauty; const selCount = all.filter((b) => picked.includes(b.id)).length;
-                return <div key={c} style={{ border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
-                  <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : c); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 64, padding: "16px", background: open ? x.bg : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
-                    <span style={{ width: 13, height: 13, borderRadius: "50%", background: x.color, flexShrink: 0 }} />
-                    <span style={{ flex: 1, fontWeight: 700, fontSize: 16.5, lineHeight: 1.2, color: C.ink }}>{c}</span>
-                    {selCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: x.color, borderRadius: 999, padding: "4px 11px", flexShrink: 0 }}>{selCount} picked</span>}
-                    <span style={{ fontSize: 13.5, fontWeight: 600, color: C.muted, flexShrink: 0 }}>{list.length}</span>
-                    <span style={{ color: C.muted, display: "flex", flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}><ChevR size={17} /></span>
-                  </button>
-                  {open && <div style={{ borderTop: `1px solid ${C.line}` }}>
-                    {brandGrid(list)}
-                  </div>}
-                </div>; })}
-            </>}
-            {builders.length > 0 && <div style={{ border: `1px solid ${C.accent}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0, marginTop: cats.length ? 4 : 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 16px", background: C.accentSoft }}>
-                <Spark size={16} style={{ color: C.accentD }} />
-                <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 15, color: C.accentD }}>Small builders</div><div style={{ fontSize: 12, color: C.accentD, opacity: .8 }}>Indie founders who signed up, easier to get on their radar.</div></div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>{builders.length}</span>
-              </div>
-              {brandGrid(builders)}
-            </div>}
-            {!builders.length && !cats.length && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "24px 0" }}>No live businesses yet, check back soon.</p>}
+              </div>; })}
+            {!sections.some((x) => x[4].length) && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "24px 0" }}>No live businesses yet, check back soon.</p>}
             {noMatches && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "20px 0" }}>No brands match &ldquo;{query}&rdquo;.</p>}
           </div>
           <div style={{ marginTop: 22, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -2597,6 +2590,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                     {b.review.text && <p className="er-serif" style={{ margin: "6px 0 0", fontSize: 15.5, lineHeight: 1.45, color: C.inkSoft }}>&ldquo;{b.review.text}&rdquo;</p>}
                   </div>}
                   {b.discountCode && <div style={{ fontSize: 12.5, color: C.inkSoft }}>Code: <b style={{ fontFamily: "ui-monospace, Menlo, monospace", color: C.accentD }}>{b.discountCode}</b></div>}
+                  {isOwner && earnInfo(b) && <div style={{ background: C.accentSoft, borderRadius: 10, padding: "7px 10px" }}><div style={{ fontSize: 13.5, fontWeight: 800, color: C.accentD }}>{earnInfo(b).line}</div>{earnInfo(b).sub && <div style={{ fontSize: 12, color: C.accentD }}>{earnInfo(b).sub}</div>}</div>}
                   {isOwner && <div style={{ marginTop: "auto", display: "flex", gap: 8 }}>
                     {b.website && <button className="er-btn er-btn-light er-btn-sm" style={{ flex: 1, minWidth: 0 }} onClick={() => window.open(/^https?:\/\//i.test(b.website) ? b.website : `https://${b.website}`, "_blank", "noopener")}><Globe size={14} /> {site || "Visit site"}</button>}
                     <button className="er-btn er-btn-sm" onClick={() => setLinkBiz(b)} style={{ flex: b.website ? "0 0 auto" : 1, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }}><IgIcon size={14} /> Share</button>
@@ -2900,7 +2894,7 @@ function AllBrandsModal({ onClose }) {
   const all = list || [];
   const cats = [...new Set(all.flatMap((b) => b.categories || []))].sort();
   const t = q.trim().toLowerCase();
-  const shown = all.filter((b) => (!cat || (cat === "__popular" ? (t || b.popular || !all.some((x) => x.popular)) : (b.categories || []).includes(cat))) && (!t || [b.name, b.blurb, ...(b.categories || [])].join(" ").toLowerCase().includes(t)));
+  const shown = all.filter((b) => (t || inSection(b, cat, all)) && (!t || [b.name, b.blurb, ...(b.categories || [])].join(" ").toLowerCase().includes(t)));
   const open = (id) => { onClose(); window.dispatchEvent(new CustomEvent("er:open-business", { detail: id })); };
   return (
     <Modal wide onClose={onClose}>
@@ -2909,7 +2903,7 @@ function AllBrandsModal({ onClose }) {
         <p style={{ margin: "4px 0 0", fontSize: 13.5, color: C.muted }}>{list ? `${all.length} brands listed right now` : "Loading brands…"}</p>
         <input className="er-input" autoFocus placeholder="Search brands or categories" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginTop: 14 }} />
         {(cats.length > 1 || all.some((x) => x.popular)) && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 2px" }}>
-          {[...(all.some((x) => x.popular) ? ["__popular"] : []), "", ...cats].map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{c === "__popular" ? "⭐ Popular" : c || "All"}</button>)}
+          {SECTION_CHIPS.filter((c) => !c || all.some((b) => inSection(b, c, []))).map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{SECTION_LABEL[c]}</button>)}
         </div>}
         <div style={{ marginTop: 10, maxHeight: "55vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
           {list && shown.length === 0 && <p style={{ margin: "18px 0", textAlign: "center", fontSize: 14, color: C.muted }}>No brands match “{q}”.</p>}
@@ -3275,21 +3269,20 @@ function ListHowTo({ title, sub, cta } = {}) {
   return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
 }
 /* All three ways to earn, as tabs, for pages people reach from Instagram (lists, shared links). */
-function ExploreHowTo({ initial = "list", heading, onCreator }) {
-  const [tab, setTab] = useState(initial);
+function ExploreHowTo({ heading, onCreator }) {
   const go = (path) => () => { window.location.href = path; };
-  const tabs = [["list", "Make a list"], ["share", "Share & earn"], ["aff", "Create content"]];
   return (
-    <div style={{ textAlign: "center" }}>
-      <span className="er-eyebrow">How it works</span>
-      <h2 className="er-serif" style={{ margin: "10px auto 6px", maxWidth: 640, fontSize: "clamp(26px,4vw,38px)", fontWeight: 500, letterSpacing: "-.01em" }}>{heading || "Three ways to earn on Easy Recommend"}</h2>
-      <p style={{ margin: "0 auto", maxWidth: 520, fontSize: 14.5, color: C.muted, lineHeight: 1.55 }}>Free to join. Pick one or do all three, you earn a commission on every sale.</p>
-      <div style={{ marginTop: 18, display: "flex", justifyContent: "center" }}>
-        <div className="er-ways-tabs" role="tablist" style={{ flexWrap: "nowrap", maxWidth: "100%", overflowX: "auto" }}>{tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`er-ways-tab${tab === k ? " on" : ""}`} style={{ whiteSpace: "nowrap", padding: "9px 13px", fontSize: 13.5 }}>{l}</button>)}</div>
+    <div>
+      <ThreeWaysSlide bare heading={heading} onCreator={onCreator || go("/list")} onShare={go("/share")} onAffiliate={go("/affiliate")} onListPage={go("/list")} />
+      <a href="/" style={{ display: "block", textDecoration: "none", margin: "22px auto 0", maxWidth: 560, textAlign: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px 18px" }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: C.ink }}>Earn by sharing brands you like</div>
+        <div style={{ marginTop: 3, fontSize: 14, fontWeight: 700, color: C.accentD }}>www.easyrecommend.co →</div>
+      </a>
+      <div style={{ margin: "14px auto 0", maxWidth: 560, background: C.ink, color: C.paper, borderRadius: 16, padding: "20px 18px", textAlign: "center" }}>
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase", color: "rgba(253,252,250,.6)" }}>Are you a brand?</div>
+        <div className="er-serif" style={{ marginTop: 6, fontSize: 21, lineHeight: 1.3 }}>Join Easy Recommend and let 100,000+ creators share your brand</div>
+        <a className="er-btn" href="/brands" style={{ marginTop: 14, display: "inline-flex", textDecoration: "none", background: C.paper, color: C.ink }}>List your brand free <Arrow size={15} /></a>
       </div>
-      {tab === "list" && <ListHowTo sub="Put brands you love in one link, share it in your bio, and earn whenever someone shops." cta={["Create my list free", onCreator || go("/list")]} />}
-      {tab === "share" && <ShareHowTo sub="Share one brand on your Instagram story with your own link. Friends get the discount, you earn." cta={["Start sharing free", go("/share")]} />}
-      {tab === "aff" && <AffiliateHowTo sub="For serious creators, bloggers, YouTubers and more. Put your affiliate link in your content and earn." cta={["Get my affiliate link", go("/affiliate")]} />}
     </div>
   );
 }
@@ -3360,7 +3353,7 @@ function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
   const all = list || [];
   const cats = CAT_LIST.filter((c) => all.some((b) => (b.categories || []).includes(c)));
   const t = q.trim().toLowerCase();
-  const shown = all.filter((b) => (!cat || (cat === "__popular" ? (t || b.popular || !all.some((x) => x.popular)) : (b.categories || []).includes(cat))) && (!t || [b.name, b.blurb, ...(b.categories || [])].join(" ").toLowerCase().includes(t)));
+  const shown = all.filter((b) => (t || inSection(b, cat, all)) && (!t || [b.name, b.blurb, ...(b.categories || [])].join(" ").toLowerCase().includes(t)));
   const getLink = async (b) => {
     if (!isCreator) { setJoinFor(b); return; }
     if (links[b.id]) { const ok = await copyText(links[b.id]); toast(ok ? "✓ Affiliate link copied" : "Couldn't copy, tap Copy again"); return; }
@@ -3385,7 +3378,7 @@ function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
           <input className="er-input" placeholder="Search brands or categories" value={q} onChange={(e) => setQ(e.target.value)} />
           {(cats.length > 1 || all.some((x) => x.popular)) && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 2px" }}>
-            {[...(all.some((x) => x.popular) ? ["__popular"] : []), "", ...cats].map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{c === "__popular" ? "⭐ Popular" : c || "All"}</button>)}
+            {SECTION_CHIPS.filter((c) => !c || all.some((b) => inSection(b, c, []))).map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{SECTION_LABEL[c]}</button>)}
           </div>}
         </div>
         {list === null && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
@@ -3466,7 +3459,7 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
   const all = list || [];
   const cats = CAT_LIST.filter((c) => all.some((b) => (b.categories || []).includes(c)));
   const t = q.trim().toLowerCase();
-  const shown = all.filter((b) => (!cat || (cat === "__popular" ? (t || b.popular || !all.some((x) => x.popular)) : (b.categories || []).includes(cat))) && (!t || [b.name, b.blurb, ...(b.categories || [])].join(" ").toLowerCase().includes(t)));
+  const shown = all.filter((b) => (t || inSection(b, cat, all)) && (!t || [b.name, b.blurb, ...(b.categories || [])].join(" ").toLowerCase().includes(t)));
   const say = (id, msg) => { setNote((n) => ({ ...n, [id]: msg })); setTimeout(() => setNote((n) => ({ ...n, [id]: "" })), 6000); };
   const linkFor = async (b) => {
     if (links[b.id]) return links[b.id];
@@ -3504,7 +3497,7 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
           <input className="er-input" placeholder="Search brands or categories" value={q} onChange={(e) => setQ(e.target.value)} />
           {(cats.length > 1 || all.some((x) => x.popular)) && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 2px" }}>
-            {[...(all.some((x) => x.popular) ? ["__popular"] : []), "", ...cats].map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{c === "__popular" ? "⭐ Popular" : c || "All"}</button>)}
+            {SECTION_CHIPS.filter((c) => !c || all.some((b) => inSection(b, c, []))).map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{SECTION_LABEL[c]}</button>)}
           </div>}
         </div>
         {list === null && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
@@ -3632,7 +3625,7 @@ function ShareStorySlide({ onShare }) {
   );
 }
 /* Homepage "How it works": the three ways to earn. */
-function ThreeWaysSlide({ onCreator, onShare, onAffiliate, onListPage }) {
+function ThreeWaysSlide({ onCreator, onShare, onAffiliate, onListPage, heading, bare }) {
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
   const ways = [
     { n: "1", tag: "Make a list & share", title: "Build a list of brands you love", body: "Pick your favourite brands, put one link in your bio, and earn on every sale from your list.", cta: "Create my list", act: onCreator, more: onListPage, bg: C.ink, color: C.paper },
@@ -3640,11 +3633,11 @@ function ThreeWaysSlide({ onCreator, onShare, onAffiliate, onListPage }) {
     { n: "3", tag: "Create content", title: "Interested in creating content?", body: "Get your affiliate link, make posts, reels or videos about brands you love, and earn a commission on every sale.", note: "For serious creators, bloggers, YouTubers and more", cta: "Get my affiliate link", act: onAffiliate, more: onAffiliate, bg: C.accent, color: "#fff" },
   ];
   return (
-    <section style={{ background: C.paper, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
-      <div className="er-wrap" style={{ padding: "56px 22px" }}>
+    <section style={bare ? {} : { background: C.paper, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+      <div className="er-wrap" style={{ padding: bare ? "0" : "56px 22px" }}>
         <div style={{ textAlign: "center", maxWidth: 620, margin: "0 auto 30px" }}>
           <span className="er-eyebrow">How it works</span>
-          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em" }}>Three ways to earn</h2>
+          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em" }}>{heading || "Three ways to earn"}</h2>
           <p style={{ margin: 0, fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>Free to join. Pick one or do all three, you earn a commission on every sale either way.</p>
         </div>
         <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,260px),1fr))" }}>
