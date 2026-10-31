@@ -2188,11 +2188,11 @@ function FeatureSwitches() {
 /* Admin: add the onboarded popular brands (idempotent; never overwrites existing listings). */
 function AdminSeedPopular() {
   const [st, setSt] = useState("");
-  const run = async () => { if (!window.confirm("Add the 100 popular brands as live listings (15–30% off)? Existing brands are only tagged Popular, never overwritten.")) return; setSt("busy"); try { const r = await api("/admin/seed-popular", { method: "POST", admin: true }); setSt(`Done: ${r.created} added, ${r.marked} existing tagged Popular.`); } catch (e) { setSt(e.message); } };
+  const run = async () => { if (!window.confirm("Add the 100 popular brands (15–30% off) and the 30 popular products? Existing brands are only tagged Popular, never overwritten. Safe to run again.")) return; setSt("busy"); try { const r = await api("/admin/seed-popular", { method: "POST", admin: true }); setSt(`Done: ${r.created} brands added, ${r.marked} existing tagged Popular, ${r.products || 0} products added.`); } catch (e) { setSt(e.message); } };
   return (
     <div className="er-card" style={{ padding: 18, marginTop: 22, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-      <div style={{ flex: "1 1 240px" }}><div style={{ fontWeight: 700, fontSize: 15 }}>⭐ Popular brands</div><div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{st && st !== "busy" ? st : "Add the 100 onboarded India + USA brands, shown first everywhere with 15–30% off. Set each one's exact discount, code and commission in its listing."}</div></div>
-      <button className="er-btn er-btn-primary er-btn-sm" disabled={st === "busy"} onClick={run}>{st === "busy" ? "Adding…" : "Add popular brands"}</button>
+      <div style={{ flex: "1 1 240px" }}><div style={{ fontWeight: 700, fontSize: 15 }}>⭐ Popular brands</div><div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{st && st !== "busy" ? st : "Add the 100 onboarded India + USA brands (15–30% off) and the 30 popular products. Safe to press again: nothing is duplicated."}</div></div>
+      <button className="er-btn er-btn-primary er-btn-sm" disabled={st === "busy"} onClick={run}>{st === "busy" ? "Adding…" : "Add popular brands + products"}</button>
     </div>
   );
 }
