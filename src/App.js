@@ -2203,14 +2203,14 @@ function AdminSeedProducts() {
     setSt("busy"); setMissing([]);
     try {
       const r = await api("/admin/seed-products", { method: "POST", admin: true });
-      setSt(`Done: ${r.added} added, ${r.updated} already there (kept, tagged Popular)${r.brandsCreated ? `, ${r.brandsCreated} new brands created` : ""}. ${r.brandsWithProducts} brands now show popular products.`);
+      setSt(`Done: ${r.added} added, ${r.updated} already there (kept, tagged Popular)${r.removed ? `, ${r.removed} removed` : ""}${r.brandsCreated ? `, ${r.brandsCreated} new brands created` : ""}. ${r.brandsWithProducts} brands now show popular products.`);
       setMissing(r.missing || []);
     } catch (e) { setSt(e.message); }
   };
   return (
     <div className="er-card" style={{ padding: 18, marginTop: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
       <div style={{ flex: "1 1 240px" }}><div style={{ fontWeight: 700, fontSize: 15 }}>🧴 Popular products</div>
-        <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{st && st !== "busy" ? st : "Add the 30 popular products to their brands. Safe to press again: nothing is duplicated."}</div>
+        <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{st && st !== "busy" ? st : "Add the 28 popular products to their brands. Safe to press again: nothing is duplicated."}</div>
         {missing.length > 0 && <div style={{ fontSize: 12.5, color: "#C0392B", marginTop: 6 }}>Not added: {missing.join(", ")}</div>}
       </div>
       <button className="er-btn er-btn-primary er-btn-sm" disabled={st === "busy"} onClick={run}>{st === "busy" ? "Adding…" : "Add popular products"}</button>
