@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 
 /* ============================================================================
    Easy Recommend, wired to the Express backend (router mounted at /easyrecommend)
@@ -542,9 +542,10 @@ function BusinessDetail({ id, onClose, onRecommend, autoLink, onAuth }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {b.products.map((p, i) => (
                   <div key={i} className="er-card" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ width: 34, height: 34, borderRadius: 9, display: "grid", placeItems: "center", background: C.panel, color: C.muted, flexShrink: 0 }}><Store size={15} /></span>
+                    <span style={{ width: 44, height: 44, borderRadius: 10, display: "grid", placeItems: "center", background: C.panel, color: C.muted, flexShrink: 0, overflow: "hidden" }}>{p.image ? <img src={p.image} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={15} />}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{p.name}</div>
+                      {priceText(p, b.currency) && <div style={{ fontSize: 12.5, color: C.inkSoft }}>{priceText(p, b.currency)}</div>}
                       {p.note && <div style={{ fontSize: 12.5, color: C.muted }}>{p.note}</div>}
                     </div>
                     {p.url && <button className="er-btn er-btn-light er-btn-sm" style={{ flexShrink: 0 }} onClick={() => goToBrand(handle, b.id, p.url)}>View</button>}
@@ -622,7 +623,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
             </div>}
             {revealed && <div ref={incentiveRef} style={{ background: C.ink, color: C.paper, borderRadius: 16, padding: "22px 20px", textAlign: "center", animation: "er-fade .4s ease" }}>
               <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "rgba(253,252,250,.6)" }}>Good news</div>
-              <div className="er-serif" style={{ fontSize: "clamp(30px,7vw,42px)", fontWeight: 500, lineHeight: 1.05, margin: "8px 0 2px" }}>500+ influencers</div>
+              <div className="er-serif" style={{ fontSize: "clamp(30px,7vw,42px)", fontWeight: 500, lineHeight: 1.05, margin: "8px 0 2px" }}>100,000+ influencers</div>
               <div style={{ fontSize: 15.5, color: "rgba(253,252,250,.82)" }}>available in {f.categories[0]} right now</div>
               <div style={{ height: 1, background: "rgba(253,252,250,.14)", margin: "16px 0" }} />
               <div style={{ fontSize: 15.5, color: "rgba(253,252,250,.82)" }}>Get your product seen by</div>
@@ -768,11 +769,8 @@ function LoginModal({ onClose, onLogin, onAfterCreator, onAfterBrand }) {
 /* ---------- My business (brand self-service) ---------- */
 function BizEditCard({ b, token, reload }) {
   const [edit, setEdit] = useState(false); const [busy, setBusy] = useState(false);
-  const [d, setD] = useState({ currency: b.currency || "USD", name: b.name, blurb: b.blurb || "", city: b.city || "", online: !!b.online, website: b.website || "", discount: (b.pendingOffer ? b.pendingOffer.discount : b.discount) || 0, discountCode: (b.pendingOffer ? b.pendingOffer.discountCode : b.discountCode) || "", offerImage: (b.pendingOffer ? b.pendingOffer.offerImage : b.offerImage) || "", categories: b.categories || [], commissionType: b.commissionType || "percent", commissionPct: b.commissionPct || 0, commissionFlat: b.commissionFlat || 0, photos: b.photos || [], products: b.products || [] });
+  const [d, setD] = useState({ currency: b.currency || "USD", name: b.name, blurb: b.blurb || "", city: b.city || "", online: !!b.online, website: b.website || "", discount: (b.pendingOffer ? b.pendingOffer.discount : b.discount) || 0, discountCode: (b.pendingOffer ? b.pendingOffer.discountCode : b.discountCode) || "", offerImage: (b.pendingOffer ? b.pendingOffer.offerImage : b.offerImage) || "", categories: b.categories || [], commissionType: b.commissionType || "percent", commissionPct: b.commissionPct || 0, commissionFlat: b.commissionFlat || 0, photos: b.photos || [] });
   const set = (k, v) => setD((p) => ({ ...p, [k]: v }));
-  const addProduct = () => set("products", [...(d.products || []), { name: "", url: "", note: "" }]);
-  const setProduct = (i, k, v) => set("products", d.products.map((p, j) => (j === i ? { ...p, [k]: v } : p)));
-  const removeProduct = (i) => set("products", d.products.filter((_, j) => j !== i));
   const toggleCat = (c) => set("categories", d.categories.includes(c) ? d.categories.filter((x) => x !== c) : [...d.categories, c]);
   const onPhotos = async (e) => { const files = [...(e.target.files || [])]; if (!files.length) return; const urls = []; for (const file of files) { try { urls.push(await fileToDataURL(file, 1000, 0.82)); } catch (x) {} } set("photos", [...d.photos, ...urls].slice(0, 6)); e.target.value = ""; };
   const onOfferImg = async (e) => { const f = (e.target.files || [])[0]; if (!f) return; try { set("offerImage", await fileToDataURL(f, 1200, 0.85)); } catch (x) {} e.target.value = ""; };
@@ -790,19 +788,6 @@ function BizEditCard({ b, token, reload }) {
         <Field label="Name"><input className="er-input" value={d.name} onChange={(e) => set("name", e.target.value)} /></Field>
         <Field label="Description"><textarea className="er-input" value={d.blurb} onChange={(e) => set("blurb", e.target.value)} /></Field>
         <Field label="Website"><input className="er-input" placeholder="brand.com" value={d.website} onChange={(e) => set("website", e.target.value)} /></Field>
-        <Field label="Products" hint="List the products, apps, or services you want promoted, add as many as you like.">
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {(d.products || []).map((p, i) => (
-              <div key={i} style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, paddingRight: 34, display: "flex", flexDirection: "column", gap: 8, position: "relative", background: C.panel }}>
-                <input className="er-input" placeholder="Product name" value={p.name || ""} onChange={(e) => setProduct(i, "name", e.target.value)} />
-                <input className="er-input" placeholder="Link (optional)" value={p.url || ""} onChange={(e) => setProduct(i, "url", e.target.value)} />
-                <input className="er-input" placeholder="Short note (optional)" value={p.note || ""} onChange={(e) => setProduct(i, "note", e.target.value)} />
-                <button type="button" onClick={() => removeProduct(i)} title="Remove" style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", cursor: "pointer", color: C.muted, display: "grid", placeItems: "center" }}><Close size={15} /></button>
-              </div>
-            ))}
-            <button type="button" className="er-btn er-btn-light er-btn-sm" style={{ alignSelf: "flex-start" }} onClick={addProduct}><Plus size={14} /> Add product</button>
-          </div>
-        </Field>
         <Field label="Categories">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {CAT_LIST.map((c) => { const on = d.categories.includes(c); const x = CATS[c];
@@ -894,13 +879,13 @@ const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhz
 const PLANS = [
   { key: "free", amount: 0, title: "Free", tag: "Get discovered",
     points: [
-      { t: "Visible to 400+ influencers" },
+      { t: "Visible to 100,000+ influencers" },
       { t: "Influencers won't promote or add your product to their recommendation list", off: true },
     ] },
   { key: "starter", amount: 29, title: "Get recommended", tag: "One-time fee", featured: true,
     points: [
       { t: "See and approve influencer requests" },
-      { t: "Get added to 1000+ influencers' recommendation lists" },
+      { t: "Get added to 100,000+ influencers' recommendation lists" },
       { t: "Set the reward you give influencers" },
     ] },
 ];
@@ -1275,7 +1260,7 @@ function InfluencerDirectory({ token }) {
   const chip = (key, label) => <button key={key || "all"} className="er-btn er-btn-sm" onClick={() => setCat(key)} style={{ border: `1px solid ${cat === key ? C.ink : C.line}`, background: cat === key ? C.ink : "#fff", color: cat === key ? C.paper : C.inkSoft, textTransform: "capitalize" }}>{label}</button>;
   return (
     <div>
-      <p style={{ margin: "0 0 14px", fontSize: 14, color: C.muted }}>1,000+ creators open to brand work. To protect them from spam, handles are hidden.</p>
+      <p style={{ margin: "0 0 14px", fontSize: 14, color: C.muted }}>100,000+ creators open to brand work. To protect them from spam, handles are hidden.</p>
       {err && <p style={{ color: "#9B3024", fontSize: 13 }}>{err}</p>}
       <input className="er-input" placeholder="Search creators by name, niche or location" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 12 }} />
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -1297,12 +1282,131 @@ function InfluencerDirectory({ token }) {
           </div>); })}
       </div>
       <div style={{ marginTop: 14, background: C.panel, border: `1px dashed ${C.line}`, borderRadius: 14, padding: "16px", textAlign: "center" }}>
-        <div style={{ fontWeight: 700, fontSize: 14.5, color: C.ink }}>+ 1,000 more creators</div>
+        <div style={{ fontWeight: 700, fontSize: 14.5, color: C.ink }}>+ 100,000 more creators</div>
         <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Request an intro to any creator above and we'll match you with more like them.</div>
       </div>
     </div>
   );
 }
+/* ---------- Brand products: get them from the website, or add by hand ---------- */
+function priceText(p, fallbackCur) {
+  if (!p || !Number(p.price)) return "";
+  const cur = p.currency || fallbackCur || VIEWER_CUR;
+  try { return new Intl.NumberFormat(cur === "INR" ? "en-IN" : "en-US", { style: "currency", currency: cur, maximumFractionDigits: Number(p.price) % 1 ? 2 : 0 }).format(Number(p.price)); } catch (e) { return `${cur} ${p.price}`; }
+}
+function ProductTile({ p, cur, picked, onToggle, onRemove, added }) {
+  const [bad, setBad] = useState(false);
+  return (
+    <div onClick={onToggle} style={{ position: "relative", border: `1.5px solid ${picked ? C.accent : C.line}`, borderRadius: 12, overflow: "hidden", background: "#fff", cursor: onToggle ? "pointer" : "default", opacity: added ? 0.55 : 1 }}>
+      <div style={{ aspectRatio: "1 / 1", background: C.panel, display: "grid", placeItems: "center", color: C.muted }}>
+        {p.image && !bad ? <img src={p.image} alt="" loading="lazy" onError={() => setBad(true)} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Store size={22} />}
+      </div>
+      <div style={{ padding: "8px 10px 10px" }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.name}</div>
+        {priceText(p, cur) && <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3 }}>{priceText(p, cur)}</div>}
+        {added && <div style={{ fontSize: 11.5, fontWeight: 700, color: C.accentD, marginTop: 3 }}>Already added</div>}
+      </div>
+      {onToggle && !added && <span style={{ position: "absolute", top: 8, right: 8, width: 24, height: 24, borderRadius: 7, display: "grid", placeItems: "center", background: picked ? C.accent : "rgba(255,255,255,.92)", border: `1.5px solid ${picked ? C.accent : C.line}`, color: "#fff" }}>{picked && <Check size={14} />}</span>}
+      {onRemove && <button type="button" title="Remove" onClick={(e) => { e.stopPropagation(); onRemove(); }} style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: 8, border: `1px solid ${C.line}`, background: "rgba(255,255,255,.95)", cursor: "pointer", display: "grid", placeItems: "center", color: C.inkSoft }}><Close size={14} /></button>}
+    </div>
+  );
+}
+function ProductsCard({ b, token }) {
+  const cur = b.currency || "USD";
+  const [items, setItems] = useState(b.products || []);
+  const [saving, setSaving] = useState(false); const [err, setErr] = useState("");
+  const [url, setUrl] = useState(b.website || "");
+  const [busy, setBusy] = useState(false); const [found, setFound] = useState(null); const [picked, setPicked] = useState([]); const [msg, setMsg] = useState("");
+  const [manual, setManual] = useState(false);
+  const blank = { name: "", url: "", price: "", image: "" };
+  const [m, setM] = useState(blank);
+  const keyOf = (p) => String(p.url || p.name || "").toLowerCase().replace(/\/$/, "");
+  const have = new Set(items.map(keyOf));
+  const save = async (list) => {
+    setSaving(true); setErr("");
+    try { const r = await api(`/business/me/${b.id}`, { method: "PATCH", body: { token, products: list } }); setItems(r.products || list); return true; }
+    catch (e) { setErr(e.message); return false; } finally { setSaving(false); }
+  };
+  const find = async () => {
+    if (!url.trim()) { setMsg("Paste your website or a product link first."); return; }
+    setBusy(true); setMsg(""); setFound(null);
+    try {
+      const r = await api("/business/me/products/scrape", { method: "POST", body: { token, url: url.trim() } });
+      const list = r.products || [];
+      setFound(list); setPicked(list.map((p, i) => (have.has(keyOf(p)) ? -1 : i)).filter((i) => i >= 0));
+      if (!list.length) setMsg(r.error || "We couldn't find products on that page. Try a product page link, or add them by hand below.");
+    } catch (e) { setMsg(e.message); } finally { setBusy(false); }
+  };
+  const addPicked = async () => {
+    const add = picked.map((i) => found[i]).filter((p) => p && !have.has(keyOf(p)));
+    if (await save([...items, ...add].slice(0, 100))) { setFound(null); setPicked([]); toast(`Added ${add.length} product${add.length === 1 ? "" : "s"}`); }
+  };
+  const addManual = async () => {
+    if (!m.name.trim()) { setErr("Add the product name."); return; }
+    if (await save([...items, { name: m.name.trim(), url: m.url.trim(), price: Number(String(m.price).replace(/[^0-9.]/g, "")) || 0, currency: cur, image: m.image }].slice(0, 100))) { setM(blank); setManual(false); toast("Product added"); }
+  };
+  const onImg = async (e) => { const f = (e.target.files || [])[0]; if (!f) return; try { const img = await fileToDataURL(f, 700, 0.8); setM((x) => ({ ...x, image: img })); } catch (x) {} e.target.value = ""; };
+  const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(118px, 1fr))", gap: 10 };
+  const freshIdx = found ? found.map((p, i) => (have.has(keyOf(p)) ? -1 : i)).filter((i) => i >= 0) : [];
+  return (
+    <div className="er-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div>
+        <p className="er-serif" style={{ margin: 0, fontSize: 19, fontWeight: 500 }}>Your products {items.length > 0 && <span style={{ fontSize: 14, color: C.muted }}>· {items.length}</span>}</p>
+        <p style={{ margin: "4px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.5 }}>Creators can share a specific product, not just your brand. Get them from your website in one go, or add them one by one.</p>
+      </div>
+
+      <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, background: C.panel, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 700 }}>🔎 Get products from your website</div>
+        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.45 }}>Paste your store's address (we'll find your products) or a single product page link.</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <input className="er-input" style={{ flex: "1 1 220px" }} placeholder="yourstore.com or a product link" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") find(); }} />
+          <button className="er-btn er-btn-primary" disabled={busy} onClick={find}>{busy ? "Looking…" : <><Search size={15} /> Find products</>}</button>
+        </div>
+        {busy && <div style={{ fontSize: 13, color: C.inkSoft }}>Reading your store… this can take up to 20 seconds.</div>}
+        {msg && <div style={{ fontSize: 13, color: "#9A3412" }}>{msg}</div>}
+        {found && found.length > 0 && <>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, flex: 1 }}>Found {found.length} product{found.length === 1 ? "" : "s"}. Tap to pick the ones creators can share.</div>
+            {freshIdx.length > 0 && <button className="er-link" style={{ fontSize: 13 }} onClick={() => setPicked(picked.length ? [] : freshIdx)}>{picked.length ? "Select none" : "Select all"}</button>}
+          </div>
+          <div style={{ ...grid, maxHeight: 520, overflowY: "auto", paddingRight: 2 }}>
+            {found.map((p, i) => { const added = have.has(keyOf(p)); return <ProductTile key={i} p={p} cur={cur} added={added} picked={picked.includes(i)} onToggle={added ? undefined : () => setPicked((x) => (x.includes(i) ? x.filter((j) => j !== i) : [...x, i]))} />; })}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="er-btn er-btn-primary" disabled={!picked.length || saving} onClick={addPicked}>{saving ? "Adding…" : <><Plus size={15} /> Add {picked.length} product{picked.length === 1 ? "" : "s"}</>}</button>
+            <button className="er-btn er-btn-ghost" onClick={() => { setFound(null); setPicked([]); }}>Cancel</button>
+          </div>
+        </>}
+      </div>
+
+      {!manual ? <button type="button" className="er-btn er-btn-light er-btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => setManual(true)}><Plus size={14} /> Add a product by hand</button>
+        : <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 700 }}>Add a product</div>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <label style={{ width: 96, height: 96, borderRadius: 12, border: `1.5px dashed ${C.line}`, background: C.panel, display: "grid", placeItems: "center", cursor: "pointer", overflow: "hidden", flexShrink: 0, fontSize: 12, color: C.muted, textAlign: "center" }}>
+              {m.image ? <img src={m.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span><Plus size={16} /><br />Photo</span>}
+              <input type="file" accept="image/*" onChange={onImg} style={{ display: "none" }} />
+            </label>
+            <div style={{ flex: "1 1 220px", display: "flex", flexDirection: "column", gap: 8 }}>
+              <input className="er-input" placeholder="Product name" value={m.name} onChange={(e) => setM({ ...m, name: e.target.value })} />
+              <input className="er-input" placeholder="Product link (yourstore.com/...)" value={m.url} onChange={(e) => setM({ ...m, url: e.target.value })} />
+              <input className="er-input" inputMode="decimal" placeholder={`Price in ${cur} (optional)`} value={m.price} onChange={(e) => setM({ ...m, price: e.target.value })} />
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="er-btn er-btn-primary er-btn-sm" disabled={saving} onClick={addManual}>{saving ? "Saving…" : "Add product"}</button>
+            <button className="er-btn er-btn-ghost er-btn-sm" onClick={() => { setManual(false); setM(blank); setErr(""); }}>Cancel</button>
+          </div>
+        </div>}
+      <ErrBox msg={err} />
+
+      {items.length > 0
+        ? <div style={grid}>{items.map((p, i) => <ProductTile key={keyOf(p) + i} p={p} cur={cur} onRemove={() => save(items.filter((_, j) => j !== i))} />)}</div>
+        : <div style={{ fontSize: 13.5, color: C.muted, textAlign: "center", padding: "14px 0" }}>No products yet.</div>}
+    </div>
+  );
+}
+
 function MyBusiness({ session, onBack, onRefresh }) {
   const [tab, setTab] = useState("info");
   const [rows, setRows] = useState(null); const [err, setErr] = useState("");
@@ -1367,9 +1471,9 @@ function MyBusiness({ session, onBack, onRefresh }) {
         </div>}
         {rows === null && !err && <p style={{ color: C.muted }}>Loading…</p>}
         {rows && rows.length === 0 && <p style={{ background: C.panel, borderRadius: 14, padding: "32px 0", textAlign: "center", color: C.muted }}>No business found on this account.</p>}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(rows || []).map((b) => <BizEditCard key={b.id} b={b} token={session.token} reload={reload} />)}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>{(rows || []).map((b) => <Fragment key={b.id}><BizEditCard b={b} token={session.token} reload={reload} /><ProductsCard b={b} token={session.token} /></Fragment>)}</div>
         <div className="er-card" style={{ padding: "26px 18px 22px", marginTop: 26 }}>
-          <CreatorVideos eyebrow="" title="Get 1,000+ creators to promote your brand on commission" sub="Creators make content about your brand and earn only when it sells. You pay nothing upfront." limit={3} bare />
+          <CreatorVideos eyebrow="" title="Get 100,000+ creators to promote your brand on commission" sub="Creators make content about your brand and earn only when it sells. You pay nothing upfront." limit={3} bare />
         </div>
       </>}
 
@@ -3145,7 +3249,7 @@ function TopCreators({ onList }) {
           {list.length === 0 && <p style={{ textAlign: "center", fontSize: 14, color: C.muted }}>No one matches “{q}”.</p>}
           {!t && !niche && list.length > 12 && <div style={{ textAlign: "center", marginTop: 14 }}><button className="er-btn er-btn-ghost er-btn-sm" onClick={() => setAll(!all)}>{all ? "Show fewer" : "Show more creators"}</button></div>}
           <div style={{ marginTop: 18, background: C.panel, border: `1px dashed ${C.line}`, borderRadius: 14, padding: "16px 18px", textAlign: "center" }}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: C.ink }}>1,000+ creators on Easy Recommend</div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: C.ink }}>100,000+ creators on Easy Recommend</div>
             <div style={{ marginTop: 4, fontSize: 13.5, color: C.muted }}>List your business free to see them all and get recommended.</div>
             {onList && <button className="er-btn er-btn-primary er-btn-sm" style={{ marginTop: 12 }} onClick={onList}>List your business <Arrow size={14} /></button>}
           </div>
@@ -3199,7 +3303,7 @@ function QuickJoin({ brand, onClose, onDone }) {
 }
 /* Shared "how it works" layout: the animated phone first, then Step 1 / 2 / 3.
    The step that matches the current animation screen is highlighted; tapping a step jumps there. */
-function HowToLayout({ f, setF, frames, screens, steps, title, sub, cta }) {
+function HowToLayout({ f, setF, frames, screens, steps, title, sub, cta, who = "a friend" }) {
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
   return (
     <div style={{ maxWidth: 900, margin: "26px auto 0", textAlign: "center" }}>
@@ -3219,7 +3323,30 @@ function HowToLayout({ f, setF, frames, screens, steps, title, sub, cta }) {
             <span><span style={{ display: "block", fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: on ? C.accentD : C.muted }}>Step {k + 1}</span><span style={{ display: "block", fontSize: 15.5, fontWeight: 700, color: C.ink, marginTop: 1 }}>{t}</span><span style={{ display: "block", fontSize: 13, color: C.muted, lineHeight: 1.5, marginTop: 2 }}>{d}</span></span>
           </button>); })}
       </div>
+      <HowYouEarn who={who} />
       {cta && <button className="er-btn er-btn-primary" style={{ marginTop: 20 }} onClick={cta[1]}>{cta[0]} <Arrow size={16} /></button>}
+    </div>
+  );
+}
+/* "How you earn": the money side, in the viewer's currency. Shown after every set of steps. */
+function HowYouEarn({ who = "a friend" }) {
+  const spend = VIEWER_CUR === "INR" ? 5000 : 60, pct = 8;
+  const rows = [
+    ["💸", "A commission on every sale", <>Each brand shows exactly what you earn. If it says <b>“You earn {pct}%”</b> and {who} spends <b>{money(spend)}</b>, you get <b>{money((spend * pct) / 100)}</b>.</>],
+    ["🗓️", "Counts for 6 months", "Your link remembers the shopper for 6 months, so later purchases count too."],
+    ["✅", "Confirmed after 14 days", "Sales are confirmed once the brand's 14-day return window passes."],
+    ["🏦", "Paid to you", `Get paid to your ${VIEWER_CUR === "INR" ? "UPI, Paytm, bank account or PayPal" : "Venmo, PayPal, Zelle or bank account"} once sales are confirmed.`],
+  ];
+  return (
+    <div style={{ margin: "22px auto 0", maxWidth: 900, textAlign: "left", background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 18, padding: "18px 18px 8px" }}>
+      <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>How you earn</div>
+      <div style={{ marginTop: 10, display: "grid", gap: 4, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,240px),1fr))" }}>
+        {rows.map(([icon, t, d]) => (
+          <div key={t} style={{ display: "flex", gap: 10, padding: "6px 0 12px" }}>
+            <span style={{ fontSize: 20, lineHeight: 1.2, flexShrink: 0 }}>{icon}</span>
+            <div><div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink }}>{t}</div><div style={{ marginTop: 2, fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>{d}</div></div>
+          </div>))}
+      </div>
     </div>
   );
 }
@@ -3266,7 +3393,7 @@ function ListHowTo({ title, sub, cta } = {}) {
     </div>,
   ];
   const steps = [["Pick brands you love", "Choose from 1,000+ brands. It takes a minute.", [0]], ["Get your own list page", "One link with every brand you recommend.", [1]], ["Put it in your bio and share", "Followers who shop within 6 months earn you a commission on every sale.", [2, 3]]];
-  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
+  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} who="a follower" />;
 }
 /* All three ways to earn, as tabs, for pages people reach from Instagram (lists, shared links). */
 function ExploreHowTo({ heading, onCreator }) {
@@ -3342,7 +3469,7 @@ function AffiliateHowTo({ title, sub, cta } = {}) {
     </div>,
   ];
   const steps = [["Pick a brand and copy your affiliate link", "Every brand has your own tracked link.", [0]], ["Make content about it", "Posts, reels, YouTube videos, blogs, newsletters, podcasts.", [1]], ["Paste the link in your caption, description or bio", "Viewers who buy within 6 months earn you a commission, tracked automatically.", [2, 3]]];
-  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
+  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} who="a viewer" />;
 }
 /* Affiliate links for content creators: every brand with a copyable tracked link. */
 function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
@@ -3413,7 +3540,7 @@ function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
 /* Share page: how-to steps + an animated phone showing copy link → Instagram story → link sticker → paste. */
 function ShareHowTo({ title, sub, cta } = {}) {
   const [f, setF] = useState(0);
-  const frames = ["Tap Copy link", "Open Instagram, add your story", "Tap the sticker icon, pick LINK", "Paste your link, tap Done", "Friends tap it and shop"];
+  const frames = ["Tap Copy link", "Open Instagram, add your story", "Tap the sticker icon, pick LINK", "Paste your link, tap Done", "Tap Aa and add a few words", "Friends tap it and shop"];
   useEffect(() => { const t = setTimeout(() => setF((x) => (x + 1) % frames.length), 2600); return () => clearTimeout(t); }, [f]);
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
   const link = "easyrecommend.co/r/you/notion";
@@ -3442,12 +3569,20 @@ function ShareHowTo({ title, sub, cta } = {}) {
       <div style={{ marginTop: 6, borderBottom: "1px solid rgba(255,255,255,.3)", padding: "6px 0", fontSize: 11.5, fontWeight: 600, overflow: "hidden", whiteSpace: "nowrap" }}><span className="er-type">{link}</span></div>
       <div className="er-pop" style={{ marginTop: 12, display: "inline-block", background: "#fff", color: "#111", borderRadius: 8, padding: "5px 10px", fontSize: 10.5, fontWeight: 800 }}>Paste</div>
     </div>,
+    <div key="t" style={{ position: "absolute", inset: 0 }}>{story(<>
+      {tap({ top: 8, right: 76 })}
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.35)" }} />
+      <div style={{ position: "absolute", left: 14, right: 14, top: "12%", textAlign: "center" }}><span style={{ display: "inline-block", maxWidth: "100%", background: "#fff", color: "#111", borderRadius: 8, padding: "6px 8px", fontSize: 12, fontWeight: 800, lineHeight: 1.35, whiteSpace: "nowrap", overflow: "hidden" }}><span className="er-type">Love this 😍 15% off 👇</span></span></div>
+      <div style={{ position: "absolute", left: "50%", bottom: "16%", transform: "translateX(-50%) rotate(-4deg)", background: "#fff", color: "#0095F6", borderRadius: 9, padding: "6px 9px", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", maxWidth: "88%", overflow: "hidden", textOverflow: "ellipsis" }}>🔗 {link.toUpperCase()}</div>
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 28, background: "#d1d3d9", display: "flex", alignItems: "center", justifyContent: "space-around", fontSize: 9, fontWeight: 700, color: "#333" }}>{["q","w","e","r","t","y","u","i","o","p"].map((k) => <span key={k}>{k}</span>)}</div>
+    </>)}</div>,
     <div key="4" style={{ position: "absolute", inset: 0 }}>{story(<>
+      <div style={{ position: "absolute", left: 14, right: 14, top: "12%", textAlign: "center" }}><span style={{ display: "inline-block", background: "#fff", color: "#111", borderRadius: 8, padding: "6px 8px", fontSize: 11, fontWeight: 800, lineHeight: 1.35 }}>Love this 😍 15% off 👇</span></div>
       <div className="er-pop" style={{ position: "absolute", left: "50%", bottom: "16%", transform: "translateX(-50%) rotate(-4deg)", background: "#fff", color: "#0095F6", borderRadius: 9, padding: "6px 9px", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", maxWidth: "88%", overflow: "hidden", textOverflow: "ellipsis", boxShadow: "0 4px 12px rgba(0,0,0,.2)" }}>🔗 {link.toUpperCase()}</div>
       <div className="er-pop" style={{ position: "absolute", left: 10, right: 10, bottom: 10, background: "rgba(17,17,17,.85)", color: "#fff", borderRadius: 10, padding: "6px 9px", fontSize: 10.5, fontWeight: 700 }}>✓ Sale tracked · you earned {demoMoney(12)}</div></>)}</div>,
   ];
-  const steps = [["Select a brand you like", "Search or browse. Each brand shows what you earn.", [0]], ["Share it on Instagram story, WhatsApp or X", "Your link is copied. On Instagram, add a Link sticker and paste it.", [1, 2, 3]], ["Friends shop within 6 months, you earn", "Every sale from your link pays you a commission, tracked automatically.", [4]]];
-  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
+  const steps = [["Select a brand you like", "Search or browse. Each brand shows what you earn.", [0]], ["Share it on Instagram story, WhatsApp or X", "Your link is copied. On Instagram, add a Link sticker, paste it, and write a few words about why you love it.", [1, 2, 3, 4]], ["Friends shop within 6 months, you earn", "Every sale from your link pays you a commission, tracked automatically.", [5]]];
+  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} who="a friend" />;
 }
 /* Share a brand: browse brands, share each one to Instagram story / X / Facebook with your own link. */
 function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
@@ -3489,7 +3624,7 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
       <PageHeader onHome={onHome} onLogin={isCreator ? null : onLogin} right={!isCreator && <button className="er-btn er-btn-primary er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => setJoinFor(null)}>Join</button>} />
       <section className="er-wrap" style={{ padding: "46px 22px 18px", textAlign: "center" }}>
         <span className="er-eyebrow">Share &amp; earn</span>
-        <h1 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(30px,5vw,48px)", fontWeight: 500, letterSpacing: "-.015em" }}>Share a brand you love. Earn on every sale.</h1>
+        <h1 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(30px,5vw,48px)", fontWeight: 500, letterSpacing: "-.015em" }}>Share a brand you love :)</h1>
         {!isCreator && <p style={{ margin: "4px auto 0", maxWidth: 520, fontSize: 13.5, fontWeight: 600, color: C.accentD }}>Free to join. You get your own link for every brand.</p>}
         <ShareHowTo />
       </section>
