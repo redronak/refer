@@ -119,7 +119,10 @@ function earnInfo(b) {
 }
 // Brand sections used everywhere brands are listed.
 const SECTION_CHIPS = ["__popular", "__online", "__physical", ""];
-const SECTION_LABEL = { __popular: "⭐ Popular", __online: "💻 Online products", __physical: "🛍️ Physical brands", "": "All" };
+const SECTION_LABEL = { __popular: "⭐ Popular", __products: "🧴 Popular products", __online: "💻 Online products", __physical: "🛍️ Physical brands", "": "All" };
+// Share & earn and Affiliate pages also get a Popular products tab.
+const PRODUCT_CHIPS = ["__popular", "__products", "__online", "__physical", ""];
+const chipShown = (c, all) => !c || c === "__products" || all.some((b) => inSection(b, c, []));
 const inSection = (b, cat, all) => !cat || (cat === "__popular" ? (b.popular || !all.some((x) => x.popular)) : cat === "__online" ? (!b.popular && b.online) : cat === "__physical" ? (!b.popular && !b.online) : (b.categories || []).includes(cat));
 // Shopper discount label: exact % when set, else the brand's range (e.g. "15–30% off" for onboarded partners).
 const offText = (b) => (b && b.discountText) || (b && b.discount > 0 ? `${b.discount}% off` : "");
@@ -399,14 +402,24 @@ async function drawBrandStory(b) {
   if (photo && (/^data:image\//.test(photo) || photo.startsWith(API_BASE))) {   // our photo URLs send CORS headers, so the canvas stays shareable
     try {
       const img = await new Promise((res, rej) => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => res(im); im.onerror = rej; im.src = photo; });
-      const cw = 760, ch = 560, cx = (W - cw) / 2; g.save(); round(cx, y, cw, ch, 48); g.clip();
-      const sc = Math.max(cw / img.width, ch / img.height); g.drawImage(img, cx + (cw - img.width * sc) / 2, y + (ch - img.height * sc) / 2, img.width * sc, img.height * sc); g.restore();
+      const cw = 760, ch = b.brandName ? 480 : 560, cx = (W - cw) / 2; g.save(); round(cx, y, cw, ch, 48); g.clip();
+      if (b.brandName) { g.fillStyle = "#fff"; g.fillRect(cx, y, cw, ch); }
+      const sc = (b.brandName ? Math.min : Math.max)(cw / img.width, ch / img.height) * (b.brandName ? 0.9 : 1); g.drawImage(img, cx + (cw - img.width * sc) / 2, y + (ch - img.height * sc) / 2, img.width * sc, img.height * sc); g.restore();
       y += ch + 140;
     } catch (e) { y = 820; }
   } else y = 860;
-  let fs = 170; g.font = `900 ${fs}px ${sans}`; while (fs > 70 && g.measureText(name).width > W - 140) { fs -= 6; g.font = `900 ${fs}px ${sans}`; }
-  g.fillStyle = "#fff"; g.shadowColor = "rgba(0,0,0,.18)"; g.shadowBlur = 30; g.fillText(name, W / 2, y); g.shadowBlur = 0;
-  const cat = (b.categories || [])[0]; if (cat) { g.fillStyle = "rgba(255,255,255,0.85)"; g.font = `600 44px ${sans}`; g.fillText(cat, W / 2, y + 80); }
+  if (b.brandName) {   // a product: brand name small, product name wrapped over up to 3 lines
+    g.fillStyle = "rgba(255,255,255,0.9)"; g.font = `800 46px ${sans}`; g.fillText(String(b.brandName).toUpperCase(), W / 2, y - 40);
+    g.font = `900 76px ${sans}`; const words = name.split(/\s+/), lines = []; let cur = "";
+    for (const w of words) { const t = cur ? cur + " " + w : w; if (g.measureText(t).width > W - 160 && cur) { lines.push(cur); cur = w; } else cur = t; }
+    if (cur) lines.push(cur); if (lines.length > 3) { lines.length = 3; lines[2] = lines[2].replace(/\s*\S*$/, "") + "…"; }
+    g.fillStyle = "#fff"; g.shadowColor = "rgba(0,0,0,.18)"; g.shadowBlur = 30;
+    lines.forEach((l, k) => g.fillText(l, W / 2, y + 50 + k * 92)); g.shadowBlur = 0; y += 50 + (lines.length - 1) * 92 - 70;
+  } else {
+    let fs = 170; g.font = `900 ${fs}px ${sans}`; while (fs > 70 && g.measureText(name).width > W - 140) { fs -= 6; g.font = `900 ${fs}px ${sans}`; }
+    g.fillStyle = "#fff"; g.shadowColor = "rgba(0,0,0,.18)"; g.shadowBlur = 30; g.fillText(name, W / 2, y); g.shadowBlur = 0;
+    const cat = (b.categories || [])[0]; if (cat) { g.fillStyle = "rgba(255,255,255,0.85)"; g.font = `600 44px ${sans}`; g.fillText(cat, W / 2, y + 80); }
+  }
   if (offText(b)) {
     const txt = offText(b).toUpperCase(); g.font = `900 92px ${sans}`; const bw = g.measureText(txt).width + 120, bx = (W - bw) / 2, by = y + 150;
     round(bx, by, bw, 150, 75); g.fillStyle = "#fff"; g.fill(); g.fillStyle = pal[0]; g.fillText(txt, W / 2, by + 108);
@@ -3005,7 +3018,7 @@ function AllBrandsModal({ onClose }) {
       <div style={{ padding: "26px 22px 22px", textAlign: "left", color: C.ink, fontFamily: "inherit" }}>
         <h2 className="er-serif" style={{ margin: 0, fontSize: 26, fontWeight: 500 }}>Brands to choose from</h2>
         <p style={{ margin: "4px 0 0", fontSize: 13.5, color: C.muted }}>{list ? `${all.length} brands listed right now` : "Loading brands…"}</p>
-        <input className="er-input" autoFocus placeholder="Search brands or categories" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginTop: 14 }} />
+        <input className="er-input" autoFocus placeholder={cat === "__products" ? "Search products or brands" : "Search brands or categories"} value={q} onChange={(e) => setQ(e.target.value)} style={{ marginTop: 14 }} />
         {(cats.length > 1 || all.some((x) => x.popular)) && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 2px" }}>
           {SECTION_CHIPS.filter((c) => !c || all.some((b) => inSection(b, c, []))).map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{SECTION_LABEL[c]}</button>)}
         </div>}
@@ -3472,6 +3485,51 @@ function AffiliateHowTo({ title, sub, cta } = {}) {
   return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} who="a viewer" />;
 }
 /* Affiliate links for content creators: every brand with a copyable tracked link. */
+/* Popular products (seeded partner products): photo, brand, shopper discount, what you earn, and share actions. */
+let popularProductsMem = null;
+function PopularProducts({ q, isCreator, actions }) {
+  const [rows, setRows] = useState(popularProductsMem); const [who, setWho] = useState("");
+  useEffect(() => { api("/products/popular").then((r) => { popularProductsMem = Array.isArray(r) ? r : []; setRows(popularProductsMem); }).catch(() => setRows((x) => x || [])); }, []);
+  const t = (q || "").trim().toLowerCase();
+  const shown = (rows || []).filter((p) => (!who || p.for === who) && (!t || `${p.name} ${p.brand.name}`.toLowerCase().includes(t)));
+  const earnLine = (p) => {
+    const e = p.brand.earn;
+    if (e && Number(p.price) > 0 && (e.pct > 0 || e.flat > 0)) return `You earn ${money(toViewer(p.price * e.pct / 100 + (e.flat || 0), e.currency, e.fx))} on this`;
+    const ei = earnInfo(p.brand); return ei ? ei.line : "";
+  };
+  return (
+    <div style={{ marginTop: 14 }}>
+      {(rows || []).some((p) => p.for) && <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 14 }}>
+        {[["", "All"], ["women", "For women"], ["men", "For men"]].map(([k, l]) => <button key={k || "all"} type="button" onClick={() => setWho(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: 999, border: `1px solid ${who === k ? C.accent : C.line}`, background: who === k ? C.accentSoft : "#fff", color: who === k ? C.accentD : C.inkSoft }}>{l}</button>)}
+      </div>}
+      {rows === null && <p style={{ textAlign: "center", color: C.muted }}>Loading products…</p>}
+      {rows && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 20 }}>No products match{q ? ` “${q}”` : ""}.</p>}
+      <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,230px),1fr))" }}>
+        {shown.map((p) => { const el = earnLine(p); return (
+          <div key={p.key} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <ProductPhoto p={p} />
+            <div style={{ padding: "11px 13px 13px", display: "flex", flexDirection: "column", gap: 9, flex: 1 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em" }}>{p.brand.name}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</div>
+                {(priceText(p) || offText(p.brand)) && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5, flexWrap: "wrap" }}>
+                  {priceText(p) && <span style={{ fontSize: 13, color: C.inkSoft, fontWeight: 600 }}>{priceText(p)}</span>}
+                  {offText(p.brand) && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>Friends get {offText(p.brand)}</span>}
+                </div>}
+              </div>
+              <div style={{ background: el ? C.accentSoft : C.panel, borderRadius: 10, padding: "7px 10px", fontSize: 13.5, fontWeight: 800, color: el ? C.accentD : C.muted }}>{isCreator ? (el || "Commission coming soon") : "Join free to see what you earn"}</div>
+              <div style={{ marginTop: "auto" }}>{actions(p)}</div>
+            </div>
+          </div>); })}
+      </div>
+    </div>
+  );
+}
+function ProductPhoto({ p }) {
+  const [bad, setBad] = useState(false);
+  if (!p.image || bad) return <BrandArt b={p.brand} style={{ width: "100%", aspectRatio: "4 / 3" }} />;
+  return <div style={{ width: "100%", aspectRatio: "4 / 3", background: "#fff", borderBottom: `1px solid ${C.line}` }}><img src={p.image} alt={p.name} loading="lazy" onError={() => setBad(true)} style={{ width: "100%", height: "100%", objectFit: "contain" }} /></div>;
+}
 function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
   const isCreator = session && session.role === "creator";
   const [list, setList] = useState(() => cachedBusinesses()); const [q, setQ] = useState(""); const [cat, setCat] = useState("__popular");
@@ -3503,16 +3561,18 @@ function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
       </section>
       <section className="er-wrap" style={{ padding: "8px 22px 70px" }}>
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
-          <input className="er-input" placeholder="Search brands or categories" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="er-input" placeholder={cat === "__products" ? "Search products or brands" : "Search brands or categories"} value={q} onChange={(e) => setQ(e.target.value)} />
           {(cats.length > 1 || all.some((x) => x.popular)) && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 2px" }}>
-            {SECTION_CHIPS.filter((c) => !c || all.some((b) => inSection(b, c, []))).map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{SECTION_LABEL[c]}</button>)}
+            {PRODUCT_CHIPS.filter((c) => chipShown(c, all)).map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{SECTION_LABEL[c]}</button>)}
           </div>}
         </div>
         {list === null && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
           {[0, 1, 2, 3, 4, 5].map((k) => <div key={k} className="er-card er-skel" style={{ padding: 0, overflow: "hidden" }}><div style={{ aspectRatio: "16/9", background: C.panel }} /><div style={{ padding: 14 }}><div style={{ height: 14, width: "55%", borderRadius: 6, background: C.panel }} /><div style={{ height: 36, borderRadius: 10, background: C.panel, marginTop: 16 }} /></div></div>)}
         </div>}
-        {list && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>No brands match{q ? ` “${q}”` : ""}.</p>}
-        <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
+        {cat === "__products" && <PopularProducts q={q} isCreator={isCreator} actions={(p) => { const url = links[p.brand.id]; return (
+          <button type="button" onClick={() => getLink(p.brand)} disabled={busy === p.brand.id} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, borderRadius: 10, border: "none", background: C.ink, color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer" }}><Copy size={13} /> {busy === p.brand.id ? "…" : url ? "Copy my link" : "Get my link"}</button>); }} />}
+        {cat !== "__products" && list && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>No brands match{q ? ` “${q}”` : ""}.</p>}
+        {cat !== "__products" && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
           {shown.map((b) => { const ei = earnInfo(b); const url = links[b.id]; return (
             <div key={b.id} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <BrandArt b={b} style={{ width: "100%", aspectRatio: "16/9" }} />
@@ -3531,7 +3591,7 @@ function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
                 </button>
               </div>
             </div>); })}
-        </div>
+        </div>}
       </section>
       <PageFooter onLegal={onLegal} />
     </div>
@@ -3601,23 +3661,33 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
     const r = await api("/creator/link", { method: "POST", body: { token: session.token, businessId: b.id } });
     const u = r.referralUrl + "?src=share"; setLinks((m) => ({ ...m, [b.id]: u })); return u;
   };
-  const share = async (b, where) => {
+  // story: what the Instagram image shows (a product, or the brand itself); key: which card is busy.
+  const share = async (b, where, story = b, key = b.id) => {
     if (!isCreator) { setJoinFor(b); return; }
     const win = where === "x" || where === "fb" || where === "wa" ? window.open("", "_blank") : null;   // open now so popup blockers allow it
-    setBusy(b.id + where);
+    setBusy(key + where);
     try {
       const url = await linkFor(b);
-      const text = b.discount > 0 ? `${b.name}: ${b.discount}% off with my link` : `I recommend ${b.name}`;
+      const what = story !== b ? `${story.name} from ${b.name}` : b.name;
+      const text = offText(b) ? `${what}: ${offText(b)} with my link` : `I recommend ${what}`;
       if (where === "wa") win.location.href = `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`;
       else if (where === "x") win.location.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
       else if (where === "fb") win.location.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
       else if (where === "copy") { const ok = await copyText(url); toast(ok ? "✓ Link copied" : "Couldn't copy, tap Copy again"); }
-      else startIgShare(url, () => shareBrandToStory(b, url));
-    } catch (e) { if (win) win.close(); if (!(e && e.name === "AbortError")) say(b.id, e.message || "Couldn't share. Try again."); }
+      else startIgShare(url, () => shareBrandToStory(story, url));
+    } catch (e) { if (win) win.close(); if (!(e && e.name === "AbortError")) say(key, e.message || "Couldn't share. Try again."); }
     finally { setBusy(""); }
   };
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
-  const sbtn = (b, where, label, icon, bg, color) => <button type="button" onClick={() => share(b, where)} disabled={!!busy} title={label} style={{ flex: where === "ig" ? "1 1 100%" : "1 1 0", minWidth: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, borderRadius: 10, border: bg === "#fff" ? `1px solid ${C.line}` : "none", background: bg, color, fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: busy ? "default" : "pointer", opacity: busy && busy !== b.id + where ? 0.6 : 1 }}>{icon}{busy === b.id + where ? "…" : label}</button>;
+  const sbtn = (b, where, label, icon, bg, color, story = b, key = b.id) => <button type="button" onClick={() => share(b, where, story, key)} disabled={!!busy} title={label} style={{ flex: where === "ig" ? "1 1 100%" : "1 1 0", minWidth: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, borderRadius: 10, border: bg === "#fff" ? `1px solid ${C.line}` : "none", background: bg, color, fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: busy ? "default" : "pointer", opacity: busy && busy !== key + where ? 0.6 : 1 }}>{icon}{busy === key + where ? "…" : label}</button>;
+  const productActions = (p) => { const st = { ...p.brand, name: p.name, photos: p.image ? [p.image] : p.brand.photos, brandName: p.brand.name }; return <>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {sbtn(p.brand, "ig", "Share on Instagram story", <IgIcon size={14} />, igGrad, "#fff", st, p.key)}
+      {sbtn(p.brand, "wa", "WhatsApp", null, "#25D366", "#fff", st, p.key)}
+      {sbtn(p.brand, "x", "𝕏", null, C.ink, "#fff", st, p.key)}
+      {sbtn(p.brand, "copy", "Copy", <Copy size={13} />, "#fff", C.ink, st, p.key)}
+    </div>
+    {note[p.key] && <div style={{ fontSize: 12, fontWeight: 600, color: C.accentD, marginTop: 6 }}>{note[p.key]}</div>}</>; };
   return (
     <div>
       {joinFor !== undefined && <QuickJoin brand={joinFor} onClose={() => setJoinFor(undefined)} onDone={(sess) => { const b = joinFor; setJoinFor(undefined); onAuth(sess); if (b) say(b.id, "You're in! Tap a share button to post with your link."); }} />}
@@ -3630,16 +3700,17 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
       </section>
       <section className="er-wrap" style={{ padding: "8px 22px 70px" }}>
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
-          <input className="er-input" placeholder="Search brands or categories" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="er-input" placeholder={cat === "__products" ? "Search products or brands" : "Search brands or categories"} value={q} onChange={(e) => setQ(e.target.value)} />
           {(cats.length > 1 || all.some((x) => x.popular)) && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 2px" }}>
-            {SECTION_CHIPS.filter((c) => !c || all.some((b) => inSection(b, c, []))).map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{SECTION_LABEL[c]}</button>)}
+            {PRODUCT_CHIPS.filter((c) => chipShown(c, all)).map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{SECTION_LABEL[c]}</button>)}
           </div>}
         </div>
         {list === null && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
           {[0, 1, 2, 3, 4, 5].map((k) => <div key={k} className="er-card er-skel" style={{ padding: 0, overflow: "hidden" }}><div style={{ aspectRatio: "16/9", background: C.panel }} /><div style={{ padding: 14 }}><div style={{ height: 14, width: "55%", borderRadius: 6, background: C.panel }} /><div style={{ height: 10, width: "35%", borderRadius: 6, background: C.panel, marginTop: 8 }} /><div style={{ height: 36, borderRadius: 10, background: C.panel, marginTop: 16 }} /></div></div>)}
         </div>}
-        {list && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>No brands match{q ? ` “${q}”` : ""}.</p>}
-        <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
+        {cat === "__products" && <PopularProducts q={q} isCreator={isCreator} actions={productActions} />}
+        {cat !== "__products" && list && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>No brands match{q ? ` “${q}”` : ""}.</p>}
+        {cat !== "__products" && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
           {shown.map((b) => { const ei = earnInfo(b); return (
             <div key={b.id} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <BrandArt b={b} style={{ width: "100%", aspectRatio: "16/9" }} />
@@ -3665,7 +3736,7 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
                 {note[b.id] && <div style={{ fontSize: 12, fontWeight: 600, color: C.accentD }}>{note[b.id]}</div>}
               </div>
             </div>); })}
-        </div>
+        </div>}
       </section>
       <PageFooter onLegal={onLegal} />
     </div>
