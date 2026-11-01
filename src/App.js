@@ -298,6 +298,7 @@ function ClaimPage() {
   const to = q.get("to") || ""; const ok = /^https?:\/\//i.test(to);
   const code = q.get("code") || ""; const off = q.get("off") || ""; const name = q.get("name") || "this brand"; const pct = Number(q.get("pct")) || 0; const by = (q.get("by") || "").replace(/[^a-z0-9_.-]/gi, "");
   const id = (q.get("id") || "").replace(/[^a-f0-9]/gi, "");
+  const pname = q.get("pname") || ""; const pimgRaw = q.get("pimg") || ""; const pimg = pimgRaw.startsWith(API_BASE) ? pimgRaw : "";   // only our own photo URLs
   const [copied, setCopied] = useState(false); const [img, setImg] = useState(""); const [biz, setBiz] = useState(null);
   useEffect(() => { if (id) api(`/business/${id}`).then((b) => { setBiz(b); setImg(b.offerImage || ""); }).catch(() => {}); }, [id]);
   const site = to ? to.replace(/^https?:\/\/(www\.)?/i, "").split(/[/?#]/)[0] : "";
@@ -306,19 +307,24 @@ function ClaimPage() {
   return (
     <div style={{ minHeight: "100vh", background: C.panel, padding: "28px 20px 50px" }}>
       <div className="er-card" style={{ maxWidth: 420, width: "100%", margin: "0 auto", padding: 0, textAlign: "center", overflow: "hidden" }}>
-        {img ? <img src={img} alt={name} style={{ display: "block", width: "100%", aspectRatio: "16/9", objectFit: "cover" }} />
+        {pimg ? <div style={{ background: "#fff", borderBottom: `1px solid ${C.line}` }}><img src={pimg} alt={pname} style={{ display: "block", width: "100%", aspectRatio: "4/3", objectFit: "contain" }} /></div>
+          : img ? <img src={img} alt={name} style={{ display: "block", width: "100%", aspectRatio: "16/9", objectFit: "cover" }} />
           : <BrandArt b={biz || { name, photos: [] }} style={{ width: "100%", aspectRatio: "16/9" }} />}
         <div style={{ padding: "22px 26px 28px" }}>
         {by && <p style={{ margin: "12px 0 0", fontSize: 13.5, color: C.muted }}>@{by} {code || pct > 0 || off ? "sent you a discount" : "recommends this"}</p>}
-        <h1 className="er-serif" style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 500 }}>{off ? `${off.replace(/ off$/i, "")} off ${name}` : pct > 0 ? `${pct}% off ${name}` : code ? `A discount for ${name}` : name}</h1>
-        {biz && biz.blurb && <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.5, color: C.inkSoft }}>{biz.blurb}</p>}
+        {pname ? <>
+          <p style={{ margin: "10px 0 0", fontSize: 12.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>{name}</p>
+          <h1 className="er-serif" style={{ margin: "4px 0 0", fontSize: 26, fontWeight: 500, lineHeight: 1.2 }}>{pname}</h1>
+          {(off || pct > 0) && <p style={{ margin: "10px 0 0", display: "inline-block", fontSize: 14, fontWeight: 800, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "5px 12px" }}>{off ? off : `${pct}% off`}</p>}
+        </> : <h1 className="er-serif" style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 500 }}>{off ? `${off.replace(/ off$/i, "")} off ${name}` : pct > 0 ? `${pct}% off ${name}` : code ? `A discount for ${name}` : name}</h1>}
+        {!pname && biz && biz.blurb && <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.5, color: C.inkSoft }}>{biz.blurb}</p>}
         {code && <>
         <p style={{ margin: "12px 0 0", fontSize: 14, color: C.inkSoft }}>Use this code at checkout:</p>
         <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, border: `2px dashed ${C.accent}`, borderRadius: 12, padding: "12px 14px", background: C.accentSoft }}>
           <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 20, fontWeight: 700, letterSpacing: ".08em", color: C.accentD }}>{code}</span>
           <button className="er-btn er-btn-sm" onClick={copy} style={{ background: copied ? C.accent : C.ink, color: "#fff", border: "none" }}>{copied ? "Copied" : "Copy"}</button>
         </div></>}
-        <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 18 }} disabled={!ok} onClick={go}>{code ? <>Copy code &amp; continue to {name}</> : <>Continue to {name}</>} <Arrow size={16} /></button>
+        <button className="er-btn er-btn-primary er-btn-block" style={{ marginTop: 18 }} disabled={!ok} onClick={go}>{code ? <>Copy code &amp; {pname ? "shop this product" : <>continue to {name}</>}</> : pname ? "Shop this product" : <>Continue to {name}</>} <Arrow size={16} /></button>
         {site && <p style={{ margin: "8px 0 0", fontSize: 12, color: C.muted }}>Takes you to {site}</p>}
         <p style={{ margin: "14px 0 0", fontSize: 12, color: C.muted }}>Powered by <a href="/" style={{ color: C.inkSoft, fontWeight: 600 }}>Easy Recommend</a></p>
         </div>
@@ -3561,14 +3567,17 @@ function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
   const cats = CAT_LIST.filter((c) => all.some((b) => (b.categories || []).includes(c)));
   const t = q.trim().toLowerCase();
   const shown = all.filter((b) => (t || inSection(b, cat, all)) && (!t || [b.name, b.blurb, ...(b.categories || [])].join(" ").toLowerCase().includes(t)));
-  const getLink = async (b) => {
+  // product (optional): the link opens that product's page instead of the brand's homepage.
+  const getLink = async (b, product) => {
     if (!isCreator) { setJoinFor(b); return; }
-    if (links[b.id]) { const ok = await copyText(links[b.id]); toast(ok ? "✓ Affiliate link copied" : "Couldn't copy, tap Copy again"); return; }
-    setBusy(b.id);
+    const key = product ? `${b.id}|${product}` : b.id;
+    if (links[key]) { const ok = await copyText(links[key]); toast(ok ? "✓ Affiliate link copied" : "Couldn't copy, tap Copy again"); return; }
+    setBusy(key);
     try {
       const r = await api("/creator/link", { method: "POST", body: { token: session.token, businessId: b.id } });
-      setLinks((m) => ({ ...m, [b.id]: r.referralUrl }));
-      const ok = await copyText(r.referralUrl); toast(ok ? "✓ Affiliate link copied" : "Your link is ready. Tap Copy to copy it");
+      const url = product ? `${r.referralUrl}?p=${slugify(product)}` : r.referralUrl;
+      setLinks((m) => ({ ...m, [key]: url }));
+      const ok = await copyText(url); toast(ok ? "✓ Affiliate link copied" : "Your link is ready. Tap Copy to copy it");
     } catch (e) { toast(e.message || "Couldn't get your link. Try again."); } finally { setBusy(""); }
   };
   return (
@@ -3591,8 +3600,8 @@ function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
         {list === null && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
           {[0, 1, 2, 3, 4, 5].map((k) => <div key={k} className="er-card er-skel" style={{ padding: 0, overflow: "hidden" }}><div style={{ aspectRatio: "16/9", background: C.panel }} /><div style={{ padding: 14 }}><div style={{ height: 14, width: "55%", borderRadius: 6, background: C.panel }} /><div style={{ height: 36, borderRadius: 10, background: C.panel, marginTop: 16 }} /></div></div>)}
         </div>}
-        {cat === "__products" && <PopularProducts q={q} isCreator={isCreator} actions={(p) => { const url = links[p.brand.id]; return (
-          <button type="button" onClick={() => getLink(p.brand)} disabled={busy === p.brand.id} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, borderRadius: 10, border: "none", background: C.ink, color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer" }}><Copy size={13} /> {busy === p.brand.id ? "…" : url ? "Copy my link" : "Get my link"}</button>); }} />}
+        {cat === "__products" && <PopularProducts q={q} isCreator={isCreator} actions={(p) => { const key = `${p.brand.id}|${p.name}`, url = links[key]; return (
+          <button type="button" onClick={() => getLink(p.brand, p.name)} disabled={busy === key} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, borderRadius: 10, border: "none", background: C.ink, color: "#fff", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer" }}><Copy size={13} /> {busy === key ? "…" : url ? "Copy my link" : "Get my link"}</button>); }} />}
         {cat !== "__products" && list && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>No brands match{q ? ` “${q}”` : ""}.</p>}
         {cat !== "__products" && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
           {shown.map((b) => { const ei = earnInfo(b); const url = links[b.id]; return (
@@ -3689,7 +3698,8 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
     const win = where === "x" || where === "fb" || where === "wa" ? window.open("", "_blank") : null;   // open now so popup blockers allow it
     setBusy(key + where);
     try {
-      const url = await linkFor(b);
+      const base = await linkFor(b);
+      const url = story.brandName ? `${base}&p=${slugify(story.name)}` : base;   // a product opens its own page
       const what = story !== b ? `${story.name} from ${b.name}` : b.name;
       const text = offText(b) ? `${what}: ${offText(b)} with my link` : `I recommend ${what}`;
       if (where === "wa") win.location.href = `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`;
