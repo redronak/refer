@@ -113,15 +113,16 @@ const demoMoney = (usd) => money(VIEWER_CUR === "INR" ? Math.max(50, Math.round(
 function earnInfo(b) {
   const e = b && b.earn; if (!e || (!(e.pct > 0) && !(e.flat > 0))) return null;
   const est = money(toViewer(e.est, e.currency, e.fx)), flat = e.flat > 0 ? money(toViewer(e.flat, e.currency, e.fx)) : "";
-  const line = flat && e.pct > 0 ? `You earn ${flat} + ${e.pct}% of every sale` : flat ? `You earn ${flat} on every sale` : `You earn ${e.pct}% of every sale`;
-  const sub = e.pct > 0 ? `That's about ${est} on a ${money(toViewer(e.aov, e.currency, e.fx))} order` : "";
+  // Always a real amount first, with the percentage beside it.
+  const line = flat && e.pct > 0 ? `You earn about ${est} per sale (${flat} + ${e.pct}%)` : flat ? `You earn ${flat} per sale` : `You earn about ${est} per sale (${e.pct}%)`;
+  const sub = e.pct > 0 ? `Based on a typical ${money(toViewer(e.aov, e.currency, e.fx))} order. Bigger orders pay more.` : "";
   return { line, sub, est, short: `earn ${e.pct > 0 ? "≈" : ""}${est}/sale` };
 }
 // Brand sections used everywhere brands are listed.
 const SECTION_CHIPS = ["__popular", "__online", "__physical", ""];
-const SECTION_LABEL = { __popular: "⭐ Popular", __products: "🧴 Popular products", __online: "💻 Online products", __physical: "🛍️ Physical brands", "": "All" };
+const SECTION_LABEL = { __popular: "⭐ Popular brands", __products: "🧴 Popular products", __online: "💻 Online products", __physical: "🛍️ Physical brands", "": "All" };
 // Share & earn and Affiliate pages also get a Popular products tab.
-const PRODUCT_CHIPS = ["__popular", "__products", "__online", "__physical", ""];
+const PRODUCT_CHIPS = ["__products", "__popular", "__online", "__physical", ""];
 const chipShown = (c, all) => !c || c === "__products" || all.some((b) => inSection(b, c, []));
 const inSection = (b, cat, all) => !cat || (cat === "__popular" ? (b.popular || !all.some((x) => x.popular)) : cat === "__online" ? (!b.popular && b.online) : cat === "__physical" ? (!b.popular && !b.online) : (b.categories || []).includes(cat));
 // Shopper discount label: exact % when set, else the brand's range (e.g. "15–30% off" for onboarded partners).
@@ -305,7 +306,11 @@ function ClaimPage() {
   const copy = async () => { try { await navigator.clipboard.writeText(code); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1500); };
   const go = async () => { if (code) { try { await navigator.clipboard.writeText(code); } catch (e) {} } if (ok) window.location.href = to; };
   return (
-    <div style={{ minHeight: "100vh", background: C.panel, padding: "28px 20px 50px" }}>
+    <div style={{ minHeight: "100vh", background: C.panel, padding: "14px 20px 50px" }}>
+      <div style={{ maxWidth: 420, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <a href="/" style={{ display: "flex", alignItems: "center", gap: 7, textDecoration: "none", color: C.ink }}><Seal size={17} /><span className="er-serif" style={{ fontSize: 16, fontWeight: 600, whiteSpace: "nowrap" }}>Easy Recommend</span></a>
+        <div style={{ display: "flex", gap: 6 }}><AccountButtons /></div>
+      </div>
       <div className="er-card" style={{ maxWidth: 420, width: "100%", margin: "0 auto", padding: 0, textAlign: "center", overflow: "hidden" }}>
         {pimg ? <div style={{ background: "#fff", borderBottom: `1px solid ${C.line}` }}><img src={pimg} alt={pname} style={{ display: "block", width: "100%", aspectRatio: "4/3", objectFit: "contain" }} /></div>
           : img ? <img src={img} alt={name} style={{ display: "block", width: "100%", aspectRatio: "16/9", objectFit: "cover" }} />
@@ -1752,7 +1757,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       </span>
       <span style={{ display: "block", padding: "8px 10px", minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(b.categories || [])[0] || (b.online ? "Online" : (b.city || "-"))}</span>
-        {earnInfo(b) && <span style={{ display: "block", marginTop: 4, fontSize: 12, fontWeight: 800, color: C.accentD, background: C.accentSoft, borderRadius: 7, padding: "4px 7px" }}>You earn {earnInfo(b).est}/sale</span>}
+        {earnInfo(b) && <span style={{ display: "block", marginTop: 4, fontSize: 12, fontWeight: 800, color: C.accentD, background: C.accentSoft, borderRadius: 7, padding: "4px 7px" }}>You earn {earnInfo(b).est}/sale{b.earn && b.earn.pct > 0 ? ` (${b.earn.pct}%)` : ""}</span>}
       </span>
     </button>; };
   const brandGrid = (arr) => <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,138px),1fr))", gap: 10, padding: 12 }}>{arr.map(brandRow)}</div>;
@@ -2666,7 +2671,10 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
       {editing && <EditProfileModal token={session.token} current={data} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.line}` }}>
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 22px 36px" }}>
-          <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><ChevL size={15} /> Easy Recommend</button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <button className="er-link" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><ChevL size={15} /> Easy Recommend</button>
+            {!isOwner && <div style={{ display: "flex", gap: 8 }}><AccountButtons /></div>}
+          </div>
           <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
             {isOwner
               ? <label style={{ position: "relative", cursor: "pointer", flexShrink: 0, display: "inline-block" }} title="Change photo">
@@ -2825,13 +2833,23 @@ function VidTile({ v }) {
     </div>
   );
 }
-function PageHeader({ onHome, onLogin, right }) {
+/* Log in / Sign up when logged out, My profile (or My business) when logged in. Works on any page. */
+function AccountButtons({ compact }) {
+  const sess = getSession();
+  if (sess && sess.token) return <button className="er-btn er-btn-ghost er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => erEmit("er:me")}>{sess.role === "creator" ? "My profile" : "My business"}</button>;
+  return <>
+    <button className="er-btn er-btn-ghost er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => erEmit("er:auth", "login")}>Log in</button>
+    {!compact && <button className="er-btn er-btn-primary er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => erEmit("er:auth", "signup")}>Sign up</button>}
+  </>;
+}
+function PageHeader({ onHome, right }) {
   return (
     <header style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(253,252,250,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
       <div className="er-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
         <button onClick={onHome} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer" }}><Seal size={20} /><span className="er-serif" style={{ fontSize: 19, fontWeight: 600, color: C.ink, whiteSpace: "nowrap" }}>Easy Recommend</span></button>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {onLogin && <button className="er-btn er-btn-ghost er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={onLogin}>Log in</button>}
+          {/* logged out: Log in + the page's own sign-up button (or a general Sign up); logged in: My profile + page action */}
+          <AccountButtons compact={!!right && !(getSession() || {}).token} />
           {right}
         </div>
       </div>
@@ -3300,7 +3318,7 @@ function TopCreators({ onList }) {
   );
 }
 /* Quick sign up / log in, right where someone is about to share (we need an account to track and pay). */
-function QuickJoin({ brand, onClose, onDone }) {
+function QuickJoin({ brand, onClose, onDone, general }) {
   const [mode, setMode] = useState("signup");
   const [username, setUsername] = useState(""); const [id, setId] = useState(""); const [pass, setPass] = useState("");
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
@@ -3322,8 +3340,8 @@ function QuickJoin({ brand, onClose, onDone }) {
   return (
     <Modal onClose={onClose}>
       <div style={{ padding: "28px 26px" }}>
-        <span className="er-eyebrow">Share &amp; earn</span>
-        <h2 className="er-serif" style={{ margin: "8px 0 4px", fontSize: 25, fontWeight: 500 }}>{brand ? `Get your link for ${brand.name}` : "Get your share links"}</h2>
+        <span className="er-eyebrow">{general ? "Join Easy Recommend" : "Share & earn"}</span>
+        <h2 className="er-serif" style={{ margin: "8px 0 4px", fontSize: 25, fontWeight: 500 }}>{brand ? `Get your link for ${brand.name}` : general ? "Sign up free, earn on every share" : "Get your share links"}</h2>
         <p style={{ margin: 0, fontSize: 13.5, color: C.muted, lineHeight: 1.5 }}>A free account gives you your own link, so we can track sales from your shares and pay you the commission.</p>
         <div className="er-ways-tabs" style={{ display: "flex", marginTop: 16, width: "100%" }}>{tab("signup", "New here")}{tab("login", "I have an account")}</div>
         <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -3344,7 +3362,7 @@ function QuickJoin({ brand, onClose, onDone }) {
 }
 /* Shared "how it works" layout: the animated phone first, then Step 1 / 2 / 3.
    The step that matches the current animation screen is highlighted; tapping a step jumps there. */
-function HowToLayout({ f, setF, frames, screens, steps, title, sub, cta, who = "a friend" }) {
+function HowToLayout({ f, setF, frames, screens, steps, title, sub, cta }) {
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
   return (
     <div style={{ maxWidth: 900, margin: "26px auto 0", textAlign: "center" }}>
@@ -3364,33 +3382,12 @@ function HowToLayout({ f, setF, frames, screens, steps, title, sub, cta, who = "
             <span><span style={{ display: "block", fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: on ? C.accentD : C.muted }}>Step {k + 1}</span><span style={{ display: "block", fontSize: 15.5, fontWeight: 700, color: C.ink, marginTop: 1 }}>{t}</span><span style={{ display: "block", fontSize: 13, color: C.muted, lineHeight: 1.5, marginTop: 2 }}>{d}</span></span>
           </button>); })}
       </div>
-      <HowYouEarn who={who} />
       {cta && <button className="er-btn er-btn-primary" style={{ marginTop: 20 }} onClick={cta[1]}>{cta[0]} <Arrow size={16} /></button>}
     </div>
   );
 }
-/* "How you earn": the money side, in the viewer's currency. Shown after every set of steps. */
-function HowYouEarn({ who = "a friend" }) {
-  const spend = VIEWER_CUR === "INR" ? 5000 : 60, pct = 8;
-  const rows = [
-    ["💸", "A commission on every sale", <>Each brand shows exactly what you earn. If it says <b>“You earn {pct}%”</b> and {who} spends <b>{money(spend)}</b>, you get <b>{money((spend * pct) / 100)}</b>.</>],
-    ["🗓️", "Counts for 6 months", "Your link remembers the shopper for 6 months, so later purchases count too."],
-    ["✅", "Confirmed after 14 days", "Sales are confirmed once the brand's 14-day return window passes."],
-    ["🏦", "Paid to you", `Get paid to your ${VIEWER_CUR === "INR" ? "UPI, Paytm, bank account or PayPal" : "Venmo, PayPal, Zelle or bank account"} once sales are confirmed.`],
-  ];
-  return (
-    <div style={{ margin: "22px auto 0", maxWidth: 900, textAlign: "left", background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 18, padding: "18px 18px 8px" }}>
-      <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>How you earn</div>
-      <div style={{ marginTop: 10, display: "grid", gap: 4, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,240px),1fr))" }}>
-        {rows.map(([icon, t, d]) => (
-          <div key={t} style={{ display: "flex", gap: 10, padding: "6px 0 12px" }}>
-            <span style={{ fontSize: 20, lineHeight: 1.2, flexShrink: 0 }}>{icon}</span>
-            <div><div style={{ fontSize: 14.5, fontWeight: 800, color: C.ink }}>{t}</div><div style={{ marginTop: 2, fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>{d}</div></div>
-          </div>))}
-      </div>
-    </div>
-  );
-}
+// "Example: 5 friends buy ₹1,500 orders → about ₹480". Uses the creator's share of a typical 8% commission.
+const earnExample = (people, orderInr, orderUsd) => { const order = VIEWER_CUR === "INR" ? orderInr : orderUsd; return { order: money(order), total: money(people * order * 0.064) }; };
 /* "Make a list" animation: pick brands → your list page → link in bio → earnings. */
 function ListHowTo({ title, sub, cta } = {}) {
   const [f, setF] = useState(0);
@@ -3433,8 +3430,8 @@ function ListHowTo({ title, sub, cta } = {}) {
       <div className="er-pop" style={{ animationDelay: "1.6s", marginTop: 14, textAlign: "center", fontSize: 20, fontWeight: 800, color: C.ink }}>{demoMoney(52)}</div>
     </div>,
   ];
-  const steps = [["Pick brands you love", "Choose from 1,000+ brands. It takes a minute.", [0]], ["Get your own list page", "One link with every brand you recommend.", [1]], ["Put it in your bio and share", "Followers who shop within 6 months earn you a commission on every sale.", [2, 3]]];
-  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} who="a follower" />;
+  const steps = [["Pick brands you love", "Choose from 1,000+ brands. It takes a minute.", [0]], ["Get your own list page", "One link with every brand you recommend.", [1]], ["Put it in your bio and share", (() => { const x = earnExample(20, 2000, 50); return `Followers who shop within 6 months earn you a commission. Example: 20 followers each spend ${x.order}, you earn about ${x.total}.`; })(), [2, 3]]];
+  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
 }
 /* All three ways to earn, as tabs, for pages people reach from Instagram (lists, shared links). */
 function ExploreHowTo({ heading, onCreator }) {
@@ -3459,7 +3456,7 @@ function ListPage({ session, onHome, onLogin, onLegal, onCreator }) {
   const isCreator = session && session.role === "creator";
   return (
     <div>
-      <PageHeader onHome={onHome} onLogin={isCreator ? null : onLogin} right={<button className="er-btn er-btn-primary er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={onCreator}>{isCreator ? "Add brands" : "Start"}</button>} />
+      <PageHeader onHome={onHome} onLogin={isCreator ? null : onLogin} right={isCreator ? <button className="er-btn er-btn-primary er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={onCreator}>Add brands</button> : null} />
       <section className="er-wrap" style={{ padding: "46px 22px 70px", textAlign: "center" }}>
         <span className="er-eyebrow">Make a list &amp; share</span>
         <h1 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(30px,5vw,48px)", fontWeight: 500, letterSpacing: "-.015em" }}>One link in your bio. Every recommendation pays.</h1>
@@ -3509,8 +3506,8 @@ function AffiliateHowTo({ title, sub, cta } = {}) {
       <div className="er-pop" style={{ animationDelay: "1.6s", marginTop: 14, textAlign: "center", fontSize: 20, fontWeight: 800, color: C.ink }}>{demoMoney(60)}</div>
     </div>,
   ];
-  const steps = [["Pick a brand and copy your affiliate link", "Every brand has your own tracked link.", [0]], ["Make content about it", "Posts, reels, YouTube videos, blogs, newsletters, podcasts.", [1]], ["Paste the link in your caption, description or bio", "Viewers who buy within 6 months earn you a commission, tracked automatically.", [2, 3]]];
-  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} who="a viewer" />;
+  const steps = [["Pick a brand and copy your affiliate link", "Every brand has your own tracked link.", [0]], ["Make content about it", "Posts, reels, YouTube videos, blogs, newsletters, podcasts.", [1]], ["Paste the link in your caption, description or bio", (() => { const x = earnExample(50, 2000, 50); return `Viewers who buy within 6 months earn you a commission. Example: one video drives 50 orders of ${x.order}, you earn about ${x.total}.`; })(), [2, 3]]];
+  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
 }
 /* Affiliate links for content creators: every brand with a copyable tracked link. */
 /* Popular products (seeded partner products): photo, brand, shopper discount, what you earn, and share actions. */
@@ -3522,7 +3519,7 @@ function PopularProducts({ q, isCreator, actions }) {
   const shown = (rows || []).filter((p) => (!who || p.for === who) && (!t || `${p.name} ${p.brand.name}`.toLowerCase().includes(t)));
   const earnLine = (p) => {
     const e = p.brand.earn;
-    if (e && Number(p.price) > 0 && (e.pct > 0 || e.flat > 0)) return `You earn ${money(toViewer(p.price * e.pct / 100 + (e.flat || 0), e.currency, e.fx))} on this`;
+    if (e && Number(p.price) > 0 && (e.pct > 0 || e.flat > 0)) return `You earn ${money(toViewer(p.price * e.pct / 100 + (e.flat || 0), e.currency, e.fx))} on this${e.pct > 0 ? ` (${e.pct}%)` : ""}`;
     const ei = earnInfo(p.brand); return ei ? ei.line : "";
   };
   return (
@@ -3560,7 +3557,7 @@ function ProductPhoto({ p }) {
 }
 function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
   const isCreator = session && session.role === "creator";
-  const [list, setList] = useState(() => cachedBusinesses()); const [q, setQ] = useState(""); const [cat, setCat] = useState("__popular");
+  const [list, setList] = useState(() => cachedBusinesses()); const [q, setQ] = useState(""); const [cat, setCat] = useState("__products");
   const [links, setLinks] = useState({}); const [busy, setBusy] = useState(""); const [joinFor, setJoinFor] = useState(undefined);
   useEffect(() => { fetchBusinesses(isCreator ? session.token : "").then(setList).catch(() => setList((l) => l || [])); }, [isCreator]);
   const all = list || [];
@@ -3583,7 +3580,7 @@ function AffiliatePage({ session, onHome, onLogin, onLegal, onAuth }) {
   return (
     <div>
       {joinFor !== undefined && <QuickJoin brand={joinFor} onClose={() => setJoinFor(undefined)} onDone={(sess) => { setJoinFor(undefined); onAuth(sess); toast("✓ You're in! Tap Copy on any brand to get your link"); }} />}
-      <PageHeader onHome={onHome} onLogin={isCreator ? null : onLogin} right={!isCreator && <button className="er-btn er-btn-primary er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => setJoinFor(null)}>Join</button>} />
+      <PageHeader onHome={onHome} onLogin={isCreator ? null : onLogin} right={null} />
       <section className="er-wrap" style={{ padding: "46px 22px 18px", textAlign: "center" }}>
         <span className="er-eyebrow">Affiliate links</span>
         <h1 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(30px,5vw,48px)", fontWeight: 500, letterSpacing: "-.015em" }}>Create content. Earn on every sale.</h1>
@@ -3672,13 +3669,13 @@ function ShareHowTo({ title, sub, cta } = {}) {
       <div className="er-pop" style={{ position: "absolute", left: "50%", bottom: "16%", transform: "translateX(-50%) rotate(-4deg)", background: "#fff", color: "#0095F6", borderRadius: 9, padding: "6px 9px", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", maxWidth: "88%", overflow: "hidden", textOverflow: "ellipsis", boxShadow: "0 4px 12px rgba(0,0,0,.2)" }}>🔗 {link.toUpperCase()}</div>
       <div className="er-pop" style={{ position: "absolute", left: 10, right: 10, bottom: 10, background: "rgba(17,17,17,.85)", color: "#fff", borderRadius: 10, padding: "6px 9px", fontSize: 10.5, fontWeight: 700 }}>✓ Sale tracked · you earned {demoMoney(12)}</div></>)}</div>,
   ];
-  const steps = [["Select a brand you like", "Search or browse. Each brand shows what you earn.", [0]], ["Share it on Instagram story, WhatsApp or X", "Your link is copied. On Instagram, add a Link sticker, paste it, and write a few words about why you love it.", [1, 2, 3, 4]], ["Friends shop within 6 months, you earn", "Every sale from your link pays you a commission, tracked automatically.", [5]]];
-  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} who="a friend" />;
+  const steps = [["Select a brand you like", "Search or browse. Each brand shows what you earn.", [0]], ["Share it on Instagram story, WhatsApp or X", "Your link is copied. On Instagram, add a Link sticker, paste it, and write a few words about why you love it.", [1, 2, 3, 4]], ["Friends shop within 6 months, you earn", (() => { const x = earnExample(5, 1500, 60); return `Example: 5 friends each buy a ${x.order} order, you earn about ${x.total}. Every sale is tracked automatically.`; })(), [5]]];
+  return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
 }
 /* Share a brand: browse brands, share each one to Instagram story / X / Facebook with your own link. */
 function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
   const isCreator = session && session.role === "creator";
-  const [list, setList] = useState(() => cachedBusinesses()); const [q, setQ] = useState(""); const [cat, setCat] = useState("__popular");
+  const [list, setList] = useState(() => cachedBusinesses()); const [q, setQ] = useState(""); const [cat, setCat] = useState("__products");
   const [links, setLinks] = useState({}); const [busy, setBusy] = useState(""); const [note, setNote] = useState({});
   const [joinFor, setJoinFor] = useState(undefined); // brand awaiting quick sign up (null = from header)
   useEffect(() => { fetchBusinesses(isCreator ? session.token : "").then(setList).catch(() => setList((l) => l || [])); }, [isCreator]);
@@ -3723,7 +3720,7 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
   return (
     <div>
       {joinFor !== undefined && <QuickJoin brand={joinFor} onClose={() => setJoinFor(undefined)} onDone={(sess) => { const b = joinFor; setJoinFor(undefined); onAuth(sess); if (b) say(b.id, "You're in! Tap a share button to post with your link."); }} />}
-      <PageHeader onHome={onHome} onLogin={isCreator ? null : onLogin} right={!isCreator && <button className="er-btn er-btn-primary er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => setJoinFor(null)}>Join</button>} />
+      <PageHeader onHome={onHome} onLogin={isCreator ? null : onLogin} right={null} />
       <section className="er-wrap" style={{ padding: "46px 22px 18px", textAlign: "center" }}>
         <span className="er-eyebrow">Share &amp; earn</span>
         <h1 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(30px,5vw,48px)", fontWeight: 500, letterSpacing: "-.015em" }}>Share a brand you love :)</h1>
@@ -3867,7 +3864,7 @@ function ThreeWaysSlide({ onCreator, onShare, onAffiliate, onListPage, heading, 
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
   const ways = [
     { n: "1", tag: "Make a list & share", title: "Build a list of brands you love", body: "Pick your favourite brands, put one link in your bio, and earn on every sale from your list.", cta: "Create my list", act: onCreator, more: onListPage, bg: C.ink, color: C.paper },
-    { n: "2", tag: "Share & earn", title: "Share one brand on your story", body: "No list needed. Share a brand to your Instagram story with your own link and earn when friends buy.", cta: "Share a brand", act: onShare, more: onShare, bg: igGrad, color: "#fff" },
+    { n: "2", tag: "Share & earn", title: "Share a brand you love, get a discount", body: "Share a brand to your Instagram story with your own link. Friends get a discount, and you earn when they buy.", cta: "Share a brand", act: onShare, more: onShare, bg: igGrad, color: "#fff" },
     { n: "3", tag: "Create content", title: "Interested in creating content?", body: "Get your affiliate link, make posts, reels or videos about brands you love, and earn a commission on every sale.", note: "For serious creators, bloggers, YouTubers and more", cta: "Get my affiliate link", act: onAffiliate, more: onAffiliate, bg: C.accent, color: "#fff" },
   ];
   return (
@@ -3974,7 +3971,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
               <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onBusinessPage}>For business</button>
               <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onInfluencerPage}>For creators</button>
               <button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogin}>Log in</button>
-              <button className="er-btn er-btn-primary er-btn-sm" onClick={() => setJoinOpen(true)}>Join</button>
+              <button className="er-btn er-btn-primary er-btn-sm" onClick={() => setJoinOpen(true)}>Sign up</button>
             </>}
           </div>
         </div>
@@ -4408,6 +4405,14 @@ function EasyApp() {
   useEffect(() => { const h = (e) => { setDetailMode(null); setDetailId(e.detail); }; window.addEventListener("er:open-business", h); return () => window.removeEventListener("er:open-business", h); }, []);
 
   const login = (s) => { saveSession(s); setSessionState(s); };
+  // Header buttons on any page: "Log in" / "Sign up" / "My profile".
+  const [signupOpen, setSignupOpen] = useState(false);
+  useEffect(() => {
+    const onAuth = (e) => { if (e.detail === "signup") setSignupOpen(true); else setLoginOpen(true); };
+    const onMe = () => { const s = getSession(); if (!s) return; if (s.role === "creator") { setProfileHandle(s.username); setView("profile"); nav(`/@${s.username}`); } else { setView("mybiz"); nav("/my-business"); } };
+    window.addEventListener("er:auth", onAuth); window.addEventListener("er:me", onMe);
+    return () => { window.removeEventListener("er:auth", onAuth); window.removeEventListener("er:me", onMe); };
+  }, []);
   const logout = () => { clearSession(); setSessionState(null); setView("home"); nav("/"); };
   const [legalOpen, setLegalOpen] = useState(false);
   const goSettings = () => { setView("settings"); nav("/settings"); };
@@ -4469,6 +4474,7 @@ function EasyApp() {
   return (
     <div className="er-root">
       <GlobalAlerts />
+      {signupOpen && <QuickJoin general onClose={() => setSignupOpen(false)} onDone={(sess) => { setSignupOpen(false); login(sess); toast("✓ You're in! You'll stay logged in on this device"); }} />}
       {view === "home" && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session}
         onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)}
         onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} onBrands={goBrands} onShare={goShare} onAffiliate={goAffiliate} onListPage={goListPage} />}
