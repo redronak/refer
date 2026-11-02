@@ -903,13 +903,13 @@ const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhz
 const PLANS = [
   { key: "free", amount: 0, title: "Free", tag: "Get discovered",
     points: [
-      { t: "Visible to 100,000+ influencers" },
+      { t: "Visible to 1000+ influencers" },
       { t: "Influencers won't promote or add your product to their recommendation list", off: true },
     ] },
   { key: "starter", amount: 29, title: "Get recommended", tag: "One-time fee", featured: true,
     points: [
       { t: "See and approve influencer requests" },
-      { t: "Get added to 100,000+ influencers' recommendation lists" },
+      { t: "Get added to 1000+ influencers' recommendation lists" },
       { t: "Set the reward you give influencers" },
     ] },
 ];
