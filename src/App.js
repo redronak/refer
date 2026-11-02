@@ -1684,6 +1684,11 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const [payCountry, setPayCountry] = useState("United States"); const [payCountryQ, setPayCountryQ] = useState(""); const [countryOpen, setCountryOpen] = useState(false);
   const [payMethod, setPayMethod] = useState("venmo"); const [payHandle, setPayHandle] = useState(""); const [savingPay, setSavingPay] = useState(false);
   const [picked, setPicked] = useState(initialBusinessId ? [initialBusinessId] : []);
+  // Popular products: picking one also adds its brand; the product names are saved on that brand's link.
+  const [prodPicks, setProdPicks] = useState({});   // brandId -> [product names]
+  const [autoBrands, setAutoBrands] = useState([]); // brands added only because a product was picked
+  const [popProducts, setPopProducts] = useState(popularProductsMem || []);
+  useEffect(() => { api("/products/popular").then((r) => { popularProductsMem = Array.isArray(r) ? r : []; setPopProducts(popularProductsMem); }).catch(() => {}); }, []);
   const [reviews, setReviews] = useState({});
   const [query, setQuery] = useState("");
   const [enriched, setEnriched] = useState(null);
@@ -1691,7 +1696,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const approved = enriched || businesses;
   const initialBiz = initialBusinessId ? approved.find((b) => b.id === initialBusinessId) : null;
   const initialCat = initialBiz ? (initialBiz.popular ? "__popular" : initialBiz.online ? "__online" : "__physical") : null;
-  const [openCat, setOpenCat] = useState(initialCat || "__popular");
+  const [openCat, setOpenCat] = useState(initialCat || "__products");
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [results, setResults] = useState(null);
   const [genId, setGenId] = useState(null);
   const aiReview = async (id, name, stars) => {
@@ -1703,7 +1708,26 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const RATING = ["", "Poor", "Fair", "Good", "Great", "Exceptional"];
 
   const ADD_LIMIT = 15;
-  const toggle = (id) => setPicked((p) => p.includes(id) ? p.filter((x) => x !== id) : (p.length >= ADD_LIMIT ? p : [...p, id]));
+  const toggle = (id) => {
+    if (picked.includes(id)) { setProdPicks((m) => { const n = { ...m }; delete n[id]; return n; }); setAutoBrands((a) => a.filter((x) => x !== id)); }
+    setPicked((p) => p.includes(id) ? p.filter((x) => x !== id) : (p.length >= ADD_LIMIT ? p : [...p, id]));
+  };
+  const productOn = (p) => (prodPicks[p.brand.id] || []).includes(p.name);
+  const toggleProduct = (p) => {
+    const bid = p.brand.id, cur = prodPicks[bid] || [];
+    if (cur.includes(p.name)) {
+      const left = cur.filter((n) => n !== p.name);
+      setProdPicks((m) => ({ ...m, [bid]: left }));
+      if (!left.length && autoBrands.includes(bid)) { setPicked((x) => x.filter((y) => y !== bid)); setAutoBrands((a) => a.filter((x) => x !== bid)); }
+      return;
+    }
+    if (!picked.includes(bid)) {
+      if (picked.length >= ADD_LIMIT) return;
+      setPicked((x) => [...x, bid]); setAutoBrands((a) => [...a, bid]);
+    }
+    setProdPicks((m) => ({ ...m, [bid]: [...cur, p.name] }));
+  };
+  const productCount = Object.values(prodPicks).reduce((n, a) => n + a.length, 0);
   const setReview = (id, patch) => setReviews((prev) => ({ ...prev, [id]: { stars: 0, text: "", ...prev[id], ...patch } }));
   const join = async () => {
     setBusy(true); setErr("");
@@ -1721,6 +1745,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
     try {
       for (const id of picked) {
         const r = reviews[id] || {}; const body = { token: tok, businessId: id };
+        if ((prodPicks[id] || []).length) body.products = prodPicks[id];
         if (r.stars > 0) { body.stars = r.stars; body.text = r.text || ""; }
         try {
           const res = await api("/creator/link", { method: "POST", body });
@@ -1741,12 +1766,14 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const popular = approved.filter((b) => b.popular && b.name && b.name.trim());
   const named = approved.filter((b) => b && b.name && b.name.trim()).sort((a, b) => (b.paid ? 1 : 0) - (a.paid ? 1 : 0));
   // Three sections: popular partners, online products, physical (in-person/shipped) brands.
+  const prodMatch = (p) => !q || `${p.name} ${p.brand.name}`.toLowerCase().includes(q);
   const sections = [
+    ["__products", "🧴", "Popular products", "Pick the exact products you love", popProducts.filter((p) => approved.some((b) => b.id === p.brand.id)), true],
     ["__popular", "⭐", "Popular brands", "15–30% off for your friends", popular, true],
     ["__online", "💻", "Online products", "Apps, software and digital products", named.filter((b) => !b.popular && b.online), false],
     ["__physical", "🛍️", "Physical brands", "Beauty, fashion, home, food and more", named.filter((b) => !b.popular && !b.online), false],
   ];
-  const noMatches = q && !sections.some((x) => x[4].some(match));
+  const noMatches = q && !sections.some((x) => x[4].some(x[0] === "__products" ? prodMatch : match));
   const brandRow = (b) => { const on = picked.includes(b.id);
     return <button key={b.id} type="button" onClick={() => toggle(b.id)} style={{ display: "flex", flexDirection: "column", textAlign: "left", padding: 0, border: "none", borderRadius: 14, background: "#fff", boxShadow: on ? `0 0 0 3px ${C.accent}` : `0 0 0 1px ${C.line}`, overflow: "hidden", cursor: "pointer", fontFamily: "inherit" }}>
       <span style={{ position: "relative", display: "block" }}>
@@ -1760,6 +1787,20 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
         {earnInfo(b) && <span style={{ display: "block", marginTop: 4, fontSize: 12, fontWeight: 800, color: C.accentD, background: C.accentSoft, borderRadius: 7, padding: "4px 7px" }}>You earn {earnInfo(b).est}/sale{b.earn && b.earn.pct > 0 ? ` (${b.earn.pct}%)` : ""}</span>}
       </span>
     </button>; };
+  const productTile = (p) => { const on = productOn(p);
+    return <button key={p.key} type="button" onClick={() => toggleProduct(p)} style={{ display: "flex", flexDirection: "column", textAlign: "left", padding: 0, border: "none", borderRadius: 14, background: "#fff", boxShadow: on ? `0 0 0 3px ${C.accent}` : `0 0 0 1px ${C.line}`, overflow: "hidden", cursor: "pointer", fontFamily: "inherit" }}>
+      <span style={{ position: "relative", display: "block" }}>
+        <ProductPhoto p={p} />
+        <span style={{ position: "absolute", top: 8, right: 8, width: 24, height: 24, borderRadius: "50%", display: "grid", placeItems: "center", background: on ? C.accent : "rgba(255,255,255,.9)", color: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.2)" }}>{on ? <Check size={14} /> : <Plus size={14} color={C.ink} />}</span>
+        {offText(p.brand) && <span style={{ position: "absolute", bottom: 8, left: 8, fontSize: 10.5, fontWeight: 800, color: C.ink, background: "rgba(255,255,255,.94)", borderRadius: 999, padding: "3px 8px" }}>{offText(p.brand)}</span>}
+      </span>
+      <span style={{ display: "block", padding: "8px 10px", minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em" }}>{p.brand.name}</span>
+        <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</span>
+        {earnInfo(p.brand) && <span style={{ display: "block", marginTop: 5, fontSize: 12, fontWeight: 800, color: C.accentD, background: C.accentSoft, borderRadius: 7, padding: "4px 7px" }}>You earn {Number(p.price) > 0 && p.brand.earn ? money(toViewer(p.price * p.brand.earn.pct / 100, p.brand.earn.currency, p.brand.earn.fx)) : earnInfo(p.brand).est}/sale{p.brand.earn && p.brand.earn.pct > 0 ? ` (${p.brand.earn.pct}%)` : ""}</span>}
+      </span>
+    </button>; };
+  const productGrid = (arr) => <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,138px),1fr))", gap: 10, padding: 12 }}>{arr.map(productTile)}</div>;
   const brandGrid = (arr) => <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,138px),1fr))", gap: 10, padding: 12 }}>{arr.map(brandRow)}</div>;
 
   return (
@@ -1785,18 +1826,18 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
         </div>}
 
         {step === 1 && <div style={{ marginTop: 22 }}>
-          <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Pick businesses to back</h2>
+          <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Pick products and brands you love</h2>
           <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Choose as many as you like, we generate a tracked link for each, so you earn on every sale.</p>
           <div style={{ marginTop: 16, position: "relative" }}>
             <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: C.muted, display: "flex" }}><Search size={16} /></span>
-            <input className="er-input" style={{ paddingLeft: 38 }} placeholder="Search brands" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input className="er-input" style={{ paddingLeft: 38 }} placeholder="Search products or brands" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           {picked.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
             {picked.map((id) => { const b = approved.find((x) => x.id === id); if (!b) return null;
-              return <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.ink, color: C.paper, borderRadius: 999, padding: "5px 6px 5px 12px", fontSize: 13, fontWeight: 600 }}>{b.name}<button onClick={() => toggle(id)} style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.22)", color: C.paper, cursor: "pointer" }}><Close size={11} /></button></span>; })}
+              return <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.ink, color: C.paper, borderRadius: 999, padding: "5px 6px 5px 12px", fontSize: 13, fontWeight: 600 }}>{b.name}{(prodPicks[id] || []).length ? ` · ${prodPicks[id].length} product${prodPicks[id].length > 1 ? "s" : ""}` : ""}<button onClick={() => toggle(id)} style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.22)", color: C.paper, cursor: "pointer" }}><Close size={11} /></button></span>; })}
           </div>}
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
-            {sections.map(([key, icon, title, sub, all, accent]) => { const list = all.filter(match); if (!all.length || (q && !list.length)) return null; const open = q ? true : openCat === key; const selCount = all.filter((b) => picked.includes(b.id)).length;
+            {sections.map(([key, icon, title, sub, all, accent]) => { const isProd = key === "__products"; const list = all.filter(isProd ? prodMatch : match); if (!all.length || (q && !list.length)) return null; const open = q ? true : openCat === key; const selCount = isProd ? productCount : all.filter((b) => picked.includes(b.id)).length;
               return <div key={key} style={{ border: `${accent ? 1.5 : 1}px solid ${accent ? C.accent : C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
                 <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : key); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 64, padding: "16px", background: accent ? C.accentSoft : open ? "#fff" : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
                   <span style={{ fontSize: 17, flexShrink: 0 }}>{icon}</span>
@@ -1805,7 +1846,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: C.muted, flexShrink: 0 }}>{list.length}</span>
                   <span style={{ color: C.muted, display: "flex", flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}><ChevR size={17} /></span>
                 </button>
-                {open && <div style={{ borderTop: `1px solid ${C.line}` }}>{brandGrid(list)}</div>}
+                {open && <div style={{ borderTop: `1px solid ${C.line}` }}>{isProd ? productGrid(list) : brandGrid(list)}</div>}
               </div>; })}
             {!sections.some((x) => x[4].length) && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "24px 0" }}>No live businesses yet, check back soon.</p>}
             {noMatches && <p style={{ textAlign: "center", color: C.muted, fontSize: 13.5, padding: "20px 0" }}>No brands match &ldquo;{query}&rdquo;.</p>}
@@ -2717,6 +2758,32 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
         </div>
       </div>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 22px 60px" }}>
+        {(() => { const items = recs.flatMap((b) => (b.products || []).map((p) => ({ ...p, b }))); if (!items.length) return null;
+          return <div style={{ marginBottom: 34 }}>
+            <h2 style={{ margin: "0 0 16px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Products I recommend</h2>
+            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,210px),1fr))" }}>
+              {items.map((p) => { const price = priceText(p); return (
+                <div key={p.b.id + p.name} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
+                  <ProductPhoto p={{ ...p, brand: p.b }} />
+                  {isOwner && <button type="button" aria-label={`Remove ${p.name}`} onClick={async () => { try { await api("/creator/link/product", { method: "DELETE", body: { token: session.token, businessId: p.b.id, name: p.name } }); await load(); } catch (e) { alert(e.message); } }} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.95)", boxShadow: "0 1px 4px rgba(0,0,0,.18)", cursor: "pointer", display: "grid", placeItems: "center", color: C.ink }}><Close size={13} /></button>}
+                  <div style={{ padding: "11px 13px 13px", display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+                    <div>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em" }}>{p.b.name}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</div>
+                      {(price || offText(p.b)) && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5, flexWrap: "wrap" }}>
+                        {price && <span style={{ fontSize: 13, fontWeight: 600, color: C.inkSoft }}>{price}</span>}
+                        {offText(p.b) && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>{offText(p.b)} for you</span>}
+                      </div>}
+                    </div>
+                    {isOwner && earnInfo(p.b) && <div style={{ background: C.accentSoft, borderRadius: 10, padding: "7px 10px", fontSize: 13, fontWeight: 800, color: C.accentD }}>{Number(p.price) > 0 && p.b.earn ? `You earn ${money(toViewer(p.price * p.b.earn.pct / 100, p.b.earn.currency, p.b.earn.fx))} on this (${p.b.earn.pct}%)` : earnInfo(p.b).line}</div>}
+                    <div style={{ marginTop: "auto", display: "flex", gap: 8 }}>
+                      <button className="er-btn er-btn-primary er-btn-sm" style={{ flex: 1, minWidth: 0 }} onClick={() => goToBrand(data.username, p.b.id, p.url || p.b.website)}>{isOwner ? "View product" : "Shop this"} <Arrow size={14} /></button>
+                      {!isOwner && <button className="er-btn er-btn-sm" title="Share on Instagram story & earn" onClick={() => shareBrand(p.b)} style={{ flexShrink: 0, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }}><IgIcon size={14} /></button>}
+                    </div>
+                  </div>
+                </div>); })}
+            </div>
+          </div>; })()}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Brands I back</h2>
           {isOwner && <button className="er-btn er-btn-primary er-btn-sm" onClick={onAddBrand}><Plus size={14} /> Add a brand</button>}
