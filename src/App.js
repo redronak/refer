@@ -2348,7 +2348,7 @@ function AdminSeedCatalog() {
     setSt("busy"); setExtra("");
     try {
       const r = await api("/admin/seed-catalog", { method: "POST", admin: true });
-      setSt(`Done: ${r.added} added, ${r.updated} already there${r.brandsCreated ? `, ${r.brandsCreated} new brands created (catalog-only)` : ""}.`);
+      setSt(`Done: ${r.added} added, ${r.updated} already there${r.photos ? `, ${r.photos} photos added` : ""}${r.brandsCreated ? `, ${r.brandsCreated} new brands created (catalog-only)` : ""}.`);
       setExtra([r.missing && r.missing.length ? `Brands not found: ${r.missing.join(", ")}.` : "", r.brandsWithoutWebsite && r.brandsWithoutWebsite.length ? `Add a website for: ${r.brandsWithoutWebsite.join(", ")}.` : ""].filter(Boolean).join(" "));
     } catch (e) { setSt(e.message); }
   };
