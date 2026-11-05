@@ -486,7 +486,7 @@ function LinkPopup({ business, product, onClose }) {
   const [url, setUrl] = useState(""); const [err, setErr] = useState(""); const [copied, setCopied] = useState(false);
   const [preview, setPreview] = useState("");
   // A product share: the story shows the product photo and name, and the link opens the product page.
-  const story = product ? { ...business, name: product.name, photos: product.image ? [product.image] : business.photos, brandName: business.name } : business;
+  const story = product ? { ...business, name: product.name, photos: product.image ? [product.image] : business.photos, brandName: business.name, heading: product.categoryTitle ? `My ${product.categoryTitle.replace(/^Best /i, "best ")}` : "" } : business;
   useEffect(() => {
     if (!sess || sess.role !== "creator") { setErr("Log in to get your link."); return; }
     api("/creator/link", { method: "POST", body: { token: sess.token, businessId: business.id } }).then((r) => setUrl(r.referralUrl + "?src=share" + (product ? `&p=${slugify(product.name)}` : ""))).catch((e) => setErr(e.message));
@@ -2839,6 +2839,72 @@ async function shareListToStory(username, bio, recs, link) {
   const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 5000);
   return "saved";
 }
+/* A creator's awards ("My Best of 2026"): one winner card per category, extra picks as nominees,
+   grouped by type (Skincare, Makeup, Hair, Fragrance, Grooming) with filter chips. */
+const AWARD_TYPES = [["skincare", "Skincare", ["moisturizer", "sunscreen", "facewash", "serum", "bodylotion"]], ["makeup", "Makeup", ["lipstick", "foundation", "eyes"]], ["hair", "Hair", ["shampoo", "hairoil"]], ["fragrance", "Fragrance", ["perfume_women", "perfume_men", "deo"]], ["grooming", "Grooming", ["beard", "shaving"]]];
+const awardTitle = (t) => t.split(" ").map((w) => (["for", "and", "&"].includes(w) ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(" ");
+function AwardsSection({ recs, username, isOwner, session, reload, onShare }) {
+  const [type, setType] = useState("");
+  const items = recs.flatMap((b) => (b.products || []).map((p) => ({ ...p, b })));
+  if (!items.length) return null;
+  const awards = []; items.forEach((p) => { const k = p.category || "_other"; let a = awards.find((x) => x.k === k); if (!a) { a = { k, title: p.categoryTitle ? awardTitle(p.categoryTitle) : "Also loved", order: p.categoryTitle && Number.isFinite(p.categoryOrder) ? p.categoryOrder : 999, items: [] }; awards.push(a); } a.items.push(p); });
+  awards.sort((x, y) => x.order - y.order);
+  const typeOf = (k) => (AWARD_TYPES.find(([, , cats]) => cats.includes(k)) || ["other", "More picks"])[0];
+  const groups = [...AWARD_TYPES.map(([key, label]) => [key, label]), ["other", "More picks"]].map(([key, label]) => ({ key, label, awards: awards.filter((a) => typeOf(a.k) === key) })).filter((g) => g.awards.length);
+  const shown = groups.filter((g) => !type || g.key === type);
+  const gold = "#E7C36A", line = "#3A3550", soft = "#B9B2C9";
+  const remove = async (p) => { try { await api("/creator/link/product", { method: "DELETE", body: { token: session.token, businessId: p.b.id, name: p.name } }); await reload(); } catch (e) { alert(e.message); } };
+  const medal = <svg aria-hidden="true" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="17" r="11" fill={gold}></circle><circle cx="15" cy="17" r="7" fill="none" stroke="#16131F" strokeWidth="1.6"></circle><path d="M9 2h4l2 6-4 1zM21 2h-4l-2 6 4 1z" fill="#C7493A"></path></svg>;
+  const chip = (key, label, n) => <button key={key || "all"} type="button" onClick={() => setType(key)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: type === key ? 700 : 600, color: type === key ? "#16131F" : "#F6F1E7", background: type === key ? gold : "transparent", border: type === key ? "none" : `1px solid ${line}`, borderRadius: 999, padding: "9px 14px" }}>{label} · {n}</button>;
+  const winnerCard = (a) => { const w = a.items[0], rest = a.items.slice(1), review = w.b.review && w.b.review.text;
+    return <div key={a.k} style={{ background: "#211D2E", border: `1px solid ${line}`, borderRadius: 22, overflow: "hidden", position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 18px 12px" }}>{medal}
+        <div><div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", color: gold }}>{a.k === "_other" ? "Recommended" : "Winner"}</div>
+          <div className="er-serif" style={{ fontSize: 22, fontWeight: 600, color: "#F6F1E7", lineHeight: 1.15 }}>{a.title}</div></div>
+      </div>
+      <div style={{ position: "relative" }}>
+        <ProductPhoto p={{ ...w, brand: w.b }} />
+        {offText(w.b) && <span style={{ position: "absolute", left: 12, bottom: 12, fontSize: 12, fontWeight: 800, color: "#16131F", background: "#fff", borderRadius: 999, padding: "5px 11px" }}>{offText(w.b)} for you</span>}
+        {isOwner && <button type="button" aria-label={`Remove ${w.name}`} onClick={() => remove(w)} style={{ position: "absolute", top: 10, right: 10, width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.95)", cursor: "pointer", display: "grid", placeItems: "center", color: C.ink }}><Close size={14} /></button>}
+      </div>
+      <div style={{ padding: "16px 18px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div><div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#9C95AE" }}>{w.b.name}</div>
+          <div style={{ fontSize: 17, fontWeight: 700, marginTop: 2, color: "#F6F1E7" }}>{w.name}</div>
+          {priceText(w) && <div style={{ fontSize: 13, color: soft, marginTop: 3 }}>{priceText(w)}</div>}</div>
+        {review && <p className="er-serif" style={{ margin: 0, fontSize: 16, lineHeight: 1.45, color: "#DCD5E8" }}>&ldquo;{review}&rdquo;</p>}
+        {isOwner && productEarnLine({ ...w, brand: w.b }) && <div style={{ fontSize: 13, fontWeight: 800, color: gold }}>{productEarnLine({ ...w, brand: w.b })}</div>}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button type="button" onClick={() => goToBrand(username, w.b.id, w.url || w.b.website)} style={{ flex: 1, minWidth: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 700, color: "#16131F", background: gold, border: "none", borderRadius: 12, padding: 13 }}>{isOwner ? "View product" : "Shop the winner"}</button>
+          {!isOwner && <button type="button" aria-label="Share on Instagram story & earn" onClick={() => onShare(w.b, w)} style={{ width: 48, flexShrink: 0, cursor: "pointer", border: `1px solid ${line}`, background: "transparent", color: "#F6F1E7", borderRadius: 12, display: "grid", placeItems: "center" }}><IgIcon size={18} /></button>}
+        </div>
+        {rest.length > 0 && <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, color: "#9C95AE" }}>Also nominated:</span>
+          {rest.map((p) => <span key={p.b.id + p.name} style={{ display: "inline-flex", alignItems: "center", gap: 2, border: `1px solid ${line}`, borderRadius: 999 }}>
+            <button type="button" onClick={() => goToBrand(username, p.b.id, p.url || p.b.website)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "#F6F1E7", background: "transparent", border: "none", padding: "6px 4px 6px 11px" }}>{p.name}</button>
+            {isOwner && <button type="button" aria-label={`Remove ${p.name}`} onClick={() => remove(p)} style={{ cursor: "pointer", background: "transparent", border: "none", color: "#9C95AE", padding: "6px 8px 6px 2px", display: "grid", placeItems: "center" }}><Close size={11} /></button>}
+          </span>)}
+        </div>}
+      </div>
+    </div>; };
+  return (
+    <section style={{ background: "#16131F", color: "#F6F1E7", borderRadius: 26, padding: "26px 16px 20px", marginBottom: 34 }}>
+      <div style={{ textAlign: "center", padding: "0 8px" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: gold }}>@{username} presents</div>
+        <h2 className="er-serif" style={{ margin: "6px 0 6px", fontSize: 36, fontWeight: 600, lineHeight: 1.05 }}>My Best of {new Date().getFullYear()}</h2>
+        <p style={{ margin: "0 auto", maxWidth: 320, fontSize: 14, lineHeight: 1.5, color: soft }}>{awards.filter((a) => a.k !== "_other").length || awards.length} winners I actually use and love. Shopping through my picks gets you a discount where the brand offers one.</p>
+      </div>
+      {groups.length > 1 && <div role="group" aria-label="Filter awards" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "18px 2px 4px" }}>
+        {chip("", "All", awards.length)}{groups.map((g) => chip(g.key, g.label, g.awards.length))}
+      </div>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 14 }}>
+        {shown.map((g) => <Fragment key={g.key}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}><span style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".14em", textTransform: "uppercase", color: gold }}>{g.label}</span><span style={{ flex: 1, height: 1, background: line }} /></div>
+          <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,300px),1fr))" }}>{g.awards.map(winnerCard)}</div>
+        </Fragment>)}
+      </div>
+    </section>
+  );
+}
 function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh, onCreator, onList, onAuth }) {
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false); const [photoBusy, setPhotoBusy] = useState(false);
   const [linkBiz, setLinkBiz] = useState(null); const [shareBiz, setShareBiz] = useState(null); const [joinBiz, setJoinBiz] = useState(null);
@@ -2910,32 +2976,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
         </div>
       </div>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 22px 60px" }}>
-        {(() => { const items = recs.flatMap((b) => (b.products || []).map((p) => ({ ...p, b }))); if (!items.length) return null;
-          return <div style={{ marginBottom: 34 }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Products I recommend</h2>
-            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,210px),1fr))" }}>
-              {items.map((p) => { const price = priceText(p); return (
-                <div key={p.b.id + p.name} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
-                  <ProductPhoto p={{ ...p, brand: p.b }} />
-                  {isOwner && <button type="button" aria-label={`Remove ${p.name}`} onClick={async () => { try { await api("/creator/link/product", { method: "DELETE", body: { token: session.token, businessId: p.b.id, name: p.name } }); await load(); } catch (e) { alert(e.message); } }} style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.95)", boxShadow: "0 1px 4px rgba(0,0,0,.18)", cursor: "pointer", display: "grid", placeItems: "center", color: C.ink }}><Close size={13} /></button>}
-                  <div style={{ padding: "11px 13px 13px", display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
-                    <div>
-                      <div style={{ fontSize: 11.5, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em" }}>{p.b.name}</div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</div>
-                      {(price || offText(p.b)) && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5, flexWrap: "wrap" }}>
-                        {price && <span style={{ fontSize: 13, fontWeight: 600, color: C.inkSoft }}>{price}</span>}
-                        {offText(p.b) && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>{offText(p.b)} for you</span>}
-                      </div>}
-                    </div>
-                    {isOwner && earnInfo(p.b) && <div style={{ background: C.accentSoft, borderRadius: 10, padding: "7px 10px", fontSize: 13, fontWeight: 800, color: C.accentD }}>{Number(p.price) > 0 && p.b.earn ? `You earn ${money(toViewer(p.price * p.b.earn.pct / 100, p.b.earn.currency, p.b.earn.fx))} on this (${p.b.earn.pct}%)` : earnInfo(p.b).line}</div>}
-                    <div style={{ marginTop: "auto", display: "flex", gap: 8 }}>
-                      <button className="er-btn er-btn-primary er-btn-sm" style={{ flex: 1, minWidth: 0 }} onClick={() => goToBrand(data.username, p.b.id, p.url || p.b.website)}>{isOwner ? "View product" : "Shop this"} <Arrow size={14} /></button>
-                      {!isOwner && <button className="er-btn er-btn-sm" title="Share on Instagram story & earn" onClick={() => shareBrand(p.b, p)} style={{ flexShrink: 0, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }}><IgIcon size={14} /></button>}
-                    </div>
-                  </div>
-                </div>); })}
-            </div>
-          </div>; })()}
+        <AwardsSection recs={recs} username={data.username} isOwner={isOwner} session={session} reload={load} onShare={shareBrand} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Brands I back</h2>
           {isOwner && <button className="er-btn er-btn-primary er-btn-sm" onClick={onAddBrand}><Plus size={14} /> Add a brand</button>}
