@@ -15,7 +15,33 @@ const API_BASE =
 // Admin key is entered at runtime (verified against the server), never shipped in the bundle.
 function adminKey() { try { return sessionStorage.getItem("er_admin_key") || ""; } catch (e) { return ""; } }
 
+// ── Where this visitor came from (first visit wins, kept 90 days). Sent with signups so we can see
+//    how many people join because someone shared a list, brand, product or affiliate link.
+function captureSource() {
+  try {
+    const now = Date.now(), prev = JSON.parse(localStorage.getItem("er_src") || "null");
+    if (prev && now - prev.at < 90 * 864e5) return;
+    const u = new URL(window.location.href), q = u.searchParams, path = u.pathname, ref = document.referrer || "";
+    let host = ""; try { host = ref ? new URL(ref).hostname.replace(/^www\./, "") : ""; } catch (e) {}
+    const own = host && window.location.hostname.replace(/^www\./, "") === host;
+    let src;
+    if (path === "/claim" && q.get("by")) src = { type: q.get("pname") ? "product" : q.get("src") === "aff" ? "affiliate" : q.get("src") === "list" ? "list" : "share", by: q.get("by") };
+    else if (/^\/@[a-z0-9_.-]+/i.test(path)) src = { type: "list", by: path.slice(2).split("/")[0] };
+    else if (q.get("ref")) src = { type: "invite", by: q.get("ref") };
+    else if (/email/i.test(q.get("utm_medium") || "") || /email|newsletter|mail/i.test(q.get("utm_source") || "")) src = { type: "email", by: q.get("utm_campaign") || q.get("utm_source") || "" };
+    else if (q.get("utm_source")) src = { type: "campaign", by: q.get("utm_source") };
+    else if (/(^|\.)(google|bing|duckduckgo|yahoo|ecosia|yandex)\./i.test(host)) src = { type: "search", by: host };
+    else if (/instagram|facebook|fb\.|t\.co$|twitter|x\.com|whatsapp|linkedin|youtube|reddit|threads/i.test(host)) src = { type: "social", by: host };
+    else if (host && !own) src = { type: "referral", by: host };
+    else src = { type: "direct" };
+    localStorage.setItem("er_src", JSON.stringify({ ...src, landing: path, at: now }));
+  } catch (e) {}
+}
+captureSource();
+function signupSource() { try { return JSON.parse(localStorage.getItem("er_src") || "null"); } catch (e) { return null; } }
+
 async function api(path, { method = "GET", body, admin } = {}) {
+  if (method === "POST" && body && (path === "/influencer" || path === "/business")) body = { ...body, source: signupSource() };   // new signups only
   const res = await fetch(API_BASE + path, {
     method,
     headers: { "Content-Type": "application/json", ...(admin ? { "x-admin-key": adminKey() } : {}) },
@@ -406,7 +432,11 @@ async function drawBrandStory(b) {
   const round = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
   const sans = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
   g.textAlign = "center"; g.textBaseline = "alphabetic";
-  g.fillStyle = "rgba(255,255,255,0.9)"; g.font = `800 40px ${sans}`; g.fillText("MY PICK", W / 2, 300);
+  // Top line: the category it was shared from ("MY BEST SUNSCREEN"), else "MY PICK".
+  const top = String(b.heading || "My pick").toUpperCase(); let hs = b.heading ? 64 : 40;
+  g.font = `900 ${hs}px ${sans}`; while (hs > 36 && g.measureText(top).width > W - 140) { hs -= 2; g.font = `900 ${hs}px ${sans}`; }
+  g.fillStyle = b.heading ? "#fff" : "rgba(255,255,255,0.9)"; if (b.heading) { g.shadowColor = "rgba(0,0,0,.18)"; g.shadowBlur = 24; }
+  g.fillText(top, W / 2, b.heading ? 320 : 300); g.shadowBlur = 0;
   // brand photo (only data: URLs are safe to draw), framed in a rounded card
   const photo = (b.photos || [])[0];
   let y = 420;
@@ -451,25 +481,27 @@ async function shareBrandToStory(b, url) {
   return "saved";
 }
 /* Share one brand to your Instagram story with your own link (auto-copied for the link sticker). */
-function LinkPopup({ business, onClose }) {
+function LinkPopup({ business, product, onClose }) {
   const sess = getSession();
   const [url, setUrl] = useState(""); const [err, setErr] = useState(""); const [copied, setCopied] = useState(false);
   const [preview, setPreview] = useState("");
+  // A product share: the story shows the product photo and name, and the link opens the product page.
+  const story = product ? { ...business, name: product.name, photos: product.image ? [product.image] : business.photos, brandName: business.name } : business;
   useEffect(() => {
     if (!sess || sess.role !== "creator") { setErr("Log in to get your link."); return; }
-    api("/creator/link", { method: "POST", body: { token: sess.token, businessId: business.id } }).then((r) => setUrl(r.referralUrl + "?src=share")).catch((e) => setErr(e.message));
-    drawBrandStory(business).then((cv) => setPreview(cv.toDataURL("image/jpeg", 0.8))).catch(() => {});
-  }, [business.id]);
+    api("/creator/link", { method: "POST", body: { token: sess.token, businessId: business.id } }).then((r) => setUrl(r.referralUrl + "?src=share" + (product ? `&p=${slugify(product.name)}` : ""))).catch((e) => setErr(e.message));
+    drawBrandStory(story).then((cv) => setPreview(cv.toDataURL("image/jpeg", 0.8))).catch(() => {});
+  }, [business.id, product && product.name]);
   const copy = async () => { const ok = await copyText(url); if (ok) toast("✓ Link copied"); setCopied(ok); setTimeout(() => setCopied(false), 1800); };
-  const shareIg = () => startIgShare(url, () => shareBrandToStory(business, url));
+  const shareIg = () => startIgShare(url, () => shareBrandToStory(story, url));
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
   return (
     <Modal onClose={onClose}>
       <div style={{ padding: "26px 24px", textAlign: "center" }}>
-        <h2 className="er-serif" style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 500 }}>Share {business.name} on your story</h2>
+        <h2 className="er-serif" style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 500 }}>Share {product ? product.name : business.name} on your story</h2>
         <p style={{ margin: 0, fontSize: 13.5, color: C.muted }}>{offText(business) ? `Friends get ${offText(business)}, and you earn when they buy.` : "You earn when friends buy through your link."}</p>
         <div style={{ margin: "16px auto 0", width: 170, aspectRatio: "9/16", borderRadius: 16, overflow: "hidden", background: C.panel, boxShadow: "0 14px 30px -14px rgba(0,0,0,.4)" }}>
-          {preview ? <img src={preview} alt={`${business.name} story`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <BrandArt b={business} style={{ width: "100%", height: "100%" }} />}
+          {preview ? <img src={preview} alt={`${story.name} story`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <BrandArt b={business} style={{ width: "100%", height: "100%" }} />}
         </div>
         {err ? <p style={{ marginTop: 14, fontSize: 13.5, color: "#9B3024" }}>{err}</p> : <>
           <button className="er-btn er-btn-block" disabled={!url} onClick={shareIg} style={{ marginTop: 18, border: "none", color: "#fff", background: igGrad, boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}><IgIcon size={15} /> Share on Instagram story</button>
@@ -903,13 +935,13 @@ const STRIPE_PK = "pk_live_51KLZlpDW3FwkTm7hlBeiuq9CrbzprsKJ6japvWBhrcaJvY7i4jhz
 const PLANS = [
   { key: "free", amount: 0, title: "Free", tag: "Get discovered",
     points: [
-      { t: "Visible to 1000+ influencers" },
+      { t: "Visible to 100,000+ influencers" },
       { t: "Influencers won't promote or add your product to their recommendation list", off: true },
     ] },
   { key: "starter", amount: 29, title: "Get recommended", tag: "One-time fee", featured: true,
     points: [
       { t: "See and approve influencer requests" },
-      { t: "Get added to 1000+ influencers' recommendation lists" },
+      { t: "Get added to 100,000+ influencers' recommendation lists" },
       { t: "Set the reward you give influencers" },
     ] },
 ];
@@ -1687,16 +1719,20 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   // Popular products: picking one also adds its brand; the product names are saved on that brand's link.
   const [prodPicks, setProdPicks] = useState({});   // brandId -> [product names]
   const [autoBrands, setAutoBrands] = useState([]); // brands added only because a product was picked
-  const [popProducts, setPopProducts] = useState(popularProductsMem || []);
-  useEffect(() => { api("/products/popular").then((r) => { popularProductsMem = Array.isArray(r) ? r : []; setPopProducts(popularProductsMem); }).catch(() => {}); }, []);
+  // Product catalog by category ("Best moisturizer" → 20 options). Tap a heading, pick your favourites.
+  const [catalog, setCatalog] = useState(catalogMem || []);
+  const [catKey, setCatKey] = useState(null); const [who, setWho] = useState("");
+  useEffect(() => { api("/products/catalog").then((r) => { catalogMem = Array.isArray(r) ? r : []; setCatalog(catalogMem); }).catch(() => {}); }, []);
   const [reviews, setReviews] = useState({});
   const [query, setQuery] = useState("");
   const [enriched, setEnriched] = useState(null);
   useEffect(() => { const t = loggedIn ? sess.token : token; if (!t) return; api(`/businesses?token=${encodeURIComponent(t)}`).then((r) => Array.isArray(r) && setEnriched(r)).catch(() => {}); }, [token]);
   const approved = enriched || businesses;
   const initialBiz = initialBusinessId ? approved.find((b) => b.id === initialBusinessId) : null;
+  // Brands can come from the brand list or from the product catalog (catalog-only brands aren't in the list).
+  const brandOf = (id) => approved.find((x) => x.id === id) || catalog.flatMap((c) => c.items).map((p) => p.brand).find((x) => x.id === id) || null;
   const initialCat = initialBiz ? (initialBiz.popular ? "__popular" : initialBiz.online ? "__online" : "__physical") : null;
-  const [openCat, setOpenCat] = useState(initialCat || "__products");
+  const [openCat, setOpenCat] = useState(initialCat || null);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [results, setResults] = useState(null);
   const [genId, setGenId] = useState(null);
   const aiReview = async (id, name, stars) => {
@@ -1722,7 +1758,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       return;
     }
     if (!picked.includes(bid)) {
-      if (picked.length >= ADD_LIMIT) return;
+      if (picked.length >= ADD_LIMIT) { toast(`You can add up to ${ADD_LIMIT} brands at a time`); return; }
       setPicked((x) => [...x, bid]); setAutoBrands((a) => [...a, bid]);
     }
     setProdPicks((m) => ({ ...m, [bid]: [...cur, p.name] }));
@@ -1749,7 +1785,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
         if (r.stars > 0) { body.stars = r.stars; body.text = r.text || ""; }
         try {
           const res = await api("/creator/link", { method: "POST", body });
-          const b = approved.find((x) => x.id === id);
+          const b = brandOf(id);
           out.push({ ...res, name: b ? b.name : "" });
         } catch (e) {
           if (/day|429/i.test(e.message || "")) { capped = true; break; }
@@ -1768,7 +1804,6 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   // Three sections: popular partners, online products, physical (in-person/shipped) brands.
   const prodMatch = (p) => !q || `${p.name} ${p.brand.name}`.toLowerCase().includes(q);
   const sections = [
-    ["__products", "🧴", "Popular products", "Pick the exact products you love", popProducts.filter((p) => approved.some((b) => b.id === p.brand.id)), true],
     ["__popular", "⭐", "Popular brands", "15–30% off for your friends", popular, true],
     ["__online", "💻", "Online products", "Apps, software and digital products", named.filter((b) => !b.popular && b.online), false],
     ["__physical", "🛍️", "Physical brands", "Beauty, fashion, home, food and more", named.filter((b) => !b.popular && !b.online), false],
@@ -1797,9 +1832,44 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       <span style={{ display: "block", padding: "8px 10px", minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em" }}>{p.brand.name}</span>
         <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</span>
-        {earnInfo(p.brand) && <span style={{ display: "block", marginTop: 5, fontSize: 12, fontWeight: 800, color: C.accentD, background: C.accentSoft, borderRadius: 7, padding: "4px 7px" }}>You earn {Number(p.price) > 0 && p.brand.earn ? money(toViewer(p.price * p.brand.earn.pct / 100, p.brand.earn.currency, p.brand.earn.fx)) : earnInfo(p.brand).est}/sale{p.brand.earn && p.brand.earn.pct > 0 ? ` (${p.brand.earn.pct}%)` : ""}</span>}
+        {earnInfo(p.brand) ? <span style={{ display: "block", marginTop: 5, fontSize: 12, fontWeight: 800, color: C.accentD, background: C.accentSoft, borderRadius: 7, padding: "4px 7px" }}>You earn {Number(p.price) > 0 && p.brand.earn ? money(toViewer(p.price * p.brand.earn.pct / 100, p.brand.earn.currency, p.brand.earn.fx)) : earnInfo(p.brand).est}/sale{p.brand.earn && p.brand.earn.pct > 0 ? ` (${p.brand.earn.pct}%)` : ""}</span>
+          : <span style={{ display: "block", marginTop: 5, fontSize: 11.5, fontWeight: 600, color: C.muted }}>Brand not on commission yet</span>}
       </span>
     </button>; };
+  const catPicked = (c) => c.items.filter(productOn);
+  const doneCats = catalog.filter((c) => catPicked(c).length).length;
+  const forFilter = (p) => !who || p.for === who || p.for === "all" || !p.for;
+  const openC = catalog.find((c) => c.key === catKey);
+  const catalogView = () => {
+    if (!catalog.length) return null;
+    if (q) { const hits = catalog.flatMap((c) => c.items).filter(prodMatch).slice(0, 24); return hits.length ? <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, background: "#fff" }}><div style={{ padding: "12px 14px 0", fontSize: 13, fontWeight: 700 }}>Products</div>{productGrid(hits)}</div> : null; }
+    if (openC) { const mixed = openC.items.some((p) => p.for === "women") && openC.items.some((p) => p.for === "men");
+      return <div style={{ border: `1.5px solid ${C.accent}`, borderRadius: 16, background: "#fff", overflow: "hidden", flexShrink: 0 }}>
+        <div style={{ padding: "14px 14px 4px", background: C.accentSoft }}>
+          <button type="button" className="er-link" onClick={() => { setCatKey(null); setWho(""); }} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}><ChevL size={14} /> All categories</button>
+          <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 30 }}>{openC.emoji}</span>
+            <div><div className="er-serif" style={{ fontSize: 22, fontWeight: 500, lineHeight: 1.15 }}>{openC.question}</div><div style={{ fontSize: 12.5, color: C.accentD, fontWeight: 700, marginTop: 2 }}>{openC.title} · {openC.items.length} options · pick one or more</div></div></div>
+          {mixed && <div style={{ display: "flex", gap: 6, margin: "10px 0 8px" }}>{[["", "All"], ["women", "Women"], ["men", "Men"]].map(([k, l]) => <button key={k || "all"} type="button" onClick={() => setWho(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999, border: `1px solid ${who === k ? C.accent : C.line}`, background: who === k ? "#fff" : "transparent", color: who === k ? C.accentD : C.inkSoft }}>{l}</button>)}</div>}
+        </div>
+        {productGrid(openC.items.filter(forFilter))}
+        <div style={{ padding: "0 12px 12px", display: "flex", justifyContent: "flex-end" }}><button type="button" className="er-btn er-btn-primary er-btn-sm" onClick={() => { setCatKey(null); setWho(""); }}>{catPicked(openC).length ? <>Done · {catPicked(openC).length} picked <Check size={14} /></> : "Skip"}</button></div>
+      </div>; }
+    return <div style={{ flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, margin: "2px 2px 10px" }}>
+        <div style={{ fontSize: 15, fontWeight: 800 }}>Pick your favourites ✨</div>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: doneCats ? C.accentD : C.muted }}>{doneCats}/{catalog.length} done</div>
+      </div>
+      <div style={{ height: 6, borderRadius: 99, background: C.panel, overflow: "hidden", marginBottom: 12 }}><div style={{ width: `${(doneCats / catalog.length) * 100}%`, height: "100%", background: C.accent, transition: "width .3s" }} /></div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,150px),1fr))", gap: 10 }}>
+        {catalog.map((c) => { const got = catPicked(c); return (
+          <button key={c.key} type="button" onClick={() => { setCatKey(c.key); setWho(""); }} style={{ textAlign: "left", cursor: "pointer", fontFamily: "inherit", padding: "12px 12px 11px", borderRadius: 14, border: `1.5px solid ${got.length ? C.accent : C.line}`, background: got.length ? C.accentSoft : "#fff", display: "flex", flexDirection: "column", gap: 4, minHeight: 104 }}>
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><span style={{ fontSize: 26 }}>{c.emoji}</span>{got.length > 0 && <span style={{ width: 22, height: 22, borderRadius: "50%", background: C.accent, color: "#fff", display: "grid", placeItems: "center" }}><Check size={13} /></span>}</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: C.ink, lineHeight: 1.2 }}>{c.title}</span>
+            <span style={{ fontSize: 11.5, fontWeight: 600, color: got.length ? C.accentD : C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{got.length ? got.map((p) => (p.name.toLowerCase().startsWith(p.brand.name.toLowerCase() + " ") ? p.name.slice(p.brand.name.length + 1) : p.name)).join(", ") : `${c.items.length} options`}</span>
+          </button>); })}
+      </div>
+    </div>;
+  };
   const productGrid = (arr) => <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,138px),1fr))", gap: 10, padding: 12 }}>{arr.map(productTile)}</div>;
   const brandGrid = (arr) => <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,138px),1fr))", gap: 10, padding: 12 }}>{arr.map(brandRow)}</div>;
 
@@ -1833,11 +1903,13 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             <input className="er-input" style={{ paddingLeft: 38 }} placeholder="Search products or brands" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           {picked.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
-            {picked.map((id) => { const b = approved.find((x) => x.id === id); if (!b) return null;
+            {picked.map((id) => { const b = brandOf(id); if (!b) return null;
               return <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.ink, color: C.paper, borderRadius: 999, padding: "5px 6px 5px 12px", fontSize: 13, fontWeight: 600 }}>{b.name}{(prodPicks[id] || []).length ? ` · ${prodPicks[id].length} product${prodPicks[id].length > 1 ? "s" : ""}` : ""}<button onClick={() => toggle(id)} style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.22)", color: C.paper, cursor: "pointer" }}><Close size={11} /></button></span>; })}
           </div>}
-          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
-            {sections.map(([key, icon, title, sub, all, accent]) => { const isProd = key === "__products"; const list = all.filter(isProd ? prodMatch : match); if (!all.length || (q && !list.length)) return null; const open = q ? true : openCat === key; const selCount = isProd ? productCount : all.filter((b) => picked.includes(b.id)).length;
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 520, overflowY: "auto", paddingRight: 2 }}>
+            {catalogView()}
+            {!openC && !q && catalog.length > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: C.inkSoft, margin: "8px 2px 0" }}>Or add whole brands</div>}
+            {!openC && sections.map(([key, icon, title, sub, all, accent]) => { const isProd = key === "__products"; const list = all.filter(isProd ? prodMatch : match); if (!all.length || (q && !list.length)) return null; const open = q ? true : openCat === key; const selCount = isProd ? productCount : all.filter((b) => picked.includes(b.id)).length;
               return <div key={key} style={{ border: `${accent ? 1.5 : 1}px solid ${accent ? C.accent : C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff", flexShrink: 0 }}>
                 <button type="button" onClick={() => { if (!q) setOpenCat(open ? null : key); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, minHeight: 64, padding: "16px", background: accent ? C.accentSoft : open ? "#fff" : C.panel, border: "none", cursor: q ? "default" : "pointer", textAlign: "left" }}>
                   <span style={{ fontSize: 17, flexShrink: 0 }}>{icon}</span>
@@ -1861,7 +1933,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
           <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Add your reviews</h2>
           <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>A rating and a note for each brand show on your profile. All optional, but it's what builds trust.</p>
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 380, overflowY: "auto" }}>
-            {picked.map((id) => { const b = approved.find((x) => x.id === id); if (!b) return null; const r = reviews[id] || { stars: 0, text: "" };
+            {picked.map((id) => { const b = brandOf(id); if (!b) return null; const r = reviews[id] || { stars: 0, text: "" };
               return <div key={id} style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <BrandArt b={b} mini style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0 }} />
@@ -1960,7 +2032,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             </div>
           </div>
           <button className="er-btn er-btn-block" style={{ marginTop: 16, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }}
-            onClick={() => startIgShare(`${window.location.origin}/@${handle}`, () => shareListToStory(handle, "", picked.map((id) => approved.find((x) => x.id === id)).filter(Boolean)))}>
+            onClick={() => startIgShare(`${window.location.origin}/@${handle}`, () => shareListToStory(handle, "", picked.map((id) => brandOf(id)).filter(Boolean)))}>
             <IgIcon size={16} /> Share on Instagram story</button>
           <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
             <button className="er-btn er-btn-ghost" onClick={onClose}>Close</button>
@@ -2269,6 +2341,69 @@ function AdminSeedProducts() {
     </div>
   );
 }
+/* Admin: seed the 300-product catalog (20 per category). */
+function AdminSeedCatalog() {
+  const [st, setSt] = useState(""); const [extra, setExtra] = useState("");
+  const run = async () => {
+    setSt("busy"); setExtra("");
+    try {
+      const r = await api("/admin/seed-catalog", { method: "POST", admin: true });
+      setSt(`Done: ${r.added} added, ${r.updated} already there${r.brandsCreated ? `, ${r.brandsCreated} new brands created (catalog-only)` : ""}.`);
+      setExtra([r.missing && r.missing.length ? `Brands not found: ${r.missing.join(", ")}.` : "", r.brandsWithoutWebsite && r.brandsWithoutWebsite.length ? `Add a website for: ${r.brandsWithoutWebsite.join(", ")}.` : ""].filter(Boolean).join(" "));
+    } catch (e) { setSt(e.message); }
+  };
+  return (
+    <div className="er-card" style={{ padding: 18, marginTop: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ flex: "1 1 240px" }}><div style={{ fontWeight: 700, fontSize: 15 }}>🗂️ Product catalog (300)</div>
+        <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{st && st !== "busy" ? st : "20 products in each category (Best moisturizer, Best sunscreen…). Used for making lists. Safe to press again."}</div>
+        {extra && <div style={{ fontSize: 12.5, color: "#9A3412", marginTop: 6 }}>{extra}</div>}
+      </div>
+      <button className="er-btn er-btn-primary er-btn-sm" disabled={st === "busy"} onClick={run}>{st === "busy" ? "Adding…" : "Add product catalog"}</button>
+    </div>
+  );
+}
+/* Admin: where signups come from, and how many came from people sharing. */
+const SOURCE_LABEL = { share: "🔁 Shared a brand", product: "🧴 Shared a product", list: "📋 Saw someone's list", affiliate: "🎬 Affiliate link", invite: "✉️ Invite link", email: "📧 Our emails", search: "🔎 Google / search", social: "📱 Social media", campaign: "📣 Campaign (utm)", referral: "🌐 Other website", direct: "⌨️ Typed / direct", unknown: "❔ Before tracking" };
+const VIRAL = ["share", "product", "list", "affiliate", "invite"];
+function AdminGrowth() {
+  const [days, setDays] = useState(30); const [d, setD] = useState(null); const [err, setErr] = useState("");
+  useEffect(() => { setD(null); api(`/admin/growth?days=${days}`, { admin: true }).then(setD).catch((e) => setErr(e.message)); }, [days]);
+  const pct = (n, of) => (of ? `${Math.round((n / of) * 100)}%` : "0%");
+  const stat = (big, label, sub, hi) => <div style={{ flex: "1 1 140px", background: hi ? C.accentSoft : C.panel, borderRadius: 14, padding: "12px 14px" }}><div style={{ fontSize: 24, fontWeight: 800, color: hi ? C.accentD : C.ink }}>{big}</div><div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink }}>{label}</div>{sub && <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{sub}</div>}</div>;
+  return (
+    <div className="er-card" style={{ padding: 18, marginTop: 22 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, fontWeight: 700, fontSize: 16 }}>📈 Where signups come from</div>
+        {[[7, "7 days"], [30, "30 days"], [90, "90 days"], [0, "All time"]].map(([v, l]) => <button key={v} type="button" onClick={() => setDays(v)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, padding: "6px 11px", borderRadius: 999, border: `1px solid ${days === v ? C.ink : C.line}`, background: days === v ? C.ink : "#fff", color: days === v ? C.paper : C.inkSoft }}>{l}</button>)}
+      </div>
+      {err && <p style={{ color: "#9B3024", fontSize: 13 }}>{err}</p>}
+      {!d && !err && <p style={{ color: C.muted, fontSize: 13 }}>Loading…</p>}
+      {d && <>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+          {stat(d.total, "New signups", `${d.creators} creators · ${d.brands} brands`)}
+          {stat(d.fromSharing, "From people sharing", `${pct(d.fromSharing, d.tracked)} of tracked signups`, true)}
+          {stat(d.sharing.activeSharers, "People sharing", `whose links got clicks`)}
+          {stat(d.sharing.signupsPerSharer, "Signups per sharer", `${d.sharing.clicks} clicks · ${d.sharing.clickToSignupPct}% became signups`)}
+        </div>
+        <table style={{ width: "100%", marginTop: 16, borderCollapse: "collapse", fontSize: 13.5 }}>
+          <thead><tr style={{ textAlign: "left", color: C.muted, fontSize: 12 }}><th style={{ padding: "6px 4px" }}>Source</th><th style={{ padding: "6px 4px" }}>Creators</th><th style={{ padding: "6px 4px" }}>Brands</th><th style={{ padding: "6px 4px" }}>Share</th></tr></thead>
+          <tbody>{d.bySource.map((r) => <tr key={r.type} style={{ borderTop: `1px solid ${C.line}`, background: VIRAL.includes(r.type) ? "rgba(15,107,79,.05)" : "transparent" }}>
+            <td style={{ padding: "8px 4px", fontWeight: 600 }}>{SOURCE_LABEL[r.type] || r.type}</td><td style={{ padding: "8px 4px" }}>{r.creators}</td><td style={{ padding: "8px 4px" }}>{r.brands}</td><td style={{ padding: "8px 4px", color: C.muted }}>{pct(r.creators + r.brands, d.total)}</td></tr>)}
+            {!d.bySource.length && <tr><td colSpan={4} style={{ padding: 12, color: C.muted }}>No signups in this period.</td></tr>}</tbody>
+        </table>
+        {d.topSharers.length > 0 && <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: ".06em" }}>Top sharers (people they brought in)</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>{d.topSharers.map((x) => <a key={x.handle} href={`/@${x.handle}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "4px 10px", textDecoration: "none" }}>@{x.handle} · {x.signups}</a>)}</div>
+        </div>}
+        {d.recent.length > 0 && <div style={{ marginTop: 14, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.7 }}>
+          <div style={{ fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: ".06em" }}>Latest from sharing</div>
+          {d.recent.map((x, k) => <div key={k}>{x.who} ({x.kind}) · {SOURCE_LABEL[x.type] || x.type}{x.by ? ` by @${x.by}` : ""} · {new Date(x.at).toLocaleDateString()}</div>)}
+        </div>}
+        <p style={{ margin: "12px 0 0", fontSize: 12, color: C.muted }}>Counted from each person's first visit. Signups from before this tracking show as "Before tracking". Tip: add <code>?utm_medium=email</code> to links in your emails so they're counted as email.</p>
+      </>}
+    </div>
+  );
+}
 /* Admin: approve/reject brands' creator-link offers (image + discount). */
 function AdminOffers() {
   const [list, setList] = useState(null); const [busy, setBusy] = useState("");
@@ -2524,8 +2659,10 @@ function AdminPanel({ onBack, onRefresh }) {
       </div>
       <p style={{ margin: "6px 0 0", fontSize: 14.5, color: C.muted }}>Approve businesses to list them under their category, or adjust their terms. Commission is admin-only.</p>
       <AdminStats />
+      <AdminGrowth />
       <AdminSeedPopular />
       <AdminSeedProducts />
+      <AdminSeedCatalog />
       <AdminOffers />
       <AdminSetupRequests />
       <FeatureSwitches />
@@ -2634,10 +2771,13 @@ async function drawListStory(username, recs) {
   const handle = "@" + username; g.font = `700 34px ${sans}`; const hw = g.measureText(handle).width + 56;
   round((W - hw) / 2, 150, hw, 64, 32); g.fillStyle = "rgba(255,255,255,0.22)"; g.fill(); g.fillStyle = "#fff"; g.fillText(handle, W / 2, 194);
   g.fillStyle = "#fff"; g.shadowColor = "rgba(0,0,0,.15)"; g.shadowBlur = 24;
-  g.font = `900 92px ${sans}`; g.fillText("Brands I like", W / 2, 340);
+  // Tiles: the creator's picked products first (product photo + name), then brands with no product picked.
+  const prodTiles = recs.flatMap((b) => (b.products || []).map((p) => ({ name: p.name, photos: p.image ? [p.image] : b.photos, discount: b.discount, discountText: b.discountText, isProduct: true })));
+  const tiles = [...prodTiles, ...recs.filter((b) => !(b.products || []).length)];
+  g.font = `900 92px ${sans}`; g.fillText(prodTiles.length ? "Products I love" : "Brands I like", W / 2, 340);
   g.font = `800 64px ${sans}`; g.fillText("and would recommend :)", W / 2, 425); g.shadowBlur = 0;
-  // brand tiles with real photos
-  const items = recs.slice(0, 6), n = items.length;
+  // tiles with real photos
+  const items = tiles.slice(0, 6), n = items.length;
   const imgs = await Promise.all(items.map((b) => loadStoryImage((b.photos || [])[0])));
   const M = 80, G = 28, top = 500, areaH = 860;
   const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3, rows = Math.max(1, Math.ceil(n / cols));
@@ -2649,16 +2789,27 @@ async function drawListStory(username, recs) {
     const rowX = x0 + ((cols - inRow) * (tw + G)) / 2, x = rowX + c * (tw + G), y = y0 + r * (th + G);
     g.save(); round(x, y, tw, th, 34); g.clip();
     const img = imgs[i], name = String(b.name || "").trim();
-    if (img) { const sc = Math.max(tw / img.width, th / img.height); g.drawImage(img, x + (tw - img.width * sc) / 2, y + (th - img.height * sc) / 2, img.width * sc, img.height * sc); }
+    if (img && b.isProduct) { g.fillStyle = "#fff"; g.fillRect(x, y, tw, th); const sc = Math.min(tw / img.width, (th * 0.66) / img.height) * 0.92; g.drawImage(img, x + (tw - img.width * sc) / 2, y + 14 + (th * 0.68 - img.height * sc) / 2, img.width * sc, img.height * sc); }   // products: whole item visible
+    else if (img) { const sc = Math.max(tw / img.width, th / img.height); g.drawImage(img, x + (tw - img.width * sc) / 2, y + (th - img.height * sc) / 2, img.width * sc, img.height * sc); }
     else { const { pal } = artFor(name); const gg = g.createLinearGradient(x, y, x + tw, y + th); gg.addColorStop(0, pal[0]); gg.addColorStop(1, pal[1]); g.fillStyle = gg; g.fillRect(x, y, tw, th); g.beginPath(); g.arc(x + tw * 0.9, y + th * 0.1, tw * 0.45, 0, Math.PI * 2); g.fillStyle = "rgba(255,255,255,.18)"; g.fill(); }
-    const sh = g.createLinearGradient(0, y + th * 0.45, 0, y + th); sh.addColorStop(0, "rgba(0,0,0,0)"); sh.addColorStop(1, "rgba(0,0,0,0.62)"); g.fillStyle = sh; g.fillRect(x, y, tw, th);
-    g.fillStyle = "#fff"; const fs = fit(name, 800, cols === 3 ? 38 : 50, tw - 30, 22); g.fillText(name, x + tw / 2, y + th - (cols === 3 ? 26 : 36));
+    let fs = 0;
+    if (b.isProduct) {   // product name in dark text under the photo, up to 2 lines
+      const size = cols === 3 ? 26 : cols === 1 ? 44 : 32; g.font = `800 ${size}px ${sans}`; g.fillStyle = "#1C1A17";
+      const words = name.split(/\s+/), lines = []; let cur = "";
+      for (const w of words) { const t = cur ? cur + " " + w : w; if (g.measureText(t).width > tw - 28 && cur) { lines.push(cur); cur = w; } else cur = t; }
+      if (cur) lines.push(cur); if (lines.length > 2) { lines.length = 2; lines[1] = lines[1].replace(/\s*\S*$/, "") + "…"; }
+      const lh = size * 1.18, base = y + th - 18 - (lines.length - 1) * lh;
+      lines.forEach((l, k) => g.fillText(l, x + tw / 2, base + k * lh)); fs = size;
+    } else {
+      const sh = g.createLinearGradient(0, y + th * 0.45, 0, y + th); sh.addColorStop(0, "rgba(0,0,0,0)"); sh.addColorStop(1, "rgba(0,0,0,0.62)"); g.fillStyle = sh; g.fillRect(x, y, tw, th);
+      g.fillStyle = "#fff"; fs = fit(name, 800, cols === 3 ? 38 : 50, tw - 30, 22); g.fillText(name, x + tw / 2, y + th - (cols === 3 ? 26 : 36));
+    }
     const off = offText(b);
     if (off) { const t = off.toUpperCase(); g.font = `800 ${cols === 3 ? 22 : 28}px ${sans}`; const pw = g.measureText(t).width + 30, ph = cols === 3 ? 40 : 48; round(x + 16, y + 16, pw, ph, ph / 2); g.fillStyle = "#fff"; g.fill(); g.fillStyle = "#FF385C"; g.textAlign = "left"; g.fillText(t, x + 31, y + 16 + ph * 0.7); g.textAlign = "center"; }
     g.restore(); void fs;
   });
   let y = top + areaH + 40;
-  if (recs.length > n) { g.fillStyle = "rgba(255,255,255,0.92)"; g.font = `700 34px ${sans}`; g.fillText(`+ ${recs.length - n} more on my page`, W / 2, y); y += 30; }
+  if (tiles.length > n) { g.fillStyle = "rgba(255,255,255,0.92)"; g.font = `700 34px ${sans}`; g.fillText(`+ ${tiles.length - n} more on my page`, W / 2, y); y += 30; }
   // discount banner
   const offer = listOfferText(recs);
   if (offer) {
@@ -2691,7 +2842,8 @@ async function shareListToStory(username, bio, recs, link) {
 function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh, onCreator, onList, onAuth }) {
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false); const [photoBusy, setPhotoBusy] = useState(false);
   const [linkBiz, setLinkBiz] = useState(null); const [shareBiz, setShareBiz] = useState(null); const [joinBiz, setJoinBiz] = useState(null);
-  const shareBrand = (b) => { if (session && session.role === "creator") setShareBiz(b); else setJoinBiz(b); };
+  const [shareProd, setShareProd] = useState(null);
+  const shareBrand = (b, p = null) => { setShareProd(p); if (session && session.role === "creator") setShareBiz(b); else setJoinBiz(b); };
   const isOwner = session && session.role === "creator" && session.username === handle;
   const profileUrl = `${window.location.origin}/@${handle}`;
   const copyLink = async () => { const ok = await copyText(profileUrl); if (ok) toast("✓ Link copied"); setCopied(ok); setTimeout(() => setCopied(false), 1600); };
@@ -2707,7 +2859,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
   return (
     <div>
       {linkBiz && <LinkPopup business={linkBiz} onClose={() => setLinkBiz(null)} />}
-      {shareBiz && <LinkPopup business={shareBiz} onClose={() => setShareBiz(null)} />}
+      {shareBiz && <LinkPopup business={shareBiz} product={shareProd} onClose={() => { setShareBiz(null); setShareProd(null); }} />}
       {joinBiz && <QuickJoin brand={joinBiz} onClose={() => setJoinBiz(null)} onDone={(sess) => { const b = joinBiz; setJoinBiz(null); onAuth(sess); setShareBiz(b); }} />}
       {editing && <EditProfileModal token={session.token} current={data} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.line}` }}>
@@ -2778,7 +2930,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
                     {isOwner && earnInfo(p.b) && <div style={{ background: C.accentSoft, borderRadius: 10, padding: "7px 10px", fontSize: 13, fontWeight: 800, color: C.accentD }}>{Number(p.price) > 0 && p.b.earn ? `You earn ${money(toViewer(p.price * p.b.earn.pct / 100, p.b.earn.currency, p.b.earn.fx))} on this (${p.b.earn.pct}%)` : earnInfo(p.b).line}</div>}
                     <div style={{ marginTop: "auto", display: "flex", gap: 8 }}>
                       <button className="er-btn er-btn-primary er-btn-sm" style={{ flex: 1, minWidth: 0 }} onClick={() => goToBrand(data.username, p.b.id, p.url || p.b.website)}>{isOwner ? "View product" : "Shop this"} <Arrow size={14} /></button>
-                      {!isOwner && <button className="er-btn er-btn-sm" title="Share on Instagram story & earn" onClick={() => shareBrand(p.b)} style={{ flexShrink: 0, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }}><IgIcon size={14} /></button>}
+                      {!isOwner && <button className="er-btn er-btn-sm" title="Share on Instagram story & earn" onClick={() => shareBrand(p.b, p)} style={{ flexShrink: 0, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }}><IgIcon size={14} /></button>}
                     </div>
                   </div>
                 </div>); })}
@@ -3579,16 +3731,12 @@ function AffiliateHowTo({ title, sub, cta } = {}) {
 /* Affiliate links for content creators: every brand with a copyable tracked link. */
 /* Popular products (seeded partner products): photo, brand, shopper discount, what you earn, and share actions. */
 let popularProductsMem = null;
+let catalogMem = null;
 function PopularProducts({ q, isCreator, actions }) {
   const [rows, setRows] = useState(popularProductsMem); const [who, setWho] = useState("");
   useEffect(() => { api("/products/popular").then((r) => { popularProductsMem = Array.isArray(r) ? r : []; setRows(popularProductsMem); }).catch(() => setRows((x) => x || [])); }, []);
   const t = (q || "").trim().toLowerCase();
   const shown = (rows || []).filter((p) => (!who || p.for === who) && (!t || `${p.name} ${p.brand.name}`.toLowerCase().includes(t)));
-  const earnLine = (p) => {
-    const e = p.brand.earn;
-    if (e && Number(p.price) > 0 && (e.pct > 0 || e.flat > 0)) return `You earn ${money(toViewer(p.price * e.pct / 100 + (e.flat || 0), e.currency, e.fx))} on this${e.pct > 0 ? ` (${e.pct}%)` : ""}`;
-    const ei = earnInfo(p.brand); return ei ? ei.line : "";
-  };
   return (
     <div style={{ marginTop: 14 }}>
       {(rows || []).some((p) => p.for) && <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 14 }}>
@@ -3597,25 +3745,71 @@ function PopularProducts({ q, isCreator, actions }) {
       {rows === null && <p style={{ textAlign: "center", color: C.muted }}>Loading products…</p>}
       {rows && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 20 }}>No products match{q ? ` “${q}”` : ""}.</p>}
       <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,230px),1fr))" }}>
-        {shown.map((p) => { const el = earnLine(p); return (
-          <div key={p.key} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-            <ProductPhoto p={p} />
-            <div style={{ padding: "11px 13px 13px", display: "flex", flexDirection: "column", gap: 9, flex: 1 }}>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em" }}>{p.brand.name}</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</div>
-                {(priceText(p) || offText(p.brand)) && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5, flexWrap: "wrap" }}>
-                  {priceText(p) && <span style={{ fontSize: 13, color: C.inkSoft, fontWeight: 600 }}>{priceText(p)}</span>}
-                  {offText(p.brand) && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>Friends get {offText(p.brand)}</span>}
-                </div>}
-              </div>
-              <div style={{ background: el ? C.accentSoft : C.panel, borderRadius: 10, padding: "7px 10px", fontSize: 13.5, fontWeight: 800, color: el ? C.accentD : C.muted }}>{isCreator ? (el || "Commission coming soon") : "Join free to see what you earn"}</div>
-              <div style={{ marginTop: "auto" }}>{actions(p)}</div>
-            </div>
-          </div>); })}
+        {shown.map((p) => <ProductCard key={p.key} p={p} isCreator={isCreator} actions={actions} />)}
       </div>
     </div>
   );
+}
+// What a creator earns on one product (exact when it has a price), "" when the brand pays no commission yet.
+function productEarnLine(p) {
+  const e = p.brand.earn;
+  if (e && Number(p.price) > 0 && (e.pct > 0 || e.flat > 0)) return `You earn ${money(toViewer(p.price * e.pct / 100 + (e.flat || 0), e.currency, e.fx))} on this${e.pct > 0 ? ` (${e.pct}%)` : ""}`;
+  const ei = earnInfo(p.brand); return ei ? ei.line : "";
+}
+function ProductCard({ p, isCreator, actions }) {
+  const el = productEarnLine(p);
+  return (
+    <div className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <ProductPhoto p={p} />
+      <div style={{ padding: "11px 13px 13px", display: "flex", flexDirection: "column", gap: 9, flex: 1 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em" }}>{p.brand.name}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</div>
+          {(priceText(p) || offText(p.brand)) && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5, flexWrap: "wrap" }}>
+            {priceText(p) && <span style={{ fontSize: 13, color: C.inkSoft, fontWeight: 600 }}>{priceText(p)}</span>}
+            {offText(p.brand) && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>Friends get {offText(p.brand)}</span>}
+          </div>}
+        </div>
+        <div style={{ background: el ? C.accentSoft : C.panel, borderRadius: 10, padding: "7px 10px", fontSize: 13.5, fontWeight: 800, color: el ? C.accentD : C.muted }}>{isCreator ? (el || "Commission coming soon") : "Join free to see what you earn"}</div>
+        <div style={{ marginTop: "auto" }}>{actions(p)}</div>
+      </div>
+    </div>
+  );
+}
+/* Share & earn: category headings first ("☀️ Best sunscreen"), tap one to see its products and share them. */
+function CategoryProducts({ q, isCreator, actions }) {
+  const [cats, setCats] = useState(catalogMem); const [open, setOpen] = useState(null); const [who, setWho] = useState("");
+  useEffect(() => { api("/products/catalog").then((r) => { catalogMem = Array.isArray(r) ? r : []; setCats(catalogMem); }).catch(() => setCats((x) => x || [])); }, []);
+  const t = (q || "").trim().toLowerCase();
+  const grid = { display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,230px),1fr))" };
+  if (cats === null) return <p style={{ textAlign: "center", color: C.muted, marginTop: 20 }}>Loading…</p>;
+  if (!cats.length) return <PopularProducts q={q} isCreator={isCreator} actions={(p) => actions(p, null)} />;   // catalog not added yet
+  if (t) {   // search across every category, grouped under its heading
+    const hits = cats.map((c) => ({ c, items: c.items.filter((p) => `${p.name} ${p.brand.name}`.toLowerCase().includes(t)) })).filter((x) => x.items.length);
+    if (!hits.length) return <p style={{ textAlign: "center", color: C.muted, marginTop: 20 }}>No products match “{q}”.</p>;
+    return <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 22 }}>{hits.map(({ c, items }) => <div key={c.key}>
+      <h3 className="er-serif" style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 500 }}>{c.emoji} {c.title}</h3>
+      <div style={grid}>{items.map((p) => <ProductCard key={p.key} p={p} isCreator={isCreator} actions={(x) => actions(x, c)} />)}</div></div>)}</div>;
+  }
+  const c = cats.find((x) => x.key === open);
+  if (c) {
+    const mixed = c.items.some((p) => p.for === "women") && c.items.some((p) => p.for === "men");
+    const shown = c.items.filter((p) => !who || p.for === who || p.for === "all" || !p.for);
+    return <div style={{ marginTop: 14 }}>
+      <button type="button" className="er-link" onClick={() => { setOpen(null); setWho(""); }} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13.5 }}><ChevL size={15} /> All categories</button>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "10px 0 6px" }}><span style={{ fontSize: 34 }}>{c.emoji}</span>
+        <div><h2 className="er-serif" style={{ margin: 0, fontSize: 28, fontWeight: 500, lineHeight: 1.1 }}>{c.title}</h2><div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>Share your favourite. We put “My {c.title.replace(/^Best /i, "best ")}” on your story.</div></div></div>
+      {mixed && <div style={{ display: "flex", gap: 6, margin: "10px 0 4px" }}>{[["", "All"], ["women", "For women"], ["men", "For men"]].map(([k, l]) => <button key={k || "all"} type="button" onClick={() => setWho(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: 999, border: `1px solid ${who === k ? C.accent : C.line}`, background: who === k ? C.accentSoft : "#fff", color: who === k ? C.accentD : C.inkSoft }}>{l}</button>)}</div>}
+      <div style={{ ...grid, marginTop: 12 }}>{shown.map((p) => <ProductCard key={p.key} p={p} isCreator={isCreator} actions={(x) => actions(x, c)} />)}</div>
+    </div>;
+  }
+  return <div style={{ marginTop: 16, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,160px),1fr))" }}>
+    {cats.map((x) => <button key={x.key} type="button" onClick={() => { setOpen(x.key); window.scrollBy({ top: 0 }); }} className="er-card" style={{ textAlign: "left", cursor: "pointer", fontFamily: "inherit", padding: "14px 14px 13px", display: "flex", flexDirection: "column", gap: 6, minHeight: 112, border: `1px solid ${C.line}` }}>
+      <span style={{ fontSize: 30 }}>{x.emoji}</span>
+      <span style={{ fontSize: 15.5, fontWeight: 800, color: C.ink, lineHeight: 1.2 }}>{x.title}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: C.muted, display: "inline-flex", alignItems: "center", gap: 3 }}>{x.items.length} to share <ChevR size={12} /></span>
+    </button>)}
+  </div>;
 }
 function ProductPhoto({ p }) {
   const [bad, setBad] = useState(false);
@@ -3764,7 +3958,7 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
     try {
       const base = await linkFor(b);
       const url = story.brandName ? `${base}&p=${slugify(story.name)}` : base;   // a product opens its own page
-      const what = story !== b ? `${story.name} from ${b.name}` : b.name;
+      const what = story !== b ? `${story.heading ? `${story.heading}: ` : ""}${story.name} from ${b.name}` : b.name;
       const text = offText(b) ? `${what}: ${offText(b)} with my link` : `I recommend ${what}`;
       if (where === "wa") win.location.href = `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`;
       else if (where === "x") win.location.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
@@ -3776,7 +3970,8 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
   };
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
   const sbtn = (b, where, label, icon, bg, color, story = b, key = b.id) => <button type="button" onClick={() => share(b, where, story, key)} disabled={!!busy} title={label} style={{ flex: where === "ig" ? "1 1 100%" : "1 1 0", minWidth: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 36, borderRadius: 10, border: bg === "#fff" ? `1px solid ${C.line}` : "none", background: bg, color, fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: busy ? "default" : "pointer", opacity: busy && busy !== key + where ? 0.6 : 1 }}>{icon}{busy === key + where ? "…" : label}</button>;
-  const productActions = (p) => { const st = { ...p.brand, name: p.name, photos: p.image ? [p.image] : p.brand.photos, brandName: p.brand.name }; return <>
+  // c: the category the product was shared from ("Best sunscreen") — the story heading says "My best sunscreen".
+  const productActions = (p, c) => { const st = { ...p.brand, name: p.name, photos: p.image ? [p.image] : p.brand.photos, brandName: p.brand.name, heading: c ? `My ${c.title.replace(/^Best /i, "best ")}` : "" }; return <>
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
       {sbtn(p.brand, "ig", "Share on Instagram story", <IgIcon size={14} />, igGrad, "#fff", st, p.key)}
       {sbtn(p.brand, "wa", "WhatsApp", null, "#25D366", "#fff", st, p.key)}
@@ -3804,7 +3999,7 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
         {list === null && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
           {[0, 1, 2, 3, 4, 5].map((k) => <div key={k} className="er-card er-skel" style={{ padding: 0, overflow: "hidden" }}><div style={{ aspectRatio: "16/9", background: C.panel }} /><div style={{ padding: 14 }}><div style={{ height: 14, width: "55%", borderRadius: 6, background: C.panel }} /><div style={{ height: 10, width: "35%", borderRadius: 6, background: C.panel, marginTop: 8 }} /><div style={{ height: 36, borderRadius: 10, background: C.panel, marginTop: 16 }} /></div></div>)}
         </div>}
-        {cat === "__products" && <PopularProducts q={q} isCreator={isCreator} actions={productActions} />}
+        {cat === "__products" && <CategoryProducts q={q} isCreator={isCreator} actions={productActions} />}
         {cat !== "__products" && list && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>No brands match{q ? ` “${q}”` : ""}.</p>}
         {cat !== "__products" && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
           {shown.map((b) => { const ei = earnInfo(b); return (
