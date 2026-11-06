@@ -1769,11 +1769,11 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
   const listItems = picked.flatMap((id) => { const names = prodPicks[id] || []; const b = brandOf(id); if (!b) return [];
     return names.length ? names.map((n, k) => ({ key: `${id}|${n}`, bid: id, b, name: n, p: prodInfo(id, n), firstOfBrand: k === 0 })) : [{ key: id, bid: id, b, name: b.name, p: null, firstOfBrand: true }]; });
   const listCount = listItems.length;
-  // Every pick needs a rating and a short note (that's what makes the list trustworthy).
-  const reviewDone = (it) => { const r = reviews[it.key] || {}; return r.stars > 0 && (r.text || "").trim().length >= 3; };
+  // Every pick needs a rating; the note is optional.
+  const reviewDone = (it) => (reviews[it.key] || {}).stars > 0;
   const reviewsLeft = listItems.filter((it) => !reviewDone(it)).length;
   const [showMissing, setShowMissing] = useState(false);
-  const checkReviews = () => { if (!reviewsLeft) return true; setShowMissing(true); setErr(`Add a rating and a line for every pick (${reviewsLeft} left).`); return false; };
+  const checkReviews = () => { if (!reviewsLeft) return true; setShowMissing(true); setErr(`Rate every pick to continue (${reviewsLeft} left).`); return false; };
   useEffect(() => { if (showMissing && !reviewsLeft) { setShowMissing(false); setErr(""); } }, [showMissing, reviewsLeft]);
   const storyRecs = () => picked.map((id) => { const b = brandOf(id); if (!b) return null; return { ...b, products: (prodPicks[id] || []).map((n) => { const x = prodInfo(id, n); return { name: n, image: x ? x.image : "" }; }) }; }).filter(Boolean);
   const setReview = (id, patch) => setReviews((prev) => ({ ...prev, [id]: { stars: 0, text: "", ...prev[id], ...patch } }));
@@ -1947,7 +1947,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
 
         {step === 2 && <div style={{ marginTop: 22 }}>
           <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Your list</h2>
-          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>{listCount} pick{listCount === 1 ? "" : "s"}. Rate each one and add a line on why you love it. It's what makes people trust your list.</p>
+          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>{listCount} pick{listCount === 1 ? "" : "s"}. Rate each one. A line on why you love it is optional, but it helps people trust your list.</p>
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 400, overflowY: "auto" }}>
             {listItems.map((it) => { const r = reviews[it.key] || { stars: 0, text: "" }; const missing = showMissing && !reviewDone(it);
               return <div key={it.key} style={{ border: `1px solid ${missing ? "#C0392B" : reviewDone(it) ? C.accent : C.line}`, borderRadius: 14, padding: 12 }}>
@@ -1962,7 +1962,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
                 </div>
                 <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}><StarPicker value={r.stars} onChange={(v) => setReview(it.key, { stars: v })} /><span style={{ fontSize: 12, fontWeight: 600, color: r.stars ? C.accent : missing ? "#C0392B" : C.muted }}>{r.stars ? RATING[r.stars] : "Tap to rate"}</span></div>
                 <div style={{ marginTop: 10 }}>
-                  <textarea className="er-input" rows={2} placeholder={`Why do you love ${it.p ? "it" : it.b.name}? One line is enough.`} value={r.text} onChange={(e) => setReview(it.key, { text: e.target.value })} style={missing && (r.text || "").trim().length < 3 ? { borderColor: "#C0392B" } : undefined} />
+                  <textarea className="er-input" rows={2} placeholder={`Why do you love ${it.p ? "it" : it.b.name}? (optional)`} value={r.text} onChange={(e) => setReview(it.key, { text: e.target.value })} />
                   {token && <button type="button" onClick={() => aiReview(it.key, it.p ? it.name : it.b.name, r.stars)} disabled={genId === it.key} style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: C.accentD, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}><Spark size={13} /> {genId === it.key ? "Writing…" : "Write it for me"}</button>}
                 </div>
               </div>; })}
@@ -1971,8 +1971,8 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
           <div style={{ marginTop: 18, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <button className="er-btn er-btn-ghost" onClick={() => setStep(1)} disabled={busy}><ChevL size={16} /> Back</button>
             {token
-              ? <button className="er-btn er-btn-primary" onClick={() => { if (checkReviews()) finish(); }} disabled={busy}><Spark size={16} /> {busy ? "Creating your list…" : reviewsLeft ? `Create my list · ${reviewsLeft} to review` : "Create my list"}</button>
-              : <button className="er-btn er-btn-primary" onClick={() => { if (!checkReviews()) return; setErr(""); setStep(4); }}>{reviewsLeft ? `My list is ready · ${reviewsLeft} to review` : "My list is ready"} <ChevR size={16} /></button>}</div>
+              ? <button className="er-btn er-btn-primary" onClick={() => { if (checkReviews()) finish(); }} disabled={busy}><Spark size={16} /> {busy ? "Creating your list…" : reviewsLeft ? `Create my list · ${reviewsLeft} to rate` : "Create my list"}</button>
+              : <button className="er-btn er-btn-primary" onClick={() => { if (!checkReviews()) return; setErr(""); setStep(4); }}>{reviewsLeft ? `My list is ready · ${reviewsLeft} to rate` : "My list is ready"} <ChevR size={16} /></button>}</div>
         </div>}
 
         {step === 3 && results && !payShown && (() => {
@@ -2876,42 +2876,40 @@ function AwardsSection({ recs, username, isOwner, session, reload, onShare }) {
   const remove = async (p) => { try { await api("/creator/link/product", { method: "DELETE", body: { token: session.token, businessId: p.b.id, name: p.name } }); await reload(); } catch (e) { alert(e.message); } };
   const medal = <svg aria-hidden="true" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="17" r="11" fill={gold}></circle><circle cx="15" cy="17" r="7" fill="none" stroke="#16131F" strokeWidth="1.6"></circle><path d="M9 2h4l2 6-4 1zM21 2h-4l-2 6 4 1z" fill="#C7493A"></path></svg>;
   const chip = (key, label, n) => <button key={key || "all"} type="button" onClick={() => setType(key)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: type === key ? 700 : 600, color: type === key ? "#16131F" : "#F6F1E7", background: type === key ? gold : "transparent", border: type === key ? "none" : `1px solid ${line}`, borderRadius: 999, padding: "9px 14px" }}>{label} · {n}</button>;
-  const winnerCard = (a) => { const w = a.items[0], rest = a.items.slice(1), review = (w.review && w.review.text) || (w.b.review && w.b.review.text);
-    return <div key={a.k} style={{ background: "#211D2E", border: `1px solid ${line}`, borderRadius: 22, overflow: "hidden", position: "relative" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 18px 12px" }}>{medal}
-        <div><div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", color: gold }}>{a.k === "_other" ? "Recommended" : "Winner"}</div>
-          <div className="er-serif" style={{ fontSize: 22, fontWeight: 600, color: "#F6F1E7", lineHeight: 1.15 }}>{a.title}</div></div>
-      </div>
+  // One award = a heading ("Best Moisturizer") + every product the creator picked for it; all are winners.
+  const productCard = (w) => { const review = (w.review && w.review.text) || (!w.review && w.b.review && w.b.review.text);
+    return <div key={w.b.id + w.name} style={{ background: "#211D2E", border: `1px solid ${line}`, borderRadius: 20, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div style={{ position: "relative" }}>
         <ProductPhoto p={{ ...w, brand: w.b }} />
         {offText(w.b) && <span style={{ position: "absolute", left: 12, bottom: 12, fontSize: 12, fontWeight: 800, color: "#16131F", background: "#fff", borderRadius: 999, padding: "5px 11px" }}>{offText(w.b)} for you</span>}
         {isOwner && <button type="button" aria-label={`Remove ${w.name}`} onClick={() => remove(w)} style={{ position: "absolute", top: 10, right: 10, width: 32, height: 32, borderRadius: "50%", border: "none", background: "rgba(255,255,255,.95)", cursor: "pointer", display: "grid", placeItems: "center", color: C.ink }}><Close size={14} /></button>}
       </div>
-      <div style={{ padding: "16px 18px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
         <div><div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#9C95AE" }}>{w.b.name}</div>
-          <div style={{ fontSize: 17, fontWeight: 700, marginTop: 2, color: "#F6F1E7" }}>{w.name}</div>
+          <div style={{ fontSize: 16.5, fontWeight: 700, marginTop: 2, color: "#F6F1E7", lineHeight: 1.3 }}>{w.name}</div>
+          {(w.review && w.review.stars > 0) && <div aria-label={`${w.review.stars} out of 5 stars`} style={{ marginTop: 4, color: gold, fontSize: 14, letterSpacing: 2 }}>{"★★★★★".slice(0, w.review.stars)}<span style={{ color: line }}>{"★★★★★".slice(w.review.stars)}</span></div>}
           {priceText(w) && <div style={{ fontSize: 13, color: soft, marginTop: 3 }}>{priceText(w)}</div>}</div>
-        {review && <p className="er-serif" style={{ margin: 0, fontSize: 16, lineHeight: 1.45, color: "#DCD5E8" }}>&ldquo;{review}&rdquo;</p>}
+        {review && <p className="er-serif" style={{ margin: 0, fontSize: 15.5, lineHeight: 1.45, color: "#DCD5E8" }}>&ldquo;{review}&rdquo;</p>}
         {isOwner && productEarnLine({ ...w, brand: w.b }) && <div style={{ fontSize: 13, fontWeight: 800, color: gold }}>{productEarnLine({ ...w, brand: w.b })}</div>}
-        <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" onClick={() => goToBrand(username, w.b.id, w.url || w.b.website)} style={{ flex: 1, minWidth: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 700, color: "#16131F", background: gold, border: "none", borderRadius: 12, padding: 13 }}>{isOwner ? "View product" : "Shop the winner"}</button>
+        <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
+          <button type="button" onClick={() => goToBrand(username, w.b.id, w.url || w.b.website)} style={{ flex: 1, minWidth: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 700, color: "#16131F", background: gold, border: "none", borderRadius: 12, padding: 13 }}>{isOwner ? "View product" : "Shop this"}</button>
           {!isOwner && <button type="button" aria-label="Share on Instagram story & earn" onClick={() => onShare(w.b, w)} style={{ width: 48, flexShrink: 0, cursor: "pointer", border: `1px solid ${line}`, background: "transparent", color: "#F6F1E7", borderRadius: 12, display: "grid", placeItems: "center" }}><IgIcon size={18} /></button>}
         </div>
-        {rest.length > 0 && <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: "#9C95AE" }}>Also nominated:</span>
-          {rest.map((p) => <span key={p.b.id + p.name} style={{ display: "inline-flex", alignItems: "center", gap: 2, border: `1px solid ${line}`, borderRadius: 999 }}>
-            <button type="button" onClick={() => goToBrand(username, p.b.id, p.url || p.b.website)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: "#F6F1E7", background: "transparent", border: "none", padding: "6px 4px 6px 11px" }}>{p.name}</button>
-            {isOwner && <button type="button" aria-label={`Remove ${p.name}`} onClick={() => remove(p)} style={{ cursor: "pointer", background: "transparent", border: "none", color: "#9C95AE", padding: "6px 8px 6px 2px", display: "grid", placeItems: "center" }}><Close size={11} /></button>}
-          </span>)}
-        </div>}
       </div>
     </div>; };
+  const winnerCard = (a) => <div key={a.k} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{medal}
+      <div><div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", color: gold }}>{a.k === "_other" ? "Recommended" : a.items.length > 1 ? `${a.items.length} winners` : "Winner"}</div>
+        <div className="er-serif" style={{ fontSize: 22, fontWeight: 600, color: "#F6F1E7", lineHeight: 1.15 }}>{a.title}</div></div>
+    </div>
+    <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,240px),1fr))" }}>{a.items.map(productCard)}</div>
+  </div>;
   return (
     <section style={{ background: "#16131F", color: "#F6F1E7", borderRadius: 26, padding: "26px 16px 20px", marginBottom: 34 }}>
       <div style={{ textAlign: "center", padding: "0 8px" }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: gold }}>@{username} presents</div>
         <h2 className="er-serif" style={{ margin: "6px 0 6px", fontSize: 36, fontWeight: 600, lineHeight: 1.05 }}>My Best of {new Date().getFullYear()}</h2>
-        <p style={{ margin: "0 auto", maxWidth: 320, fontSize: 14, lineHeight: 1.5, color: soft }}>{awards.filter((a) => a.k !== "_other").length || awards.length} winners I actually use and love. Shopping through my picks gets you a discount where the brand offers one.</p>
+        <p style={{ margin: "0 auto", maxWidth: 320, fontSize: 14, lineHeight: 1.5, color: soft }}>{items.length} things I actually use and love, across {awards.filter((a) => a.k !== "_other").length || awards.length} awards. Shopping through my picks gets you a discount where the brand offers one.</p>
       </div>
       {groups.length > 1 && <div role="group" aria-label="Filter awards" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "18px 2px 4px" }}>
         {chip("", "All", awards.length)}{groups.map((g) => chip(g.key, g.label, g.awards.length))}
@@ -2919,7 +2917,7 @@ function AwardsSection({ recs, username, isOwner, session, reload, onShare }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 14 }}>
         {shown.map((g) => <Fragment key={g.key}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}><span style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".14em", textTransform: "uppercase", color: gold }}>{g.label}</span><span style={{ flex: 1, height: 1, background: line }} /></div>
-          <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,300px),1fr))" }}>{g.awards.map(winnerCard)}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>{g.awards.map(winnerCard)}</div>
         </Fragment>)}
       </div>
     </section>
