@@ -231,7 +231,7 @@ function Avatar({ name, image, size = 44 }) {
 function Stars({ value = 5, size = 14 }) { return <span style={{ display: "inline-flex", gap: 2 }}>{[1, 2, 3, 4, 5].map((n) => <Star key={n} size={size} on={n <= value} />)}</span>; }
 function StarPicker({ value, onChange }) {
   return <div style={{ display: "flex", gap: 6 }}>{[1, 2, 3, 4, 5].map((n) => (
-    <button key={n} type="button" onClick={() => onChange(n)} style={{ background: "none", border: "none", cursor: "pointer", padding: 2 }}><Star size={30} on={n <= value} /></button>))}</div>;
+    <button key={n} type="button" aria-label={`${n} star${n > 1 ? "s" : ""}`} aria-pressed={n <= value} onClick={() => onChange(n)} style={{ background: "none", border: "none", cursor: "pointer", padding: 2 }}><Star size={30} on={n <= value} /></button>))}</div>;
 }
 function Field({ label, hint, children }) {
   return <label style={{ display: "block" }}><span style={{ display: "block", fontSize: 13.5, fontWeight: 600, marginBottom: 7, color: C.ink }}>{label}</span>{children}{hint && <span style={{ display: "block", fontSize: 12, color: C.muted, marginTop: 6 }}>{hint}</span>}</label>;
@@ -1764,6 +1764,18 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
     setProdPicks((m) => ({ ...m, [bid]: [...cur, p.name] }));
   };
   const productCount = Object.values(prodPicks).reduce((n, a) => n + a.length, 0);
+  // What's on the list: each picked product, plus brands picked on their own (no product chosen).
+  const prodInfo = (bid, name) => { for (const c of catalog) { const p = c.items.find((x) => x.brand.id === bid && x.name === name); if (p) return { ...p, cat: c }; } return null; };
+  const listItems = picked.flatMap((id) => { const names = prodPicks[id] || []; const b = brandOf(id); if (!b) return [];
+    return names.length ? names.map((n, k) => ({ key: `${id}|${n}`, bid: id, b, name: n, p: prodInfo(id, n), firstOfBrand: k === 0 })) : [{ key: id, bid: id, b, name: b.name, p: null, firstOfBrand: true }]; });
+  const listCount = listItems.length;
+  // Every pick needs a rating and a short note (that's what makes the list trustworthy).
+  const reviewDone = (it) => { const r = reviews[it.key] || {}; return r.stars > 0 && (r.text || "").trim().length >= 3; };
+  const reviewsLeft = listItems.filter((it) => !reviewDone(it)).length;
+  const [showMissing, setShowMissing] = useState(false);
+  const checkReviews = () => { if (!reviewsLeft) return true; setShowMissing(true); setErr(`Add a rating and a line for every pick (${reviewsLeft} left).`); return false; };
+  useEffect(() => { if (showMissing && !reviewsLeft) { setShowMissing(false); setErr(""); } }, [showMissing, reviewsLeft]);
+  const storyRecs = () => picked.map((id) => { const b = brandOf(id); if (!b) return null; return { ...b, products: (prodPicks[id] || []).map((n) => { const x = prodInfo(id, n); return { name: n, image: x ? x.image : "" }; }) }; }).filter(Boolean);
   const setReview = (id, patch) => setReviews((prev) => ({ ...prev, [id]: { stars: 0, text: "", ...prev[id], ...patch } }));
   const join = async () => {
     setBusy(true); setErr("");
@@ -1780,8 +1792,12 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
     const out = []; let capped = false;
     try {
       for (const id of picked) {
-        const r = reviews[id] || {}; const body = { token: tok, businessId: id };
-        if ((prodPicks[id] || []).length) body.products = prodPicks[id];
+        const names = prodPicks[id] || []; const body = { token: tok, businessId: id };
+        if (names.length) {
+          body.products = names;
+          body.productReviews = names.map((n) => ({ name: n, ...(reviews[`${id}|${n}`] || {}) })).filter((x) => x.stars > 0);
+        }
+        const r = names.length ? (reviews[`${id}|${names[0]}`] || {}) : (reviews[id] || {});   // brand-level review: the brand itself, or its first product
         if (r.stars > 0) { body.stars = r.stars; body.text = r.text || ""; }
         try {
           const res = await api("/creator/link", { method: "POST", body });
@@ -1925,34 +1941,38 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
           </div>
           <div style={{ marginTop: 22, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 12.5, color: C.muted }}>{picked.length}/{ADD_LIMIT} picked</span>
-            <button className="er-btn er-btn-primary" disabled={!picked.length} onClick={() => setStep(2)}>Continue{picked.length ? ` · ${picked.length}` : ""} <ChevR size={16} /></button></div>
+            <button className="er-btn er-btn-primary" disabled={!picked.length} onClick={() => setStep(2)}>Continue{listCount ? ` · ${listCount}` : ""} <ChevR size={16} /></button></div>
           <p style={{ margin: "8px 0 0", fontSize: 12, color: C.muted, textAlign: "center" }}>You can add up to {ADD_LIMIT} brands a day.</p>
         </div>}
 
         {step === 2 && <div style={{ marginTop: 22 }}>
-          <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Add your reviews</h2>
-          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>A rating and a note for each brand show on your profile. All optional, but it's what builds trust.</p>
-          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 380, overflowY: "auto" }}>
-            {picked.map((id) => { const b = brandOf(id); if (!b) return null; const r = reviews[id] || { stars: 0, text: "" };
-              return <div key={id} style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <BrandArt b={b} mini style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0 }} />
-                  <span style={{ fontWeight: 600, fontSize: 15.5, color: C.ink, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: r.stars ? C.accent : C.muted }}>{r.stars ? RATING[r.stars] : "Optional"}</span>
+          <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Your list</h2>
+          <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>{listCount} pick{listCount === 1 ? "" : "s"}. Rate each one and add a line on why you love it. It's what makes people trust your list.</p>
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxHeight: 400, overflowY: "auto" }}>
+            {listItems.map((it) => { const r = reviews[it.key] || { stars: 0, text: "" }; const missing = showMissing && !reviewDone(it);
+              return <div key={it.key} style={{ border: `1px solid ${missing ? "#C0392B" : reviewDone(it) ? C.accent : C.line}`, borderRadius: 14, padding: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {it.p && it.p.image ? <span style={{ width: 54, height: 54, borderRadius: 10, overflow: "hidden", flexShrink: 0, border: `1px solid ${C.line}`, background: "#fff", display: "block" }}><img src={it.p.image} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "contain" }} /></span>
+                    : <BrandArt b={it.b} mini style={{ width: 54, height: 54, borderRadius: 10, flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {it.p && <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>{awardTitle(it.p.cat.title)}</div>}
+                    <div style={{ fontWeight: 700, fontSize: 14.5, color: C.ink, lineHeight: 1.3 }}>{it.name}</div>
+                    {it.p && <div style={{ fontSize: 12, color: C.muted }}>{it.b.name}</div>}
+                  </div>
                 </div>
-                <div style={{ marginTop: 10 }}><StarPicker value={r.stars} onChange={(v) => setReview(id, { stars: v })} /></div>
-                {r.stars > 0 && <div style={{ marginTop: 10 }}>
-                  <textarea className="er-input" placeholder={`What did you love about ${b.name}?`} value={r.text} onChange={(e) => setReview(id, { text: e.target.value })} />
-                  {token && <button type="button" onClick={() => aiReview(id, b.name, r.stars)} disabled={genId === id} style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: C.accentD, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 999, padding: "6px 12px", cursor: genId === id ? "default" : "pointer", opacity: genId === id ? 0.7 : 1 }}><Spark size={13} /> {genId === id ? "Writing…" : (r.text ? "Rewrite with AI" : "Write with AI")}</button>}
-                </div>}
+                <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}><StarPicker value={r.stars} onChange={(v) => setReview(it.key, { stars: v })} /><span style={{ fontSize: 12, fontWeight: 600, color: r.stars ? C.accent : missing ? "#C0392B" : C.muted }}>{r.stars ? RATING[r.stars] : "Tap to rate"}</span></div>
+                <div style={{ marginTop: 10 }}>
+                  <textarea className="er-input" rows={2} placeholder={`Why do you love ${it.p ? "it" : it.b.name}? One line is enough.`} value={r.text} onChange={(e) => setReview(it.key, { text: e.target.value })} style={missing && (r.text || "").trim().length < 3 ? { borderColor: "#C0392B" } : undefined} />
+                  {token && <button type="button" onClick={() => aiReview(it.key, it.p ? it.name : it.b.name, r.stars)} disabled={genId === it.key} style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: C.accentD, background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}><Spark size={13} /> {genId === it.key ? "Writing…" : "Write it for me"}</button>}
+                </div>
               </div>; })}
           </div>
           <ErrBox msg={err} />
           <div style={{ marginTop: 18, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <button className="er-btn er-btn-ghost" onClick={() => setStep(1)} disabled={busy}><ChevL size={16} /> Back</button>
             {token
-              ? <button className="er-btn er-btn-primary" onClick={() => finish()} disabled={busy}><Spark size={16} /> {busy ? "Generating…" : `Generate ${picked.length > 1 ? `${picked.length} links` : "my link"}`}</button>
-              : <button className="er-btn er-btn-primary" onClick={() => { setErr(""); setStep(4); }}>My list is ready <ChevR size={16} /></button>}</div>
+              ? <button className="er-btn er-btn-primary" onClick={() => { if (checkReviews()) finish(); }} disabled={busy}><Spark size={16} /> {busy ? "Creating your list…" : reviewsLeft ? `Create my list · ${reviewsLeft} to review` : "Create my list"}</button>
+              : <button className="er-btn er-btn-primary" onClick={() => { if (!checkReviews()) return; setErr(""); setStep(4); }}>{reviewsLeft ? `My list is ready · ${reviewsLeft} to review` : "My list is ready"} <ChevR size={16} /></button>}</div>
         </div>}
 
         {step === 3 && results && !payShown && (() => {
@@ -1974,7 +1994,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             <div style={{ textAlign: "center" }}>
               <div style={{ margin: "0 auto", width: 52, height: 52, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD }}><Spark size={24} /></div>
               <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 25, fontWeight: 500 }}>One last step: get paid</h2>
-              <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Your links are ready. Tell us your country so we can show the right payout options.</p>
+              <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Your list is ready. Tell us your country so we can show the right payout options.</p>
               <div style={{ marginTop: 16, background: C.ink, color: C.paper, borderRadius: 14, padding: "14px 16px" }}>
                 <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "rgba(253,252,250,.6)", marginBottom: 8 }}>Average earnings in first 3 months</div>
                 <div style={{ display: "flex", gap: 10 }}>
@@ -2021,7 +2041,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
           <div style={{ textAlign: "center" }}>
             <div style={{ margin: "0 auto", width: 56, height: 56, display: "grid", placeItems: "center" }}><Seal size={50} /></div>
             <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 24, fontWeight: 500 }}>You're all set</h2>
-            <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Here's your one link. Put it in your bio, and every brand on your list earns you a commission.</p>
+            <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Here's your list link. Share it on Instagram or put it in your bio, like a reading list for the things you love.</p>
           </div>
           <div style={{ marginTop: 20, textAlign: "left" }}>
             <CopyRow label="Your page · add this to your bio" value={results[0].profileUrl} />
@@ -2032,7 +2052,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
             </div>
           </div>
           <button className="er-btn er-btn-block" style={{ marginTop: 16, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }}
-            onClick={() => startIgShare(`${window.location.origin}/@${handle}`, () => shareListToStory(handle, "", picked.map((id) => brandOf(id)).filter(Boolean)))}>
+            onClick={() => startIgShare(`${window.location.origin}/@${handle}`, () => shareListToStory(handle, "", storyRecs()))}>
             <IgIcon size={16} /> Share on Instagram story</button>
           <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
             <button className="er-btn er-btn-ghost" onClick={onClose}>Close</button>
@@ -2856,7 +2876,7 @@ function AwardsSection({ recs, username, isOwner, session, reload, onShare }) {
   const remove = async (p) => { try { await api("/creator/link/product", { method: "DELETE", body: { token: session.token, businessId: p.b.id, name: p.name } }); await reload(); } catch (e) { alert(e.message); } };
   const medal = <svg aria-hidden="true" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="17" r="11" fill={gold}></circle><circle cx="15" cy="17" r="7" fill="none" stroke="#16131F" strokeWidth="1.6"></circle><path d="M9 2h4l2 6-4 1zM21 2h-4l-2 6 4 1z" fill="#C7493A"></path></svg>;
   const chip = (key, label, n) => <button key={key || "all"} type="button" onClick={() => setType(key)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: type === key ? 700 : 600, color: type === key ? "#16131F" : "#F6F1E7", background: type === key ? gold : "transparent", border: type === key ? "none" : `1px solid ${line}`, borderRadius: 999, padding: "9px 14px" }}>{label} · {n}</button>;
-  const winnerCard = (a) => { const w = a.items[0], rest = a.items.slice(1), review = w.b.review && w.b.review.text;
+  const winnerCard = (a) => { const w = a.items[0], rest = a.items.slice(1), review = (w.review && w.review.text) || (w.b.review && w.b.review.text);
     return <div key={a.k} style={{ background: "#211D2E", border: `1px solid ${line}`, borderRadius: 22, overflow: "hidden", position: "relative" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 18px 12px" }}>{medal}
         <div><div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", color: gold }}>{a.k === "_other" ? "Recommended" : "Winner"}</div>
