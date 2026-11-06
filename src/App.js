@@ -2943,7 +2943,7 @@ async function shareListToStory(username, bio, recs, link) {
    grouped by type (Skincare, Makeup, Hair, Fragrance, Grooming) with filter chips. */
 const AWARD_TYPES = [["skincare", "Skincare", ["moisturizer", "sunscreen", "facewash", "serum", "bodylotion"]], ["makeup", "Makeup", ["lipstick", "foundation", "eyes"]], ["hair", "Hair", ["shampoo", "hairoil"]], ["fragrance", "Fragrance", ["perfume_women", "perfume_men", "deo"]], ["grooming", "Grooming", ["beard", "shaving"]]];
 const awardTitle = (t) => t.split(" ").map((w) => (["for", "and", "&"].includes(w) ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(" ");
-function AwardsSection({ recs, username, isOwner, session, reload, onShare }) {
+function AwardsSection({ recs, username, isOwner, session, reload, onShare, midSlot }) {
   const [type, setType] = useState("");
   const items = recs.flatMap((b) => (b.products || []).map((p) => ({ ...p, b })));
   if (!items.length) return null;
@@ -2995,25 +2995,38 @@ function AwardsSection({ recs, username, isOwner, session, reload, onShare }) {
         {chip("", "All", awards.length)}{groups.map((g) => chip(g.key, g.label, g.awards.length))}
       </div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 14 }}>
-        {shown.map((g) => <Fragment key={g.key}>
+        {shown.map((g, gi) => <Fragment key={g.key}>
+          {midSlot && gi === Math.ceil(shown.length / 2) && <div style={{ margin: "10px 0 4px" }}>{midSlot}</div>}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}><span style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".14em", textTransform: "uppercase", color: gold }}>{g.label}</span><span style={{ flex: 1, height: 1, background: line }} /></div>
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>{g.awards.map(winnerCard)}</div>
         </Fragment>)}
+        {midSlot && shown.length < 2 && <div style={{ marginTop: 10 }}>{midSlot}</div>}
       </div>
     </section>
   );
 }
 /* ₹50 offer: make a list, share it on an Instagram story, follow our Instagram to claim. */
 const PROMO_IG = "https://www.instagram.com/podcasttru/";
+// The same ₹50 offer as a card inside the page (middle of the list and above the footer).
+function PromoCard({ onCreate, dark }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", borderRadius: 20, padding: "16px 18px", background: dark ? "#2A2338" : "#fff", border: `1.5px solid ${dark ? "#6B3D63" : "#F2B8CF"}`, boxShadow: dark ? "none" : "0 10px 24px -18px rgba(214,41,118,.5)" }}>
+      <div style={{ flexShrink: 0, width: 52, height: 52, borderRadius: "50%", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", color: "#fff", display: "grid", placeItems: "center", fontSize: 17, fontWeight: 900 }}>₹50</div>
+      <div style={{ flex: "1 1 180px", minWidth: 0, textAlign: "left" }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: dark ? "#F6F1E7" : C.ink, lineHeight: 1.25 }}>Make your recommendation list, get paid ₹50</div>
+        <div style={{ fontSize: 13, color: dark ? "#B9B2C9" : C.muted, marginTop: 3, lineHeight: 1.45 }}>Share it on your Instagram story. Plus 6% when anyone shops from it.</div>
+      </div>
+      <button type="button" className="er-btn er-btn-primary er-btn-sm" onClick={onCreate} style={dark ? { background: "#E7C36A", color: "#16131F" } : undefined}>Create my list <ChevR size={14} /></button>
+    </div>
+  );
+}
 function ListPromoPopup({ onCreate }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    let seen = 0; try { seen = Number(localStorage.getItem("er_promo50")) || 0; } catch (e) {}
-    if (Date.now() - seen < 3 * 864e5) return undefined;   // at most once every 3 days
-    const t = setTimeout(() => setOpen(true), 3500);          // let them see the list first
+    const t = setTimeout(() => setOpen(true), 3500);          // every visit, after they've seen the list for a moment
     return () => clearTimeout(t);
   }, []);
-  const close = () => { setOpen(false); try { localStorage.setItem("er_promo50", String(Date.now())); } catch (e) {} };
+  const close = () => setOpen(false);
   if (!open) return null;
   return (
     <div className="er-overlay" role="dialog" aria-modal="true" aria-labelledby="promo50-title" onClick={(e) => { if (e.target === e.currentTarget) close(); }} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(20,16,12,.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 12 }}>
@@ -3028,7 +3041,7 @@ function ListPromoPopup({ onCreate }) {
     </div>
   );
 }
-function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh, onCreator, onList, onAuth }) {
+function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh, onCreator, onAuth }) {
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false); const [photoBusy, setPhotoBusy] = useState(false);
   const [linkBiz, setLinkBiz] = useState(null); const [shareBiz, setShareBiz] = useState(null); const [joinBiz, setJoinBiz] = useState(null);
   const [shareProd, setShareProd] = useState(null);
@@ -3100,7 +3113,8 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
         </div>
       </div>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 22px 60px" }}>
-        <AwardsSection recs={recs} username={data.username} isOwner={isOwner} session={session} reload={load} onShare={shareBrand} />
+        <AwardsSection recs={recs} username={data.username} isOwner={isOwner} session={session} reload={load} onShare={shareBrand} midSlot={isOwner ? null : <PromoCard dark onCreate={onCreator} />} />
+        {!isOwner && !recs.some((b) => (b.products || []).length) && <div style={{ margin: "0 0 30px" }}><PromoCard onCreate={onCreator} /></div>}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Brands I back</h2>
           {isOwner && <button className="er-btn er-btn-primary er-btn-sm" onClick={onAddBrand}><Plus size={14} /> Add a brand</button>}
@@ -3161,12 +3175,10 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
       </div>
       {<section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, marginTop: 40 }}>
         <div className="er-wrap" style={{ padding: "44px 22px 50px", textAlign: "center" }}>
+          {!isOwner && <div style={{ maxWidth: 560, margin: "0 auto 30px" }}><PromoCard onCreate={onCreator} /></div>}
           <ExploreHowTo heading={`Like @${data.username}'s list? Here's how you can earn too`} onCreator={onCreator} />
         </div>
       </section>}
-      <div style={{ marginTop: 48 }}>
-        <LumaHero title={<>Create your<br />first list,<br /><span className="er-luma-grad">earn $25.</span></>} onCreator={onCreator} onList={onList} />
-      </div>
     </div>
   );
 }
@@ -3897,7 +3909,7 @@ function AffiliateHowTo({ title, sub, cta } = {}) {
 /* Popular products (seeded partner products): photo, brand, shopper discount, what you earn, and share actions. */
 let popularProductsMem = null;
 let catalogMem = null;
-function PopularProducts({ q, isCreator, actions }) {
+function PopularProducts({ q, isCreator, actions, discountOnly }) {
   const [rows, setRows] = useState(popularProductsMem); const [who, setWho] = useState("");
   useEffect(() => { api("/products/popular").then((r) => { popularProductsMem = Array.isArray(r) ? r : []; setRows(popularProductsMem); }).catch(() => setRows((x) => x || [])); }, []);
   const t = (q || "").trim().toLowerCase();
@@ -3910,7 +3922,7 @@ function PopularProducts({ q, isCreator, actions }) {
       {rows === null && <p style={{ textAlign: "center", color: C.muted }}>Loading products…</p>}
       {rows && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 20 }}>No products match{q ? ` “${q}”` : ""}.</p>}
       <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,230px),1fr))" }}>
-        {shown.map((p) => <ProductCard key={p.key} p={p} isCreator={isCreator} actions={actions} />)}
+        {shown.map((p) => <ProductCard key={p.key} p={p} isCreator={isCreator} discountOnly={discountOnly} actions={actions} />)}
       </div>
     </div>
   );
@@ -3921,7 +3933,8 @@ function productEarnLine(p) {
   if (e && Number(p.price) > 0 && (e.pct > 0 || e.flat > 0)) return `You earn ${money(toViewer(p.price * e.pct / 100 + (e.flat || 0), e.currency, e.fx))} on this${e.pct > 0 ? ` (${e.pct}%)` : ""}`;
   const ei = earnInfo(p.brand); return ei ? ei.line : "";
 }
-function ProductCard({ p, isCreator, actions }) {
+// discountOnly: show the shopper discount instead of what the creator earns (Share & earn page).
+function ProductCard({ p, isCreator, actions, discountOnly }) {
   const el = productEarnLine(p);
   return (
     <div className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
@@ -3930,12 +3943,14 @@ function ProductCard({ p, isCreator, actions }) {
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em" }}>{p.brand.name}</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</div>
-          {(priceText(p) || offText(p.brand)) && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5, flexWrap: "wrap" }}>
+          {(priceText(p) || (!discountOnly && offText(p.brand))) && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 5, flexWrap: "wrap" }}>
             {priceText(p) && <span style={{ fontSize: 13, color: C.inkSoft, fontWeight: 600 }}>{priceText(p)}</span>}
-            {offText(p.brand) && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>Friends get {offText(p.brand)}</span>}
+            {!discountOnly && offText(p.brand) && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>Friends get {offText(p.brand)}</span>}
           </div>}
         </div>
-        <div style={{ background: el ? C.accentSoft : C.panel, borderRadius: 10, padding: "7px 10px", fontSize: 13.5, fontWeight: 800, color: el ? C.accentD : C.muted }}>{isCreator ? (el || "Commission coming soon") : "Join free to see what you earn"}</div>
+        {discountOnly
+          ? <div style={{ background: offText(p.brand) ? C.accentSoft : C.panel, borderRadius: 10, padding: "7px 10px", fontSize: 13.5, fontWeight: 800, color: offText(p.brand) ? C.accentD : C.muted }}>{offText(p.brand) ? `Discount of ${offText(p.brand)} for your friends` : "Share it with friends who'd love it"}</div>
+          : <div style={{ background: el ? C.accentSoft : C.panel, borderRadius: 10, padding: "7px 10px", fontSize: 13.5, fontWeight: 800, color: el ? C.accentD : C.muted }}>{isCreator ? (el || "Commission coming soon") : "Join free to see what you earn"}</div>}
         <div style={{ marginTop: "auto" }}>{actions(p)}</div>
       </div>
     </div>
@@ -3948,13 +3963,13 @@ function CategoryProducts({ q, isCreator, actions }) {
   const t = (q || "").trim().toLowerCase();
   const grid = { display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,230px),1fr))" };
   if (cats === null) return <p style={{ textAlign: "center", color: C.muted, marginTop: 20 }}>Loading…</p>;
-  if (!cats.length) return <PopularProducts q={q} isCreator={isCreator} actions={(p) => actions(p, null)} />;   // catalog not added yet
+  if (!cats.length) return <PopularProducts q={q} isCreator={isCreator} discountOnly actions={(p) => actions(p, null)} />;   // catalog not added yet
   if (t) {   // search across every category, grouped under its heading
     const hits = cats.map((c) => ({ c, items: c.items.filter((p) => `${p.name} ${p.brand.name}`.toLowerCase().includes(t)) })).filter((x) => x.items.length);
     if (!hits.length) return <p style={{ textAlign: "center", color: C.muted, marginTop: 20 }}>No products match “{q}”.</p>;
     return <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 22 }}>{hits.map(({ c, items }) => <div key={c.key}>
       <h3 className="er-serif" style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 500 }}>{c.emoji} {c.title}</h3>
-      <div style={grid}>{items.map((p) => <ProductCard key={p.key} p={p} isCreator={isCreator} actions={(x) => actions(x, c)} />)}</div></div>)}</div>;
+      <div style={grid}>{items.map((p) => <ProductCard key={p.key} p={p} isCreator={isCreator} discountOnly actions={(x) => actions(x, c)} />)}</div></div>)}</div>;
   }
   const c = cats.find((x) => x.key === open);
   if (c) {
@@ -3965,7 +3980,7 @@ function CategoryProducts({ q, isCreator, actions }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "10px 0 6px" }}><span style={{ fontSize: 34 }}>{c.emoji}</span>
         <div><h2 className="er-serif" style={{ margin: 0, fontSize: 28, fontWeight: 500, lineHeight: 1.1 }}>{c.title}</h2><div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>Share your favourite. We put “My {c.title.replace(/^Best /i, "best ")}” on your story.</div></div></div>
       {mixed && <div style={{ display: "flex", gap: 6, margin: "10px 0 4px" }}>{[["", "All"], ["women", "For women"], ["men", "For men"]].map(([k, l]) => <button key={k || "all"} type="button" onClick={() => setWho(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: 999, border: `1px solid ${who === k ? C.accent : C.line}`, background: who === k ? C.accentSoft : "#fff", color: who === k ? C.accentD : C.inkSoft }}>{l}</button>)}</div>}
-      <div style={{ ...grid, marginTop: 12 }}>{shown.map((p) => <ProductCard key={p.key} p={p} isCreator={isCreator} actions={(x) => actions(x, c)} />)}</div>
+      <div style={{ ...grid, marginTop: 12 }}>{shown.map((p) => <ProductCard key={p.key} p={p} isCreator={isCreator} discountOnly actions={(x) => actions(x, c)} />)}</div>
     </div>;
   }
   return <div style={{ marginTop: 16, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,160px),1fr))" }}>
@@ -4066,7 +4081,7 @@ function ShareHowTo({ title, sub, cta } = {}) {
   const screens = [
     <div key="0" style={{ position: "absolute", inset: 0, background: "#fff", padding: "34px 14px 14px" }}>
       <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.line}` }}><BrandArt b={{ name: "Notion", photos: [] }} style={{ width: "100%", aspectRatio: "16/10" }} />
-        <div style={{ padding: 9 }}><div style={{ fontSize: 12, fontWeight: 700 }}>Notion</div><div style={{ fontSize: 10, color: C.accentD, fontWeight: 600, marginTop: 2 }}>You earn {demoMoney(12)} per sale</div>
+        <div style={{ padding: 9 }}><div style={{ fontSize: 12, fontWeight: 700 }}>Notion</div><div style={{ fontSize: 10, color: C.accentD, fontWeight: 600, marginTop: 2 }}>Discount of 20% for friends</div>
           <div style={{ marginTop: 8, height: 26, borderRadius: 8, background: igGrad }} /><div style={{ marginTop: 6, display: "flex", gap: 5 }}>{["#111", "#25D366", "#1877F2"].map((c) => <span key={c} style={{ flex: 1, height: 22, borderRadius: 7, background: c }} />)}
             <span style={{ position: "relative", flex: 1, height: 22, borderRadius: 7, border: `1px solid ${C.line}`, fontSize: 9, fontWeight: 800, display: "grid", placeItems: "center" }}>Copy{tap({ right: -8, top: -6 })}</span></div></div></div>
       <div className="er-pop" style={{ position: "absolute", left: "50%", bottom: 22, transform: "translateX(-50%)", background: "#111", color: "#fff", borderRadius: 999, padding: "6px 12px", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>✓ Link copied</div>
@@ -4095,7 +4110,7 @@ function ShareHowTo({ title, sub, cta } = {}) {
       <div className="er-pop" style={{ position: "absolute", left: "50%", bottom: "16%", transform: "translateX(-50%) rotate(-4deg)", background: "#fff", color: "#0095F6", borderRadius: 9, padding: "6px 9px", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", maxWidth: "88%", overflow: "hidden", textOverflow: "ellipsis", boxShadow: "0 4px 12px rgba(0,0,0,.2)" }}>🔗 {link.toUpperCase()}</div>
       <div className="er-pop" style={{ position: "absolute", left: 10, right: 10, bottom: 10, background: "rgba(17,17,17,.85)", color: "#fff", borderRadius: 10, padding: "6px 9px", fontSize: 10.5, fontWeight: 700 }}>✓ Sale tracked · you earned {demoMoney(12)}</div></>)}</div>,
   ];
-  const steps = [["Select a brand you like", "Search or browse. Each brand shows what you earn.", [0]], ["Share it on Instagram story, WhatsApp or X", "Your link is copied. On Instagram, add a Link sticker, paste it, and write a few words about why you love it.", [1, 2, 3, 4]], ["Friends shop within 6 months, you earn", (() => { const x = earnExample(5, 1500, 60); return `Example: 5 friends each buy a ${x.order} order, you earn about ${x.total}. Every sale is tracked automatically.`; })(), [5]]];
+  const steps = [["Select a brand you like", "Search or browse. Each one shows the discount your friends get.", [0]], ["Share it on Instagram story, WhatsApp or X", "Your link is copied. On Instagram, add a Link sticker, paste it, and write a few words about why you love it.", [1, 2, 3, 4]], ["Friends shop within 6 months, you earn", (() => { const x = earnExample(5, 1500, 60); return `Example: 5 friends each buy a ${x.order} order, you earn about ${x.total}. Every sale is tracked automatically.`; })(), [5]]];
   return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
 }
 /* Share a brand: browse brands, share each one to Instagram story / X / Facebook with your own link. */
@@ -4167,7 +4182,7 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
         {cat === "__products" && <CategoryProducts q={q} isCreator={isCreator} actions={productActions} />}
         {cat !== "__products" && list && shown.length === 0 && <p style={{ textAlign: "center", color: C.muted, marginTop: 30 }}>No brands match{q ? ` “${q}”` : ""}.</p>}
         {cat !== "__products" && <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,265px),1fr))" }}>
-          {shown.map((b) => { const ei = earnInfo(b); return (
+          {shown.map((b) => { return (
             <div key={b.id} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <BrandArt b={b} style={{ width: "100%", aspectRatio: "16/9" }} />
               <div style={{ padding: "12px 14px 14px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
@@ -4176,12 +4191,8 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
                     <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</div>
                     <div style={{ fontSize: 12.5, color: C.muted }}>{(b.categories || []).join(" · ")}</div>
                   </div>
-                  {offText(b) && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "3px 9px" }}>Friends get {offText(b)}</span>}
                 </div>
-                <div style={{ background: ei ? C.accentSoft : C.panel, borderRadius: 10, padding: "8px 10px" }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: ei ? C.accentD : C.muted }}>{isCreator ? (ei ? ei.line : "Commission coming soon") : "Join free to see what you earn"}</div>
-                  {isCreator && ei && ei.sub && <div style={{ fontSize: 12, color: C.accentD, marginTop: 1 }}>{ei.sub}</div>}
-                </div>
+                <div style={{ background: offText(b) ? C.accentSoft : C.panel, borderRadius: 10, padding: "8px 10px", fontSize: 14, fontWeight: 800, color: offText(b) ? C.accentD : C.muted }}>{offText(b) ? `Discount of ${offText(b)} for your friends` : "Share it with friends who'd love it"}</div>
                 <div style={{ marginTop: "auto", display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {sbtn(b, "ig", "Share on Instagram story", <IgIcon size={14} />, igGrad, "#fff")}
                   {sbtn(b, "wa", "WhatsApp", null, "#25D366", "#fff")}
