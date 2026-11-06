@@ -1910,7 +1910,9 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginTop: 20 }}>
         {[["women", "Women"], ["men", "Men"]].map(([k, l]) => <button key={k} type="button" onClick={() => { setQuizWho(k); setQi(0); }} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 18, fontWeight: 800, color: C.ink, background: "#fff", border: `1.5px solid ${C.line}`, borderRadius: 18, padding: "26px 10px" }}>{l}</button>)}
       </div>
-      <button type="button" className="er-link" onClick={() => setMode("browse")} style={{ marginTop: 18, fontSize: 13.5 }}>Skip the quiz, browse everything</button>
+      <div style={{ marginTop: 18, background: C.accentSoft, borderRadius: 14, padding: "12px 14px", fontSize: 13.5, lineHeight: 1.5, color: C.accentD, textAlign: "left" }}>
+        <b>You earn 6% of sales</b> whenever someone shops from your recommendation. Example: if people buy {money(VIEWER_CUR === "INR" ? 8000 : 100)} worth from your list, you earn {money(VIEWER_CUR === "INR" ? 480 : 6)}.
+      </div>
     </div>;
     if (quizDone) return <div style={{ textAlign: "center", padding: "18px 4px 8px" }}>
       <div style={{ width: 56, height: 56, margin: "0 auto", borderRadius: "50%", background: C.accent, color: "#fff", display: "grid", placeItems: "center" }}><Check size={28} /></div>
