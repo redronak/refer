@@ -1886,6 +1886,72 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
       </div>
     </div>;
   };
+  // ── Quiz: who's it for → one question per category → tap a product to pick it and move on.
+  const [mode, setMode] = useState(initialBusinessId || initialCat ? "browse" : "quiz");
+  const [quizWho, setQuizWho] = useState(null); const [qi, setQi] = useState(0);
+  const quizQs = quizWho ? catalog.map((c) => ({ ...c, items: c.items.filter((p) => !p.for || p.for === "all" || p.for === quizWho) })).filter((c) => c.items.length) : [];
+  const quizDone = quizWho && qi >= quizQs.length;
+  // One pick per question: choosing a product replaces any earlier pick in that category.
+  const setCatPick = (c, p) => {
+    let pp = { ...prodPicks }, pk = [...picked], ab = [...autoBrands];
+    c.items.forEach((x) => { const bid = x.brand.id, arr = pp[bid] || []; if (!arr.includes(x.name) || (p && x.key === p.key)) return;
+      pp[bid] = arr.filter((n) => n !== x.name);
+      if (!pp[bid].length) { delete pp[bid]; if (ab.includes(bid)) { pk = pk.filter((y) => y !== bid); ab = ab.filter((y) => y !== bid); } } });
+    if (p) { const bid = p.brand.id;
+      if (!pk.includes(bid)) { if (pk.length >= ADD_LIMIT) { toast(`You can add up to ${ADD_LIMIT} brands at a time`); return false; } pk.push(bid); ab.push(bid); }
+      pp[bid] = [...(pp[bid] || []).filter((n) => n !== p.name), p.name]; }
+    setProdPicks(pp); setPicked(pk); setAutoBrands(ab); return true;
+  };
+  const quizView = () => {
+    if (!quizWho) return <div style={{ textAlign: "center", padding: "18px 4px 8px" }}>
+      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", color: C.accentD }}>Quick quiz · about 2 minutes</div>
+      <h3 className="er-serif" style={{ margin: "8px 0 6px", fontSize: 28, fontWeight: 500, lineHeight: 1.15 }}>First, who's this list for?</h3>
+      <p style={{ margin: 0, fontSize: 14, color: C.muted }}>We'll only show products that fit.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginTop: 20 }}>
+        {[["women", "Women"], ["men", "Men"]].map(([k, l]) => <button key={k} type="button" onClick={() => { setQuizWho(k); setQi(0); }} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 18, fontWeight: 800, color: C.ink, background: "#fff", border: `1.5px solid ${C.line}`, borderRadius: 18, padding: "26px 10px" }}>{l}</button>)}
+      </div>
+      <button type="button" className="er-link" onClick={() => setMode("browse")} style={{ marginTop: 18, fontSize: 13.5 }}>Skip the quiz, browse everything</button>
+    </div>;
+    if (quizDone) return <div style={{ textAlign: "center", padding: "18px 4px 8px" }}>
+      <div style={{ width: 56, height: 56, margin: "0 auto", borderRadius: "50%", background: C.accent, color: "#fff", display: "grid", placeItems: "center" }}><Check size={28} /></div>
+      <h3 className="er-serif" style={{ margin: "12px 0 6px", fontSize: 28, fontWeight: 500 }}>{productCount ? "Your list is ready!" : "No picks yet"}</h3>
+      <p style={{ margin: 0, fontSize: 14, color: C.muted }}>{productCount ? `${productCount} pick${productCount === 1 ? "" : "s"}. Next, rate each one.` : "Go back and pick at least one, or browse everything."}</p>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: 14 }}>{listItems.map((it) => <span key={it.key} style={{ fontSize: 12.5, fontWeight: 600, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 999, padding: "5px 11px" }}>{it.name}</span>)}</div>
+      <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
+        <button type="button" className="er-btn er-btn-light er-btn-sm" onClick={() => setQi(Math.max(0, quizQs.length - 1))}><ChevL size={14} /> Back</button>
+        <button type="button" className="er-btn er-btn-light er-btn-sm" onClick={() => setMode("browse")}>Add more</button>
+        {productCount > 0 && <button type="button" className="er-btn er-btn-primary er-btn-sm" onClick={() => setStep(2)}>Rate my picks <ChevR size={14} /></button>}
+      </div>
+    </div>;
+    const c = quizQs[qi], chosen = c.items.find(productOn);
+    const next = () => setQi((i) => i + 1);
+    return <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button type="button" aria-label="Previous question" onClick={() => (qi ? setQi(qi - 1) : setQuizWho(null))} style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 12, border: `1px solid ${C.line}`, background: "#fff", cursor: "pointer", display: "grid", placeItems: "center", color: C.ink }}><ChevL size={16} /></button>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>Question {qi + 1} of {quizQs.length}</div>
+          <div style={{ height: 6, borderRadius: 99, background: C.panel, overflow: "hidden", marginTop: 5 }}><div style={{ width: `${((qi + 1) / quizQs.length) * 100}%`, height: "100%", background: C.accent, transition: "width .3s" }} /></div>
+        </div>
+        <button type="button" onClick={next} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 700, color: C.inkSoft, background: "transparent", border: `1px solid ${C.line}`, borderRadius: 999, padding: "9px 14px" }}>{chosen ? "Next" : "Skip"}</button>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "18px 2px 4px" }}>
+        <span style={{ fontSize: 34 }}>{c.emoji}</span>
+        <div><h3 className="er-serif" style={{ margin: 0, fontSize: 24, fontWeight: 500, lineHeight: 1.15 }}>{c.question}</h3>
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>{awardTitle(c.title)} · tap your favourite</div></div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,138px),1fr))", gap: 10, padding: "12px 0 4px" }}>
+        {c.items.map((p) => { const on = productOn(p);
+          return <button key={p.key} type="button" aria-pressed={on} onClick={() => { if (on) { setCatPick(c, null); return; } if (setCatPick(c, p)) setTimeout(next, 260); }} style={{ display: "flex", flexDirection: "column", textAlign: "left", padding: 0, border: "none", borderRadius: 14, background: "#fff", boxShadow: on ? `0 0 0 3px ${C.accent}` : `0 0 0 1px ${C.line}`, overflow: "hidden", cursor: "pointer", fontFamily: "inherit" }}>
+            <span style={{ position: "relative", display: "block" }}><ProductPhoto p={p} />
+              {on && <span style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accent, color: "#fff" }}><Check size={15} /></span>}</span>
+            <span style={{ display: "block", padding: "8px 10px 10px" }}>
+              <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em" }}>{p.brand.name}</span>
+              <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</span>
+            </span>
+          </button>; })}
+      </div>
+    </div>;
+  };
   const productGrid = (arr) => <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,138px),1fr))", gap: 10, padding: 12 }}>{arr.map(productTile)}</div>;
   const brandGrid = (arr) => <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,138px),1fr))", gap: 10, padding: 12 }}>{arr.map(brandRow)}</div>;
 
@@ -1911,7 +1977,11 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
           <p style={{ margin: 0, fontSize: 12.5, color: C.muted, textAlign: "center" }}>Free forever. Log in anytime with your email or phone and password.</p>
         </div>}
 
-        {step === 1 && <div style={{ marginTop: 22 }}>
+        {step === 1 && mode === "quiz" && catalog.length > 0 && <div style={{ marginTop: 18 }}>
+          <div style={{ maxHeight: 600, overflowY: "auto", paddingRight: 2 }}>{quizView()}</div>
+          <ErrBox msg={err} />
+        </div>}
+        {step === 1 && !(mode === "quiz" && catalog.length > 0) && <div style={{ marginTop: 22 }}>
           <h2 className="er-serif" style={{ margin: 0, fontSize: 27, fontWeight: 500 }}>Pick products and brands you love</h2>
           <p style={{ margin: "6px 0 0", fontSize: 14, color: C.muted }}>Choose as many as you like, we generate a tracked link for each, so you earn on every sale.</p>
           <div style={{ marginTop: 16, position: "relative" }}>
