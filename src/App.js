@@ -2067,6 +2067,13 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
               <div style={{ margin: "0 auto", width: 52, height: 52, borderRadius: "50%", display: "grid", placeItems: "center", background: C.accentSoft, color: C.accentD }}><Spark size={24} /></div>
               <h2 className="er-serif" style={{ margin: "14px 0 0", fontSize: 25, fontWeight: 500 }}>One last step: get paid</h2>
               <p style={{ margin: "8px 0 0", fontSize: 14, color: C.muted }}>Your list is ready. Tell us your country so we can show the right payout options.</p>
+              <div style={{ marginTop: 14, textAlign: "left", border: `1.5px solid #D62976`, background: "#FFF3F8", borderRadius: 14, padding: "13px 15px" }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#A3134F" }}>Get ₹50 now</div>
+                <ol style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13.5, lineHeight: 1.55, color: C.ink }}>
+                  <li>Share your list on your Instagram story with your list link (we'll give you the link next).</li>
+                  <li>Once you've shared it, send a follow request to <a href={PROMO_IG} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 700, color: "#A3134F" }}>@podcasttru on Instagram</a> so we can see your story and pay you.</li>
+                </ol>
+              </div>
               <div style={{ marginTop: 16, background: C.ink, color: C.paper, borderRadius: 14, padding: "14px 16px" }}>
                 <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "rgba(253,252,250,.6)", marginBottom: 8 }}>Average earnings in first 3 months</div>
                 <div style={{ display: "flex", gap: 10 }}>
@@ -2126,6 +2133,7 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
           <button className="er-btn er-btn-block" style={{ marginTop: 16, border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)" }}
             onClick={() => startIgShare(`${window.location.origin}/@${handle}`, () => shareListToStory(handle, "", storyRecs()))}>
             <IgIcon size={16} /> Share on Instagram story</button>
+          <p style={{ margin: "10px 0 0", fontSize: 13, color: C.inkSoft }}>Shared it? <a href={PROMO_IG} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 700, color: "#A3134F" }}>Follow @podcasttru</a> to claim your ₹50.</p>
           <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
             <button className="er-btn er-btn-ghost" onClick={onClose}>Close</button>
             <button className="er-btn er-btn-primary" onClick={() => { onViewProfile(handle); onClose(); }}>View my page <Arrow size={16} /></button></div>
@@ -2995,6 +3003,31 @@ function AwardsSection({ recs, username, isOwner, session, reload, onShare }) {
     </section>
   );
 }
+/* ₹50 offer: make a list, share it on an Instagram story, follow our Instagram to claim. */
+const PROMO_IG = "https://www.instagram.com/podcasttru/";
+function ListPromoPopup({ onCreate }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    let seen = 0; try { seen = Number(localStorage.getItem("er_promo50")) || 0; } catch (e) {}
+    if (Date.now() - seen < 3 * 864e5) return undefined;   // at most once every 3 days
+    const t = setTimeout(() => setOpen(true), 3500);          // let them see the list first
+    return () => clearTimeout(t);
+  }, []);
+  const close = () => { setOpen(false); try { localStorage.setItem("er_promo50", String(Date.now())); } catch (e) {} };
+  if (!open) return null;
+  return (
+    <div className="er-overlay" role="dialog" aria-modal="true" aria-labelledby="promo50-title" onClick={(e) => { if (e.target === e.currentTarget) close(); }} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(20,16,12,.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 12 }}>
+      <div className="er-card" style={{ width: "100%", maxWidth: 420, padding: "24px 22px 20px", textAlign: "center", position: "relative", borderRadius: 24, marginBottom: "max(8px, env(safe-area-inset-bottom))" }}>
+        <button type="button" aria-label="Close" onClick={close} style={{ position: "absolute", top: 12, right: 12, width: 36, height: 36, borderRadius: "50%", border: `1px solid ${C.line}`, background: "#fff", cursor: "pointer", display: "grid", placeItems: "center", color: C.ink }}><Close size={14} /></button>
+        <div style={{ margin: "0 auto", width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", color: "#fff", display: "grid", placeItems: "center", fontSize: 22, fontWeight: 900 }}>₹50</div>
+        <h2 id="promo50-title" className="er-serif" style={{ margin: "14px 0 6px", fontSize: 25, fontWeight: 500, lineHeight: 1.2 }}>Make your recommendation list, get paid ₹50</h2>
+        <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5, color: C.muted }}>Pick the products you love, share your list on your Instagram story, and we'll pay you ₹50. Plus 6% whenever someone shops from it.</p>
+        <button type="button" className="er-btn er-btn-primary" style={{ width: "100%", marginTop: 18 }} onClick={() => { close(); onCreate(); }}>Create my list <ChevR size={16} /></button>
+        <button type="button" className="er-link" onClick={close} style={{ marginTop: 12, fontSize: 13.5 }}>Maybe later</button>
+      </div>
+    </div>
+  );
+}
 function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onOpenBusiness, onAddBrand, onRefresh, onCreator, onList, onAuth }) {
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false); const [photoBusy, setPhotoBusy] = useState(false);
   const [linkBiz, setLinkBiz] = useState(null); const [shareBiz, setShareBiz] = useState(null); const [joinBiz, setJoinBiz] = useState(null);
@@ -3016,6 +3049,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
     <div>
       {linkBiz && <LinkPopup business={linkBiz} onClose={() => setLinkBiz(null)} />}
       {shareBiz && <LinkPopup business={shareBiz} product={shareProd} onClose={() => { setShareBiz(null); setShareProd(null); }} />}
+      {!isOwner && data && <ListPromoPopup onCreate={onCreator} />}
       {joinBiz && <QuickJoin brand={joinBiz} onClose={() => setJoinBiz(null)} onDone={(sess) => { const b = joinBiz; setJoinBiz(null); onAuth(sess); setShareBiz(b); }} />}
       {editing && <EditProfileModal token={session.token} current={data} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }} />}
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.line}` }}>
