@@ -4170,26 +4170,63 @@ function ShareHowTo({ title, sub, cta } = {}) {
 /* ---------- Find a product from a photo (/find) ---------- */
 const CameraIcon = (p) => <Svg {...p}><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></Svg>;
 function FindPage({ session, onHome, onLegal, onCreator }) {
-  const [img, setImg] = useState(""); const [busy, setBusy] = useState(false); const [res, setRes] = useState(null); const [err, setErr] = useState("");
+  const [img, setImg] = useState(""); const [ar, setAr] = useState(1); const [busy, setBusy] = useState(false); const [res, setRes] = useState(null); const [err, setErr] = useState("");
+  const [sel, setSel] = useState(0); const [found, setFound] = useState({});   // found[i] = { loading, data, err } for item i
   const camRef = useRef(null), fileRef = useRef(null);
+  const logTrace = (what, r, j) => {   // step-by-step log from the server, in the browser console
+    if (j && j.trace) { console.log(`[imagesearch] ${what} ${j.requestId} → HTTP ${r.status}`); j.trace.forEach((line) => console.log(`[imagesearch]   ${line}`)); }
+    else console.log(`[imagesearch] ${what} HTTP ${r.status}, no log from server (old backend or the request never reached it)`);
+  };
+  const postImage = async (path, blob) => {
+    const r = await fetch(API_BASE + path, { method: "POST", headers: { "Content-Type": blob.type || "image/jpeg" }, body: blob });
+    let j = null; try { j = await r.json(); } catch (x) {}
+    logTrace(path, r, j);
+    if (!r.ok) throw new Error((j && j.error) || (r.status === 503 ? "Photo search is busy right now. Try again." : `Something went wrong (${r.status}). Try again.`));
+    return j;
+  };
+  // Cut one item out of the photo (its box plus a little margin) so the image search looks at that item only.
+  const cropFrom = (photo, it) => new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => {
+      const W = im.naturalWidth, H = im.naturalHeight;
+      let [y0, x0, y1, x1] = it.box || [0, 0, 1000, 1000];
+      const py = (y1 - y0) * 0.08, px = (x1 - x0) * 0.08;
+      y0 = Math.max(0, y0 - py); x0 = Math.max(0, x0 - px); y1 = Math.min(1000, y1 + py); x1 = Math.min(1000, x1 + px);
+      const sw = Math.max(32, ((x1 - x0) / 1000) * W), sh = Math.max(32, ((y1 - y0) / 1000) * H), scale = Math.min(1, 768 / Math.max(sw, sh));
+      const c = document.createElement("canvas"); c.width = Math.round(sw * scale); c.height = Math.round(sh * scale);
+      const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(im, (x0 / 1000) * W, (y0 / 1000) * H, sw, sh, 0, 0, c.width, c.height);
+      c.toBlob((bl) => (bl ? resolve(bl) : reject(new Error("crop failed"))), "image/jpeg", 0.88);
+    };
+    im.onerror = () => reject(new Error("crop failed"));
+    im.src = photo;
+  });
+  const searchItem = async (i, items = res && res.items, photo = img) => {
+    const it = items && items[i]; if (!it) return;
+    setSel(i);
+    if (found[i] && (found[i].loading || found[i].data)) return;   // already searched (or searching)
+    setFound((f) => ({ ...f, [i]: { loading: true } }));
+    try {
+      const blob = await cropFrom(photo, it);
+      const info = { label: it.label, brand: it.brand, seller: it.seller, product: it.product, query: it.query, colors: it.colors, pattern: it.pattern, material: it.material, fit: it.fit, features: it.features };
+      const data = await postImage(`/find/item?q=${encodeURIComponent(JSON.stringify(info))}`, blob);
+      setFound((f) => ({ ...f, [i]: { data } }));
+    } catch (x) { setFound((f) => ({ ...f, [i]: { err: x.message || "Search failed. Try again." } })); }
+  };
   const pick = async (e) => {
     const f = (e.target.files || [])[0]; e.target.value = ""; if (!f) return;
-    setErr(""); setRes(null);
-    let data = ""; try { data = await fileToDataURL(f, 1024, 0.82); } catch (x) { setErr("We couldn't open that photo. Try a JPG or PNG."); return; }
+    setErr(""); setRes(null); setFound({}); setSel(0);
+    let data = ""; try { data = await fileToDataURL(f, 1280, 0.85); } catch (x) { setErr("We couldn't open that photo. Try a JPG or PNG."); return; }
     setImg(data); setBusy(true);
-    try {   // send the photo as raw image bytes, not JSON
-      const blob = await (await fetch(data)).blob();
-      const r = await fetch(API_BASE + "/find/photo", { method: "POST", headers: { "Content-Type": blob.type || "image/jpeg" }, body: blob });
-      let j = null; try { j = await r.json(); } catch (x2) {}
-      if (j && j.trace) { console.log(`[imagesearch] request ${j.requestId} → HTTP ${r.status}`); j.trace.forEach((line) => console.log(`[imagesearch]   ${line}`)); }   // step-by-step log from the server
-      else console.log(`[imagesearch] HTTP ${r.status}, no log from server (old backend or the request never reached it)`);
-      if (!r.ok) throw new Error((j && j.error) || (r.status === 503 ? "Photo search is busy right now. Try again." : `Something went wrong (${r.status}). Try again.`));
+    try {
+      const j = await postImage("/find/photo", await (await fetch(data)).blob());
       setRes(j);
+      if (j && j.items && j.items.length) searchItem(0, j.items, data);   // search the main item straight away
     }
     catch (x) { setErr(x.message || "Something went wrong. Try again."); }
     finally { setBusy(false); }
   };
-  const reset = () => { setImg(""); setRes(null); setErr(""); };
+  const reset = () => { setImg(""); setRes(null); setErr(""); setFound({}); setSel(0); };
   const shop = (p) => { const u = p.url || p.brand.website; if (u) window.open(/^https?:\/\//i.test(u) ? u : `https://${u}`, "_blank", "noopener"); };
   const isCreator = session && session.role === "creator";
   const card = (p, big) => (
@@ -4210,6 +4247,10 @@ function FindPage({ session, onHome, onLegal, onCreator }) {
       </div>
     </div>
   );
+  const items = (res && res.items) || [];
+  const cur = items[sel]; const curFound = found[sel] || {};
+  const evidenceText = { logo: "from the logo", label: "from the label", caption: "from the caption", tag: "from a tag" };
+  const h2 = { margin: "0 0 10px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft };
   return (
     <div style={{ minHeight: "100vh", background: C.paper }}>
       <PageHeader onHome={onHome} right={null} />
@@ -4217,26 +4258,36 @@ function FindPage({ session, onHome, onLegal, onCreator }) {
         <div style={{ textAlign: "center" }}>
           <span className="er-eyebrow">Product finder</span>
           <h1 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(32px,7vw,46px)", fontWeight: 500, lineHeight: 1.08 }}>Find any product from a photo</h1>
-          <p style={{ margin: "0 auto", maxWidth: 480, fontSize: 15.5, lineHeight: 1.55, color: C.muted }}>Snap the bottle on your shelf or a product you saw somewhere. We'll tell you exactly what it is and where to get it, with a discount when there is one.</p>
+          <p style={{ margin: "0 auto", maxWidth: 480, fontSize: 15.5, lineHeight: 1.55, color: C.muted }}>Upload an outfit, a shelf or an Instagram screenshot. We'll spot each item and find where to buy it, or the closest lookalikes.</p>
         </div>
 
         <div className="er-card" style={{ marginTop: 24, padding: 18, textAlign: "center" }}>
           {!img ? <div style={{ border: `2px dashed ${C.line}`, borderRadius: 18, padding: "34px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
             <span style={{ width: 64, height: 64, borderRadius: "50%", background: C.accentSoft, color: C.accentD, display: "grid", placeItems: "center" }}><CameraIcon size={28} /></span>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>Take or upload a clear photo of the product</div>
-            <div style={{ fontSize: 13, color: C.muted }}>Make sure the label or logo is visible.</div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>Take or upload a clear photo</div>
+            <div style={{ fontSize: 13, color: C.muted }}>Screenshots with the caption showing work best.</div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
               <button type="button" className="er-btn er-btn-primary" onClick={() => camRef.current && camRef.current.click()}><CameraIcon size={16} /> Take a photo</button>
               <button type="button" className="er-btn er-btn-light" onClick={() => fileRef.current && fileRef.current.click()}>Upload a photo</button>
             </div>
           </div>
             : <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-              <div style={{ position: "relative", width: "100%", maxWidth: 320 }}>
-                <img src={img} alt="Your photo" style={{ display: "block", width: "100%", maxHeight: 340, objectFit: "contain", borderRadius: 16, background: C.panel }} />
+              {/* the box is sized to the photo's own shape, so item boxes (0-1000 coordinates) line up exactly */}
+              <div style={{ position: "relative", width: `min(100%, ${Math.round(520 * ar)}px)` }}>
+                <img src={img} alt="Your photo" onLoad={(e) => { const t = e.currentTarget; if (t.naturalHeight) setAr(t.naturalWidth / t.naturalHeight); }} style={{ display: "block", width: "100%", height: "auto", borderRadius: 16, background: C.panel }} />
+                {!busy && items.map((it, i) => it.box && (
+                  <button key={i} type="button" onClick={() => searchItem(i)} aria-label={`Find ${it.label}`} aria-pressed={sel === i}
+                    style={{ position: "absolute", top: `${it.box[0] / 10}%`, left: `${it.box[1] / 10}%`, height: `${(it.box[2] - it.box[0]) / 10}%`, width: `${(it.box[3] - it.box[1]) / 10}%`,
+                      border: `${sel === i ? 3 : 2}px solid ${sel === i ? C.accent : "rgba(255,255,255,.95)"}`, borderRadius: 10, background: sel === i ? "rgba(15,107,79,.12)" : "transparent",
+                      boxShadow: "0 0 0 1px rgba(0,0,0,.25)", cursor: "pointer", padding: 0 }}>
+                    <span style={{ position: "absolute", top: -11, left: -11, width: 22, height: 22, borderRadius: "50%", background: sel === i ? C.accent : "#fff", color: sel === i ? "#fff" : C.ink, fontSize: 12, fontWeight: 800, display: "grid", placeItems: "center", boxShadow: "0 1px 4px rgba(0,0,0,.3)" }}>{i + 1}</span>
+                  </button>
+                ))}
                 {busy && <div style={{ position: "absolute", inset: 0, borderRadius: 16, background: "rgba(20,16,12,.45)", display: "grid", placeItems: "center", color: "#fff" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}><span className="er-spin" style={{ display: "inline-block", width: 34, height: 34, borderRadius: "50%", border: "3px solid rgba(255,255,255,.3)", borderTopColor: "#fff" }} /><span style={{ fontSize: 14, fontWeight: 700 }}>Reading the label…</span></div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}><span className="er-spin" style={{ display: "inline-block", width: 34, height: 34, borderRadius: "50%", border: "3px solid rgba(255,255,255,.3)", borderTopColor: "#fff" }} /><span style={{ fontSize: 14, fontWeight: 700 }}>Spotting the products…</span></div>
                 </div>}
               </div>
+              {!busy && items.length > 1 && <div style={{ fontSize: 13, color: C.muted }}>Tap an item to find it.</div>}
               {!busy && <button type="button" className="er-link" onClick={reset} style={{ fontSize: 13.5 }}>Try another photo</button>}
             </div>}
           <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={pick} style={{ display: "none" }} />
@@ -4245,39 +4296,50 @@ function FindPage({ session, onHome, onLegal, onCreator }) {
         </div>
 
         {res && !busy && <div style={{ marginTop: 22 }}>
-          {(res.items || []).length > 0 ? <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 6 }}>
-            <div style={{ textAlign: "center", fontSize: 12.5, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em" }}>{res.items.length > 1 ? `We spotted ${res.items.length} things` : "We spotted"}</div>
-            {res.items.map((it, i) => (
-              <div key={i} className="er-card" style={{ padding: "14px 16px", ...(i === 0 ? { boxShadow: `0 0 0 2px ${C.accent}` } : {}) }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>{it.label || "Product"}</span>
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: C.muted }}>{it.confidence >= 0.75 ? "Exact match" : it.confidence >= 0.45 ? "Likely match" : "Closest guess"}</span>
-                </div>
-                {(it.brand || it.seller) && <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em", marginTop: 4 }}>{it.brand || it.seller}{it.seller && it.brand && it.seller.toLowerCase().replace(/[^a-z]/g, "") !== it.brand.toLowerCase().replace(/[^a-z]/g, "") ? ` · sold by ${it.seller}` : ""}</div>}
-                <div style={{ fontSize: 16.5, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{it.product || it.label}</div>
-                {it.details && <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3 }}>{it.details}</div>}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                  {(it.links || []).map((l, k) => <a key={k} href={l.url} target="_blank" rel="noopener noreferrer" className={`er-btn er-btn-sm ${k === 0 ? "er-btn-primary" : "er-btn-light"}`} style={{ textDecoration: "none", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Buy on {l.site} <Arrow size={14} /></a>)}
-                  <a href={it.googleUrl} target="_blank" rel="noopener noreferrer" className="er-btn er-btn-sm er-btn-light" style={{ textDecoration: "none" }}>{(it.links || []).length ? "Compare prices" : "Find it on Google Shopping"} <Arrow size={14} /></a>
-                </div>
+          {items.length > 0 ? <>
+            <div role="tablist" aria-label="Items in your photo" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 }}>
+              {items.map((it, i) => <button key={i} type="button" role="tab" aria-selected={sel === i} onClick={() => searchItem(i)} className="er-btn er-btn-sm er-btn-light"
+                style={{ flexShrink: 0, whiteSpace: "nowrap", ...(sel === i ? { background: C.ink, color: "#fff", borderColor: C.ink } : {}) }}>{i + 1}. {it.label}</button>)}
+            </div>
+            {cur && <div className="er-card" style={{ padding: "16px 16px 18px", marginTop: 10, boxShadow: `0 0 0 2px ${C.accent}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>{cur.label}</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.muted }}>{cur.brand ? `Brand ${evidenceText[cur.brandEvidence] || ""}` : "No brand visible"}</span>
               </div>
-            ))}
-            {res.note && <div style={{ textAlign: "center", fontSize: 12.5, color: C.muted }}>{res.note}</div>}
-            {res.searchDetail && <div style={{ textAlign: "center", fontSize: 12.5, color: C.muted }}>We couldn't search the web for shop links just now. Use the Google Shopping buttons, or try again in a minute.</div>}
-          </div>
-            : <div style={{ textAlign: "center", marginBottom: 14, fontSize: 15, color: C.inkSoft }}>We couldn't spot a product in that photo. Try a closer shot with the label or tag visible.</div>}
+              {(cur.brand || cur.seller) && <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em", marginTop: 4 }}>{cur.brand || cur.seller}{cur.seller && cur.brand && cur.seller.toLowerCase().replace(/[^a-z]/g, "") !== cur.brand.toLowerCase().replace(/[^a-z]/g, "") ? ` · sold by ${cur.seller}` : ""}</div>}
+              <div style={{ fontSize: 17, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{(curFound.data && curFound.data.name) || cur.product || cur.label}</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                {[...(cur.colors || []), cur.pattern && cur.pattern !== "solid" ? cur.pattern : "", cur.material, cur.fit, ...(cur.features || [])].filter(Boolean).slice(0, 8).map((t, k) => <span key={k} style={{ fontSize: 12, fontWeight: 600, color: C.inkSoft, background: C.panel, borderRadius: 999, padding: "3px 10px" }}>{t}</span>)}
+              </div>
 
-          {res.match && <><h2 style={{ margin: "24px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>On Easy Recommend, with a discount</h2>
+              <div style={{ marginTop: 14 }}>
+                {curFound.loading && <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: C.muted, padding: "8px 0" }}><span className="er-spin" style={{ display: "inline-block", width: 18, height: 18, borderRadius: "50%", border: `2px solid ${C.line}`, borderTopColor: C.accent }} /> Searching the web for this item…</div>}
+                {curFound.err && <div style={{ fontSize: 13.5, color: "#B3261E" }}>{curFound.err} <button type="button" className="er-link" onClick={() => { setFound((f) => { const n = { ...f }; delete n[sel]; return n; }); setTimeout(() => searchItem(sel), 0); }}>Try again</button></div>}
+                {curFound.data && <>
+                  {curFound.data.results.length > 0 ? <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {curFound.data.results.map((l, k) => <a key={k} href={l.url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", border: `1px solid ${k === 0 ? C.accent : C.line}`, borderRadius: 12, padding: "10px 12px", background: "#fff" }}>
+                      <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 800, borderRadius: 999, padding: "3px 8px", color: l.match === "exact" ? "#fff" : C.accentD, background: l.match === "exact" ? C.accent : C.accentSoft }}>{l.match === "exact" ? "Exact" : "Similar"}</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.title || l.site}</span>
+                        <span style={{ display: "block", fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.site}{l.why ? ` · ${l.why}` : ""}</span>
+                      </span>
+                      <Arrow size={15} />
+                    </a>)}
+                  </div> : <div style={{ fontSize: 13.5, color: C.muted }}>We couldn't find a shop page for this one. Google Shopping usually has lookalikes:</div>}
+                  <a href={curFound.data.googleUrl} target="_blank" rel="noopener noreferrer" className="er-btn er-btn-sm er-btn-light" style={{ textDecoration: "none", marginTop: 10 }}>{curFound.data.results.length ? "More on Google Shopping" : "Find it on Google Shopping"} <Arrow size={14} /></a>
+                  {curFound.data.searchEntry && <iframe title="Google Search suggestions" sandbox="allow-popups allow-popups-to-escape-sandbox" srcDoc={`<base target="_blank">${curFound.data.searchEntry}`} style={{ width: "100%", height: 64, border: "none", marginTop: 10, display: "block" }} />}
+                </>}
+                {!curFound.loading && !curFound.data && !curFound.err && <a href={cur.googleUrl} target="_blank" rel="noopener noreferrer" className="er-btn er-btn-sm er-btn-light" style={{ textDecoration: "none" }}>Find it on Google Shopping <Arrow size={14} /></a>}
+              </div>
+            </div>}
+            {res.note && <div style={{ textAlign: "center", fontSize: 12.5, color: C.muted, marginTop: 10 }}>{res.note}</div>}
+          </> : <div style={{ textAlign: "center", marginBottom: 14, fontSize: 15, color: C.inkSoft }}>We couldn't spot a product in that photo. Try a closer shot with the item or label clearly visible.</div>}
+
+          {res.match && <><h2 style={{ ...h2, margin: "24px 0 12px" }}>On Easy Recommend, with a discount</h2>
             <div style={{ maxWidth: 360, margin: "0 auto" }}>{card(res.match, true)}</div></>}
 
-          {(res.web || []).length > 0 && <div style={{ marginTop: 22 }}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Found on the web</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{res.web.map((w, i) => <a key={i} href={w.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13.5, color: C.accentD, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.site}{w.title && w.title !== w.site ? ` · ${w.title}` : ""}</a>)}</div>
-          </div>}
-          {res.searchEntry && <iframe title="Google Search suggestions" sandbox="allow-popups allow-popups-to-escape-sandbox" srcDoc={`<base target="_blank">${res.searchEntry}`} style={{ width: "100%", height: 64, border: "none", marginTop: 12 }} />}
-
           {res.similar && res.similar.length > 0 && <>
-            <h2 style={{ margin: "26px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>{res.match ? "You might also like" : "Similar products"}</h2>
+            <h2 style={{ ...h2, margin: "26px 0 12px" }}>{res.match ? "You might also like" : "Similar products on Easy Recommend"}</h2>
             <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,170px),1fr))" }}>{res.similar.map((p) => card(p, false))}</div>
           </>}
         </div>}
