@@ -4181,7 +4181,8 @@ function FindPage({ session, onHome, onLegal, onCreator }) {
       const blob = await (await fetch(data)).blob();
       const r = await fetch(API_BASE + "/find/photo", { method: "POST", headers: { "Content-Type": blob.type || "image/jpeg" }, body: blob });
       let j = null; try { j = await r.json(); } catch (x2) {}
-      if (!r.ok && j && j.detail) console.warn("[imagesearch]", j.detail);
+      if (j && j.trace) { console.log(`[imagesearch] request ${j.requestId} → HTTP ${r.status}`); j.trace.forEach((line) => console.log(`[imagesearch]   ${line}`)); }   // step-by-step log from the server
+      else console.log(`[imagesearch] HTTP ${r.status}, no log from server (old backend or the request never reached it)`);
       if (!r.ok) throw new Error((j && j.error) || (r.status === 503 ? "Photo search is busy right now. Try again." : `Something went wrong (${r.status}). Try again.`));
       setRes(j);
     }
@@ -4262,6 +4263,7 @@ function FindPage({ session, onHome, onLegal, onCreator }) {
               </div>
             ))}
             {res.note && <div style={{ textAlign: "center", fontSize: 12.5, color: C.muted }}>{res.note}</div>}
+            {res.searchDetail && <div style={{ textAlign: "center", fontSize: 12.5, color: C.muted }}>We couldn't search the web for shop links just now. Use the Google Shopping buttons, or try again in a minute.</div>}
           </div>
             : <div style={{ textAlign: "center", marginBottom: 14, fontSize: 15, color: C.inkSoft }}>We couldn't spot a product in that photo. Try a closer shot with the label or tag visible.</div>}
 
