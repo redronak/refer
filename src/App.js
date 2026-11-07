@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Fragment } from "react";
+import { useState, useEffect, useRef, useMemo, Fragment } from "react";
 
 /* ============================================================================
    Easy Recommend, wired to the Express backend (router mounted at /easyrecommend)
@@ -168,6 +168,19 @@ function goToBrand(username, businessId, url) {
   window.open(base + (base.includes("?") ? "&" : "?") + "er_click=" + clickId, "_blank", "noopener");
 }
 
+/* Friends: opening someone's list makes them your friend (kept in this browser). The list owner only sees a count, never who. */
+const lsGet = (k) => { try { const a = JSON.parse(localStorage.getItem(k) || "[]"); return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; } catch (e) { return []; } };
+const lsSet = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a.slice(0, 200))); } catch (e) {} };
+const getFriends = () => lsGet("er_friends");
+function viewerId() { try { let v = localStorage.getItem("er_vid"); if (!v) { v = erClickId(); localStorage.setItem("er_vid", v); } return v; } catch (e) { return ""; } }
+function setFriend(handle, on) {
+  const f = getFriends().filter((h) => h !== handle), off = lsGet("er_unfriended").filter((h) => h !== handle);
+  lsSet("er_friends", on ? [handle, ...f] : f); lsSet("er_unfriended", on ? off : [handle, ...off]);
+  const viewer = viewerId(); if (viewer) api("/friends", { method: on ? "POST" : "DELETE", body: { viewer, handle } }).catch(() => {});
+}
+// Go to an in-app page without reloading.
+function navTo(path) { window.history.pushState({}, "", path); window.dispatchEvent(new PopStateEvent("popstate")); window.scrollTo(0, 0); }
+
 // Parse the current URL into a view: "/" → home, "/admin" (or #admin) → admin, "/@handle" → profile.
 function parseRoute() {
   if (typeof window === "undefined") return { view: "home", handle: null };
@@ -178,6 +191,9 @@ function parseRoute() {
   if (p === "/business") return { view: "business", handle: null };
   if (p === "/brands") return { view: "brands", handle: null };
   if (p === "/share") return { view: "share", handle: null };
+  if (p === "/imagesearch") return { view: "find", handle: null };
+  if (p === "/find") { window.history.replaceState({}, "", "/imagesearch"); return { view: "find", handle: null }; }   // old link
+  if (p === "/shop") return { view: "shop", handle: null };
   if (p === "/affiliate") return { view: "affiliate", handle: null };
   if (p === "/list") return { view: "listpage", handle: null };
   if (p === "/influencers") return { view: "influencers", handle: null };
@@ -1703,6 +1719,24 @@ function BrandArt({ b, mini, style, fs }) {
     </span>
   );
 }
+/* "How do you earn?" — three steps shown wherever we mention the 6%. dark: on the dark awards section. */
+function EarnSteps({ dark, compact }) {
+  const sale = money(VIEWER_CUR === "INR" ? 8000 : 100), pay = money(VIEWER_CUR === "INR" ? 480 : 6);
+  const steps = [["Make a list", "Pick the products you love and rate them."], ["Share your link with everyone", "Instagram story, bio, WhatsApp groups, YouTube."], ["People shop, you get paid", `Example: they buy ${sale} worth from your recommendations, you get ${pay} (6%).`]];
+  const ink = dark ? "#F6F1E7" : C.ink, sub = dark ? "#B9B2C9" : C.muted, dot = dark ? "#E7C36A" : C.accent, dotInk = dark ? "#16131F" : "#fff";
+  return (
+    <div style={{ textAlign: "left" }}>
+      <div style={{ fontSize: compact ? 12 : 12.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: dark ? "#E7C36A" : C.accentD, marginBottom: compact ? 6 : 8 }}>How do you earn?</div>
+      <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: compact ? 6 : 9 }}>
+        {steps.map(([t, d], k) => <li key={k} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <span aria-hidden="true" style={{ flexShrink: 0, width: compact ? 20 : 24, height: compact ? 20 : 24, borderRadius: "50%", background: dot, color: dotInk, display: "grid", placeItems: "center", fontSize: compact ? 11 : 12.5, fontWeight: 800, marginTop: 1 }}>{k + 1}</span>
+          <span style={{ minWidth: 0 }}><span style={{ display: "block", fontSize: compact ? 13 : 14, fontWeight: 700, color: ink, lineHeight: 1.3 }}><span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Step {k + 1}: </span>{t}</span>
+            <span style={{ display: "block", fontSize: compact ? 12.5 : 13, color: sub, lineHeight: 1.45, marginTop: 1 }}>{d}</span></span>
+        </li>)}
+      </ol>
+    </div>
+  );
+}
 function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLogin, onViewProfile }) {
   const sess = getSession();
   const loggedIn = sess && sess.role === "creator";
@@ -1911,7 +1945,8 @@ function CreatorModal({ businesses, initialBusinessId, onClose, onRefresh, onLog
         {[["women", "Women"], ["men", "Men"]].map(([k, l]) => <button key={k} type="button" onClick={() => { setQuizWho(k); setQi(0); }} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 18, fontWeight: 800, color: C.ink, background: "#fff", border: `1.5px solid ${C.line}`, borderRadius: 18, padding: "26px 10px" }}>{l}</button>)}
       </div>
       <div style={{ marginTop: 18, background: C.accentSoft, borderRadius: 14, padding: "12px 14px", fontSize: 13.5, lineHeight: 1.5, color: C.accentD, textAlign: "left" }}>
-        <b>You earn 6% of sales</b> whenever someone shops from your recommendation. Example: if people buy {money(VIEWER_CUR === "INR" ? 8000 : 100)} worth from your list, you earn {money(VIEWER_CUR === "INR" ? 480 : 6)}.
+        <b>You earn 6% of sales</b> whenever someone shops from your recommendation.
+        <div style={{ marginTop: 10 }}><EarnSteps compact /></div>
       </div>
     </div>;
     if (quizDone) return <div style={{ textAlign: "center", padding: "18px 4px 8px" }}>
@@ -3016,7 +3051,8 @@ function PromoCard({ onCreate, dark }) {
         <div style={{ fontSize: 16, fontWeight: 800, color: dark ? "#F6F1E7" : C.ink, lineHeight: 1.25 }}>Make your recommendation list, get paid ₹50</div>
         <div style={{ fontSize: 13, color: dark ? "#B9B2C9" : C.muted, marginTop: 3, lineHeight: 1.45 }}>Share it on your Instagram story. Plus 6% when anyone shops from it.</div>
       </div>
-      <button type="button" className="er-btn er-btn-primary er-btn-sm" onClick={onCreate} style={dark ? { background: "#E7C36A", color: "#16131F" } : undefined}>Create my list <ChevR size={14} /></button>
+      <div style={{ flexBasis: "100%", borderTop: `1px solid ${dark ? "#3A3550" : C.line}`, paddingTop: 12 }}><EarnSteps dark={dark} compact /></div>
+      <button type="button" className="er-btn er-btn-primary er-btn-sm" onClick={onCreate} style={{ width: "100%", ...(dark ? { background: "#E7C36A", color: "#16131F" } : {}) }}>Create my list <ChevR size={14} /></button>
     </div>
   );
 }
@@ -3035,9 +3071,25 @@ function ListPromoPopup({ onCreate }) {
         <div style={{ margin: "0 auto", width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", color: "#fff", display: "grid", placeItems: "center", fontSize: 22, fontWeight: 900 }}>₹50</div>
         <h2 id="promo50-title" className="er-serif" style={{ margin: "14px 0 6px", fontSize: 25, fontWeight: 500, lineHeight: 1.2 }}>Make your recommendation list, get paid ₹50</h2>
         <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5, color: C.muted }}>Pick the products you love, share your list on your Instagram story, and we'll pay you ₹50. Plus 6% whenever someone shops from it.</p>
+        <div style={{ marginTop: 14, background: C.panel, borderRadius: 14, padding: "12px 14px" }}><EarnSteps compact /></div>
         <button type="button" className="er-btn er-btn-primary" style={{ width: "100%", marginTop: 18 }} onClick={() => { close(); onCreate(); }}>Create my list <ChevR size={16} /></button>
         <button type="button" className="er-link" onClick={close} style={{ marginTop: 12, fontSize: 13.5 }}>Maybe later</button>
       </div>
+    </div>
+  );
+}
+function FriendButton({ handle }) {
+  const [on, setOn] = useState(() => getFriends().includes(handle));
+  useEffect(() => {   // friend by default on open, unless they unfriended this list before
+    if (getFriends().includes(handle)) setOn(true);
+    else if (!lsGet("er_unfriended").includes(handle)) { setFriend(handle, true); setOn(true); }
+    else setOn(false);
+  }, [handle]);
+  const toggle = () => { setFriend(handle, !on); setOn(!on); toast(on ? "Removed from friends" : "✓ Added to friends"); };
+  return (
+    <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <button type="button" className="er-btn er-btn-sm er-btn-light" aria-pressed={on} onClick={toggle} style={on ? { color: C.accentD, borderColor: C.accent, background: C.accentSoft } : {}}>{on ? <><Check size={14} /> Friends</> : <><Plus size={14} /> Add friend</>}</button>
+      <span style={{ fontSize: 12.5, color: C.muted }}>{on ? <>Their picks show first when you <a href="/shop" onClick={(e) => { e.preventDefault(); navTo("/shop"); }} style={{ color: C.accentD, fontWeight: 700 }}>shop</a>. @{handle} isn't told it's you.</> : "Add to see their picks first when you shop."}</span>
     </div>
   );
 }
@@ -3082,12 +3134,13 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
             <div style={{ flex: "1 1 200px", minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}><h1 className="er-serif" style={{ margin: 0, fontSize: 30, fontWeight: 500, overflowWrap: "anywhere" }}>@{data.username}</h1><Seal size={20} /></div>
               <p style={{ margin: "2px 0 0", fontSize: 14.5, color: C.muted }}>{data.bio || "Curating businesses worth trusting."}</p>
-              <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{isOwner && data.followers > 0 ? `${data.followersLabel} followers · ` : ""}{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
+              <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{isOwner && data.followers > 0 ? `${data.followersLabel} followers · ` : ""}{isOwner && data.friendsCount > 0 ? `${data.friendsCount} friend${data.friendsCount !== 1 ? "s" : ""} · ` : ""}{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
               <div style={{ marginTop: 12 }}>
                 <button className="er-btn er-btn-sm" onClick={shareStory} style={{ border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}>
                   <IgIcon size={14} /> Share on Instagram story
                 </button>
               </div>
+              {!isOwner && <FriendButton handle={data.username} />}
               {(data.channels && data.channels.length > 0)
                 ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                     {data.channels.map((c, i) => { const u = socialUrl(c.platform, c.handle);
@@ -3229,10 +3282,10 @@ function VidTile({ v }) {
     </div>
   );
 }
-/* Log in / Sign up when logged out, My profile (or My business) when logged in. Works on any page. */
+/* Log in / Sign up when logged out, My list (or My business) when logged in. Works on any page. */
 function AccountButtons({ compact }) {
   const sess = getSession();
-  if (sess && sess.token) return <button className="er-btn er-btn-ghost er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => erEmit("er:me")}>{sess.role === "creator" ? "My profile" : "My business"}</button>;
+  if (sess && sess.token) return <button className="er-btn er-btn-ghost er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => erEmit("er:me")}>{sess.role === "creator" ? "My list" : "My business"}</button>;
   return <>
     <button className="er-btn er-btn-ghost er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => erEmit("er:auth", "login")}>Log in</button>
     {!compact && <button className="er-btn er-btn-primary er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => erEmit("er:auth", "signup")}>Sign up</button>}
@@ -3244,7 +3297,7 @@ function PageHeader({ onHome, right }) {
       <div className="er-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
         <button onClick={onHome} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer" }}><Seal size={20} /><span className="er-serif" style={{ fontSize: 19, fontWeight: 600, color: C.ink, whiteSpace: "nowrap" }}>Easy Recommend</span></button>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {/* logged out: Log in + the page's own sign-up button (or a general Sign up); logged in: My profile + page action */}
+          {/* logged out: Log in + the page's own sign-up button (or a general Sign up); logged in: My list + page action */}
           <AccountButtons compact={!!right && !(getSession() || {}).token} />
           {right}
         </div>
@@ -3949,7 +4002,7 @@ function ProductCard({ p, isCreator, actions, discountOnly }) {
           </div>}
         </div>
         {discountOnly
-          ? <div style={{ background: offText(p.brand) ? C.accentSoft : C.panel, borderRadius: 10, padding: "7px 10px", fontSize: 13.5, fontWeight: 800, color: offText(p.brand) ? C.accentD : C.muted }}>{offText(p.brand) ? `Discount of ${offText(p.brand)} for your friends` : "Share it with friends who'd love it"}</div>
+          ? <div style={{ background: offText(p.brand) ? C.accentSoft : C.panel, borderRadius: 10, padding: "7px 10px", fontSize: 13.5, fontWeight: 800, color: offText(p.brand) ? C.accentD : C.muted }}>{offText(p.brand) ? `${offText(p.brand)} for you and your friends` : "Share it with friends who'd love it"}</div>
           : <div style={{ background: el ? C.accentSoft : C.panel, borderRadius: 10, padding: "7px 10px", fontSize: 13.5, fontWeight: 800, color: el ? C.accentD : C.muted }}>{isCreator ? (el || "Commission coming soon") : "Join free to see what you earn"}</div>}
         <div style={{ marginTop: "auto" }}>{actions(p)}</div>
       </div>
@@ -4114,6 +4167,169 @@ function ShareHowTo({ title, sub, cta } = {}) {
   return <HowToLayout f={f} setF={setF} frames={frames} screens={screens} steps={steps} title={title} sub={sub} cta={cta} />;
 }
 /* Share a brand: browse brands, share each one to Instagram story / X / Facebook with your own link. */
+/* ---------- Find a product from a photo (/find) ---------- */
+const CameraIcon = (p) => <Svg {...p}><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></Svg>;
+function FindPage({ session, onHome, onLegal, onCreator }) {
+  const [img, setImg] = useState(""); const [busy, setBusy] = useState(false); const [res, setRes] = useState(null); const [err, setErr] = useState("");
+  const camRef = useRef(null), fileRef = useRef(null);
+  const pick = async (e) => {
+    const f = (e.target.files || [])[0]; e.target.value = ""; if (!f) return;
+    setErr(""); setRes(null);
+    let data = ""; try { data = await fileToDataURL(f, 1280, 0.85); } catch (x) { setErr("We couldn't open that photo. Try a JPG or PNG."); return; }
+    setImg(data); setBusy(true);
+    try { setRes(await api("/find/photo", { method: "POST", body: { image: data } })); }
+    catch (x) { setErr(x.message || "Something went wrong. Try again."); }
+    finally { setBusy(false); }
+  };
+  const reset = () => { setImg(""); setRes(null); setErr(""); };
+  const shop = (p) => { const u = p.url || p.brand.website; if (u) window.open(/^https?:\/\//i.test(u) ? u : `https://${u}`, "_blank", "noopener"); };
+  const isCreator = session && session.role === "creator";
+  const card = (p, big) => (
+    <div key={p.key} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", ...(big ? { boxShadow: `0 0 0 2px ${C.accent}` } : {}) }}>
+      <ProductPhoto p={p} />
+      <div style={{ padding: big ? "14px 16px 16px" : "10px 12px 12px", display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+        <div>
+          {p.category && <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>{awardTitle(p.category.title)}</div>}
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em", marginTop: 2 }}>{p.brand.name}</div>
+          <div style={{ fontSize: big ? 18 : 14.5, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</div>
+          {priceText(p) && <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3 }}>{priceText(p)}</div>}
+        </div>
+        {offText(p.brand) && <div style={{ background: C.accentSoft, color: C.accentD, borderRadius: 10, padding: "7px 10px", fontSize: 13, fontWeight: 800 }}>Discount of {offText(p.brand)}</div>}
+        <div style={{ marginTop: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(p.url || p.brand.website) && <button type="button" className={`er-btn er-btn-sm ${big ? "er-btn-primary" : "er-btn-light"}`} style={{ flex: 1 }} onClick={() => shop(p)}>Shop it <Arrow size={14} /></button>}
+          {big && <button type="button" className="er-btn er-btn-sm er-btn-light" style={{ flex: 1 }} onClick={onCreator}>Add to my list</button>}
+        </div>
+      </div>
+    </div>
+  );
+  const named = res && res.found && (res.brand || res.product);
+  return (
+    <div style={{ minHeight: "100vh", background: C.paper }}>
+      <PageHeader onHome={onHome} right={null} />
+      <section className="er-wrap" style={{ padding: "30px 20px 50px", maxWidth: 760, margin: "0 auto" }}>
+        <div style={{ textAlign: "center" }}>
+          <span className="er-eyebrow">Product finder</span>
+          <h1 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(32px,7vw,46px)", fontWeight: 500, lineHeight: 1.08 }}>Find any product from a photo</h1>
+          <p style={{ margin: "0 auto", maxWidth: 480, fontSize: 15.5, lineHeight: 1.55, color: C.muted }}>Snap the bottle on your shelf or a product you saw somewhere. We'll tell you exactly what it is and where to get it, with a discount when there is one.</p>
+        </div>
+
+        <div className="er-card" style={{ marginTop: 24, padding: 18, textAlign: "center" }}>
+          {!img ? <div style={{ border: `2px dashed ${C.line}`, borderRadius: 18, padding: "34px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 64, height: 64, borderRadius: "50%", background: C.accentSoft, color: C.accentD, display: "grid", placeItems: "center" }}><CameraIcon size={28} /></span>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>Take or upload a clear photo of the product</div>
+            <div style={{ fontSize: 13, color: C.muted }}>Make sure the label or logo is visible.</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
+              <button type="button" className="er-btn er-btn-primary" onClick={() => camRef.current && camRef.current.click()}><CameraIcon size={16} /> Take a photo</button>
+              <button type="button" className="er-btn er-btn-light" onClick={() => fileRef.current && fileRef.current.click()}>Upload a photo</button>
+            </div>
+          </div>
+            : <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+              <div style={{ position: "relative", width: "100%", maxWidth: 320 }}>
+                <img src={img} alt="Your photo" style={{ display: "block", width: "100%", maxHeight: 340, objectFit: "contain", borderRadius: 16, background: C.panel }} />
+                {busy && <div style={{ position: "absolute", inset: 0, borderRadius: 16, background: "rgba(20,16,12,.45)", display: "grid", placeItems: "center", color: "#fff" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}><span className="er-spin" style={{ display: "inline-block", width: 34, height: 34, borderRadius: "50%", border: "3px solid rgba(255,255,255,.3)", borderTopColor: "#fff" }} /><span style={{ fontSize: 14, fontWeight: 700 }}>Reading the label…</span></div>
+                </div>}
+              </div>
+              {!busy && <button type="button" className="er-link" onClick={reset} style={{ fontSize: 13.5 }}>Try another photo</button>}
+            </div>}
+          <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={pick} style={{ display: "none" }} />
+          <input ref={fileRef} type="file" accept="image/*" onChange={pick} style={{ display: "none" }} />
+          <ErrBox msg={err} />
+        </div>
+
+        {res && !busy && <div style={{ marginTop: 22 }}>
+          {named ? <div style={{ textAlign: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em" }}>{res.confidence >= 0.75 ? "We found it" : "Our best guess"}</div>
+            <div className="er-serif" style={{ fontSize: 26, fontWeight: 500, marginTop: 4, lineHeight: 1.2 }}>{[res.brand, res.product].filter(Boolean).join(" ")}{res.variant ? ` (${res.variant})` : ""}</div>
+            {res.note && <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>{res.note}</div>}
+          </div> : <div style={{ textAlign: "center", marginBottom: 14, fontSize: 15, color: C.inkSoft }}>We couldn't spot a product in that photo. Try a closer shot with the label facing the camera.</div>}
+
+          {res.match ? <div style={{ maxWidth: 360, margin: "0 auto" }}>{card(res.match, true)}</div>
+            : named && <div style={{ textAlign: "center", fontSize: 14, color: C.muted, background: C.panel, borderRadius: 14, padding: "12px 14px" }}>This one isn't on Easy Recommend yet.{res.similar.length ? " Here are similar picks you can shop:" : ""}</div>}
+
+          {res.similar && res.similar.length > 0 && <>
+            <h2 style={{ margin: "26px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>{res.match ? "You might also like" : "Similar products"}</h2>
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,170px),1fr))" }}>{res.similar.map((p) => card(p, false))}</div>
+          </>}
+        </div>}
+
+        <div style={{ marginTop: 34, textAlign: "center", background: C.panel, borderRadius: 18, padding: "20px 18px" }}>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>Love what you found?</div>
+          <p style={{ margin: "6px 0 12px", fontSize: 14, color: C.muted }}>Add it to your recommendation list and earn 6% whenever someone shops from it.</p>
+          <div style={{ maxWidth: 420, margin: "0 auto 14px", background: "#fff", borderRadius: 14, padding: "12px 14px" }}><EarnSteps compact /></div>
+          <button type="button" className="er-btn er-btn-primary er-btn-sm" onClick={onCreator}>{isCreator ? "Add to my list" : "Make my list"} <ChevR size={14} /></button>
+        </div>
+      </section>
+      <PageFooter onLegal={onLegal} />
+    </div>
+  );
+}
+/* Shop: search every product; products your friends recommend come first (and earn them the commission). */
+function ShopPage({ onHome }) {
+  const [q, setQ] = useState(""); const [cats, setCats] = useState(catalogMem); const [picks, setPicks] = useState(null); const [cat, setCat] = useState("");
+  const friends = useMemo(() => getFriends(), []);
+  useEffect(() => { api("/products/catalog").then((r) => { catalogMem = Array.isArray(r) ? r : []; setCats(catalogMem); }).catch(() => setCats((x) => x || [])); }, []);
+  useEffect(() => {
+    if (!friends.length) { setPicks([]); return; }
+    api(`/shop/friends?handles=${encodeURIComponent(friends.join(","))}`).then((r) => setPicks(Array.isArray(r) ? r : [])).catch(() => setPicks([]));
+  }, [friends]);
+  const byKey = useMemo(() => new Map((picks || []).map((p) => [p.key, p])), [picks]);
+  const t = q.trim().toLowerCase();
+  const match = (p) => !t || `${p.name} ${p.brand.name} ${(p.category && p.category.title) || ""}`.toLowerCase().includes(t);
+  const all = useMemo(() => (cats || []).flatMap((c) => c.items.map((p) => ({ ...p, category: { key: c.key, title: c.title, emoji: c.emoji } }))), [cats]);
+  const friendFirst = (a, b) => ((byKey.get(b.key) || {}).friends || []).length - ((byKey.get(a.key) || {}).friends || []).length;
+  const pool = (t ? all.filter(match) : all.filter((p) => (!cat || p.category.key === cat) && !byKey.has(p.key))).slice().sort(friendFirst);   // no search: friend picks already sit above
+  const friendPicks = (picks || []).filter(match);
+  const shop = (p) => {
+    const u = p.url || p.brand.website; const fp = byKey.get(p.key);
+    if (fp && fp.friends.length) return goToBrand(fp.friends[0], p.brand.id, u);   // credit the friend whose pick it is
+    if (u) window.open(/^https?:\/\//i.test(u) ? u : `https://${u}`, "_blank", "noopener");
+  };
+  const grid = { display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,210px),1fr))" };
+  const card = (p) => { const fp = byKey.get(p.key); return (
+    <div key={p.key} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", ...(fp ? { boxShadow: `0 0 0 2px ${C.accent}` } : {}) }}>
+      <ProductPhoto p={p} />
+      <div style={{ padding: "10px 12px 12px", display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+        {fp && <div style={{ fontSize: 12, fontWeight: 800, color: C.accentD }}>Recommended by {fp.friends.slice(0, 2).map((h) => `@${h}`).join(", ")}{fp.friends.length > 2 ? ` +${fp.friends.length - 2}` : ""}{fp.rating > 0 ? ` · ★ ${fp.rating}` : ""}</div>}
+        <div>
+          {p.category && <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted }}>{awardTitle(p.category.title)}</div>}
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em", marginTop: 2 }}>{p.brand.name}</div>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</div>
+          {priceText(p) && <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3 }}>{priceText(p)}</div>}
+        </div>
+        {offText(p.brand) && <div style={{ background: C.accentSoft, color: C.accentD, borderRadius: 10, padding: "6px 10px", fontSize: 12.5, fontWeight: 800 }}>Discount of {offText(p.brand)}</div>}
+        {(p.url || p.brand.website) && <button type="button" className={`er-btn er-btn-sm ${fp ? "er-btn-primary" : "er-btn-light"}`} style={{ marginTop: "auto" }} onClick={() => shop(p)}>Shop it <Arrow size={14} /></button>}
+      </div>
+    </div>); };
+  const h2 = { margin: "0 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft };
+  return (
+    <div style={{ minHeight: "100vh", background: C.paper }}>
+      <PageHeader onHome={onHome} right={null} />
+      <section className="er-wrap" style={{ padding: "30px 20px 50px", maxWidth: 980, margin: "0 auto" }}>
+        <span className="er-eyebrow">Shop</span>
+        <h1 className="er-serif" style={{ margin: "10px 0 6px", fontSize: "clamp(30px,6vw,42px)", fontWeight: 500, lineHeight: 1.08 }}>Shop what your friends swear by</h1>
+        <p style={{ margin: 0, fontSize: 15, color: C.muted }}>Search any product. The ones your friends recommend show up first.</p>
+        <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+          <input className="er-input" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search sunscreen, shampoo, a brand…" aria-label="Search products" style={{ flex: 1 }} />
+          <a href="/imagesearch" onClick={(e) => { e.preventDefault(); navTo("/imagesearch"); }} className="er-btn er-btn-light" style={{ flexShrink: 0, textDecoration: "none", whiteSpace: "nowrap" }} aria-label="Find a product from a photo"><CameraIcon size={16} /> Photo</a>
+        </div>
+        {!t && <div style={{ marginTop: 26 }}>
+          <h2 style={h2}>From your friends</h2>
+          {picks === null ? <p style={{ color: C.muted }}>Loading…</p>
+            : friendPicks.length ? <div style={grid}>{friendPicks.map(card)}</div>
+            : <div style={{ background: C.panel, borderRadius: 14, padding: "18px 16px", fontSize: 14, color: C.inkSoft, lineHeight: 1.5 }}>{friends.length ? "Your friends haven't rated any of these products yet." : "Open a friend's recommendation list and they're added here automatically. Their picks will show up first."}</div>}
+        </div>}
+        <div style={{ marginTop: 30 }}>
+          <h2 style={h2}>{t ? `Results for “${q.trim()}”` : "All products"}</h2>
+          {!t && (cats || []).length > 0 && <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 12 }}>
+            {[{ key: "", title: "All", emoji: "" }, ...cats].map((c) => <button key={c.key || "all"} type="button" onClick={() => setCat(c.key)} className="er-btn er-btn-sm er-btn-light" aria-pressed={cat === c.key} style={{ flexShrink: 0, whiteSpace: "nowrap", ...(cat === c.key ? { background: C.ink, color: "#fff", borderColor: C.ink } : {}) }}>{c.emoji} {c.key ? awardTitle(c.title) : "All"}</button>)}
+          </div>}
+          {cats === null ? <p style={{ color: C.muted }}>Loading…</p> : pool.length ? <div style={grid}>{pool.slice(0, t ? 120 : 60).map(card)}</div> : <p style={{ color: C.muted }}>No products match “{q.trim()}”.</p>}
+        </div>
+      </section>
+    </div>
+  );
+}
 function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
   const isCreator = session && session.role === "creator";
   const [list, setList] = useState(() => cachedBusinesses()); const [q, setQ] = useState(""); const [cat, setCat] = useState("__products");
@@ -4171,7 +4387,10 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
       </section>
       <section className="er-wrap" style={{ padding: "8px 22px 70px" }}>
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
-          <input className="er-input" placeholder={cat === "__products" ? "Search products or brands" : "Search brands or categories"} value={q} onChange={(e) => setQ(e.target.value)} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <input className="er-input" style={{ flex: 1, minWidth: 0 }} placeholder={cat === "__products" ? "Search products or brands" : "Search brands or categories"} value={q} onChange={(e) => setQ(e.target.value)} />
+            <a href="/imagesearch" onClick={(e) => { e.preventDefault(); window.history.pushState({}, "", "/imagesearch"); window.dispatchEvent(new PopStateEvent("popstate")); window.scrollTo(0, 0); }} className="er-btn er-btn-light" style={{ flexShrink: 0, textDecoration: "none", whiteSpace: "nowrap" }} aria-label="Find a product from a photo"><CameraIcon size={16} /> Photo</a>
+          </div>
           {(cats.length > 1 || all.some((x) => x.popular)) && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 2px" }}>
             {PRODUCT_CHIPS.filter((c) => chipShown(c, all)).map((c) => <button key={c || "all"} type="button" onClick={() => setCat(c)} style={{ flexShrink: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: `1px solid ${cat === c ? C.ink : C.line}`, background: cat === c ? C.ink : "#fff", color: cat === c ? C.paper : C.inkSoft }}>{SECTION_LABEL[c]}</button>)}
           </div>}
@@ -4192,7 +4411,7 @@ function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
                     <div style={{ fontSize: 12.5, color: C.muted }}>{(b.categories || []).join(" · ")}</div>
                   </div>
                 </div>
-                <div style={{ background: offText(b) ? C.accentSoft : C.panel, borderRadius: 10, padding: "8px 10px", fontSize: 14, fontWeight: 800, color: offText(b) ? C.accentD : C.muted }}>{offText(b) ? `Discount of ${offText(b)} for your friends` : "Share it with friends who'd love it"}</div>
+                <div style={{ background: offText(b) ? C.accentSoft : C.panel, borderRadius: 10, padding: "8px 10px", fontSize: 14, fontWeight: 800, color: offText(b) ? C.accentD : C.muted }}>{offText(b) ? `${offText(b)} for you and your friends` : "Share it with friends who'd love it"}</div>
                 <div style={{ marginTop: "auto", display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {sbtn(b, "ig", "Share on Instagram story", <IgIcon size={14} />, igGrad, "#fff")}
                   {sbtn(b, "wa", "WhatsApp", null, "#25D366", "#fff")}
@@ -4399,7 +4618,7 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {session ? <>
               {session.role === "creator"
-                ? <button className="er-btn er-btn-ghost er-btn-sm" onClick={onMyProfile}>My profile</button>
+                ? <button className="er-btn er-btn-ghost er-btn-sm" onClick={onMyProfile}>My list</button>
                 : <button className="er-btn er-btn-ghost er-btn-sm" onClick={onMyBiz}>My business</button>}
               <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onShare}>Share &amp; earn</button>
               <button className="er-btn er-btn-ghost er-btn-sm" onClick={onSettings}>Settings</button>
@@ -4843,7 +5062,7 @@ function EasyApp() {
   useEffect(() => { const h = (e) => { setDetailMode(null); setDetailId(e.detail); }; window.addEventListener("er:open-business", h); return () => window.removeEventListener("er:open-business", h); }, []);
 
   const login = (s) => { saveSession(s); setSessionState(s); };
-  // Header buttons on any page: "Log in" / "Sign up" / "My profile".
+  // Header buttons on any page: "Log in" / "Sign up" / "My list".
   const [signupOpen, setSignupOpen] = useState(false);
   useEffect(() => {
     const onAuth = (e) => { if (e.detail === "signup") setSignupOpen(true); else setLoginOpen(true); };
@@ -4920,6 +5139,8 @@ function EasyApp() {
       {view === "listpage" && <ListPage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} />}
       {view === "affiliate" && <AffiliatePage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onAuth={login} onLegal={() => setLegalOpen(true)} />}
       {view === "share" && <SharePage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onAuth={login} onLegal={() => setLegalOpen(true)} />}
+      {view === "shop" && <ShopPage onHome={goHome} />}
+      {view === "find" && <FindPage session={session} onHome={goHome} onLegal={() => setLegalOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} />}
       {view === "brands" && <BrandsPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "business" && <BusinessPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "influencers" && <InfluencerPage onHome={goHome} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onList={() => setBrandOpen(true)} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
