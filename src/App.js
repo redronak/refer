@@ -4175,9 +4175,15 @@ function FindPage({ session, onHome, onLegal, onCreator }) {
   const pick = async (e) => {
     const f = (e.target.files || [])[0]; e.target.value = ""; if (!f) return;
     setErr(""); setRes(null);
-    let data = ""; try { data = await fileToDataURL(f, 1280, 0.85); } catch (x) { setErr("We couldn't open that photo. Try a JPG or PNG."); return; }
+    let data = ""; try { data = await fileToDataURL(f, 1024, 0.82); } catch (x) { setErr("We couldn't open that photo. Try a JPG or PNG."); return; }
     setImg(data); setBusy(true);
-    try { setRes(await api("/find/photo", { method: "POST", body: { image: data } })); }
+    try {   // send the photo as raw image bytes, not JSON
+      const blob = await (await fetch(data)).blob();
+      const r = await fetch(API_BASE + "/find/photo", { method: "POST", headers: { "Content-Type": blob.type || "image/jpeg" }, body: blob });
+      let j = null; try { j = await r.json(); } catch (x2) {}
+      if (!r.ok) throw new Error((j && j.error) || (r.status === 503 ? "Photo search is busy right now. Try again." : `Something went wrong (${r.status}). Try again.`));
+      setRes(j);
+    }
     catch (x) { setErr(x.message || "Something went wrong. Try again."); }
     finally { setBusy(false); }
   };
