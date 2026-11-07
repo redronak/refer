@@ -4209,7 +4209,6 @@ function FindPage({ session, onHome, onLegal, onCreator }) {
       </div>
     </div>
   );
-  const named = res && res.found && (res.brand || res.product);
   return (
     <div style={{ minHeight: "100vh", background: C.paper }}>
       <PageHeader onHome={onHome} right={null} />
@@ -4245,14 +4244,35 @@ function FindPage({ session, onHome, onLegal, onCreator }) {
         </div>
 
         {res && !busy && <div style={{ marginTop: 22 }}>
-          {named ? <div style={{ textAlign: "center", marginBottom: 14 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em" }}>{res.confidence >= 0.75 ? "We found it" : "Our best guess"}</div>
-            <div className="er-serif" style={{ fontSize: 26, fontWeight: 500, marginTop: 4, lineHeight: 1.2 }}>{[res.brand, res.product].filter(Boolean).join(" ")}{res.variant ? ` (${res.variant})` : ""}</div>
-            {res.note && <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>{res.note}</div>}
-          </div> : <div style={{ textAlign: "center", marginBottom: 14, fontSize: 15, color: C.inkSoft }}>We couldn't spot a product in that photo. Try a closer shot with the label facing the camera.</div>}
+          {(res.items || []).length > 0 ? <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 6 }}>
+            <div style={{ textAlign: "center", fontSize: 12.5, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em" }}>{res.items.length > 1 ? `We spotted ${res.items.length} things` : "We spotted"}</div>
+            {res.items.map((it, i) => (
+              <div key={i} className="er-card" style={{ padding: "14px 16px", ...(i === 0 ? { boxShadow: `0 0 0 2px ${C.accent}` } : {}) }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>{it.label || "Product"}</span>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: C.muted }}>{it.confidence >= 0.75 ? "Exact match" : it.confidence >= 0.45 ? "Likely match" : "Closest guess"}</span>
+                </div>
+                {(it.brand || it.seller) && <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em", marginTop: 4 }}>{it.brand || it.seller}{it.seller && it.brand && it.seller.toLowerCase().replace(/[^a-z]/g, "") !== it.brand.toLowerCase().replace(/[^a-z]/g, "") ? ` · sold by ${it.seller}` : ""}</div>}
+                <div style={{ fontSize: 16.5, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{it.product || it.label}</div>
+                {it.details && <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3 }}>{it.details}</div>}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                  {(it.links || []).map((l, k) => <a key={k} href={l.url} target="_blank" rel="noopener noreferrer" className={`er-btn er-btn-sm ${k === 0 ? "er-btn-primary" : "er-btn-light"}`} style={{ textDecoration: "none", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Buy on {l.site} <Arrow size={14} /></a>)}
+                  <a href={it.googleUrl} target="_blank" rel="noopener noreferrer" className="er-btn er-btn-sm er-btn-light" style={{ textDecoration: "none" }}>{(it.links || []).length ? "Compare prices" : "Find it on Google Shopping"} <Arrow size={14} /></a>
+                </div>
+              </div>
+            ))}
+            {res.note && <div style={{ textAlign: "center", fontSize: 12.5, color: C.muted }}>{res.note}</div>}
+          </div>
+            : <div style={{ textAlign: "center", marginBottom: 14, fontSize: 15, color: C.inkSoft }}>We couldn't spot a product in that photo. Try a closer shot with the label or tag visible.</div>}
 
-          {res.match ? <div style={{ maxWidth: 360, margin: "0 auto" }}>{card(res.match, true)}</div>
-            : named && <div style={{ textAlign: "center", fontSize: 14, color: C.muted, background: C.panel, borderRadius: 14, padding: "12px 14px" }}>This one isn't on Easy Recommend yet.{res.similar.length ? " Here are similar picks you can shop:" : ""}</div>}
+          {res.match && <><h2 style={{ margin: "24px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>On Easy Recommend, with a discount</h2>
+            <div style={{ maxWidth: 360, margin: "0 auto" }}>{card(res.match, true)}</div></>}
+
+          {(res.web || []).length > 0 && <div style={{ marginTop: 22 }}>
+            <h2 style={{ margin: "0 0 8px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>Found on the web</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{res.web.map((w, i) => <a key={i} href={w.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13.5, color: C.accentD, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.site}{w.title && w.title !== w.site ? ` · ${w.title}` : ""}</a>)}</div>
+          </div>}
+          {res.searchEntry && <iframe title="Google Search suggestions" sandbox="allow-popups allow-popups-to-escape-sandbox" srcDoc={`<base target="_blank">${res.searchEntry}`} style={{ width: "100%", height: 64, border: "none", marginTop: 12 }} />}
 
           {res.similar && res.similar.length > 0 && <>
             <h2 style={{ margin: "26px 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft }}>{res.match ? "You might also like" : "Similar products"}</h2>
