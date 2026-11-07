@@ -4181,6 +4181,7 @@ function FindPage({ session, onHome, onLegal, onCreator }) {
       const blob = await (await fetch(data)).blob();
       const r = await fetch(API_BASE + "/find/photo", { method: "POST", headers: { "Content-Type": blob.type || "image/jpeg" }, body: blob });
       let j = null; try { j = await r.json(); } catch (x2) {}
+      if (!r.ok && j && j.detail) console.warn("[imagesearch]", j.detail);
       if (!r.ok) throw new Error((j && j.error) || (r.status === 503 ? "Photo search is busy right now. Try again." : `Something went wrong (${r.status}). Try again.`));
       setRes(j);
     }
