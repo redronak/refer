@@ -95,6 +95,11 @@ const PAYOUT_BY_COUNTRY = {
   "Other": [["paypal", "PayPal", "PayPal email"], ["wise", "Wise", "Wise email"], ["bank", "Bank transfer", "Account details"]],
 };
 const PAYOUT_COUNTRIES = Object.keys(PAYOUT_BY_COUNTRY);
+// "15% + $2 per sale · $5 per signup · $0.50 per lead" from a brand's AI agent pay.
+const agentPayText = (f, fmt = (n) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`) => {
+  const sale = [f.agentSalePct > 0 ? `${f.agentSalePct}%` : "", f.agentSaleFlat > 0 ? fmt(f.agentSaleFlat) : ""].filter(Boolean).join(" + ");
+  return [sale && `${sale} per sale`, f.agentPerSignup > 0 && `${fmt(f.agentPerSignup)} per signup`, f.agentPerLead > 0 && `${fmt(f.agentPerLead)} per lead`].filter(Boolean).join(" · ");
+};
 const commissionLabel = (b) => b.commissionType === "flat" ? `$${b.commissionFlat}` : b.commissionType === "both" ? `${b.commissionPct}% + $${b.commissionFlat}` : `${b.commissionPct}%`;
 
 // Downscale an uploaded image to a small JPEG data URL (keeps payloads light).
@@ -194,6 +199,7 @@ function parseRoute() {
   if (p === "/imagesearch") return { view: "find", handle: null };
   if (p === "/find") { window.history.replaceState({}, "", "/imagesearch"); return { view: "find", handle: null }; }   // old link
   if (p === "/shop") return { view: "shop", handle: null };
+  if (p === "/agentready") return { view: "agentready", handle: null };
   if (p === "/affiliate") return { view: "affiliate", handle: null };
   if (p === "/list") return { view: "listpage", handle: null };
   if (p === "/influencers") return { view: "influencers", handle: null };
@@ -637,7 +643,7 @@ function BusinessDetail({ id, onClose, onRecommend, autoLink, onAuth }) {
 /* ---------- Brand onboarding ---------- */
 function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: "", phone: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0 });
+  const [f, setF] = useState({ name: "", phone: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, agentSalePct: 15, agentSaleFlat: 0, agentPerLead: 0, agentPerSignup: 0 });
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const [searching, setSearching] = useState(false); const [revealed, setRevealed] = useState(false);
   const [otp, setOtp] = useState(""); const [sent, setSent] = useState(false); const [sending, setSending] = useState(false);
@@ -666,7 +672,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const submit = async () => {
     setBusy(true); setErr("");
     try {
-      const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, otp: otp.trim(), website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount, contacts: ["website"] } });
+      const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, otp: otp.trim(), website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount, agentSalePct: f.agentSalePct, agentSaleFlat: f.agentSaleFlat, agentPerLead: f.agentPerLead, agentPerSignup: f.agentPerSignup, contacts: ["website"] } });
       if (r && r.token) onLogin({ role: "brand", token: r.token, phone: f.phone });
       onRefresh(); onDone({ name: f.name, live: r && r.status === "approved" });
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
@@ -729,6 +735,38 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
                 <span style={{ fontSize: 15, color: C.muted, marginRight: 2 }}>$</span>
                 <input type="number" min="0" value={f.commissionFlat} onChange={(e) => set("commissionFlat", Math.max(0, +e.target.value))} style={{ flex: 1, border: "none", outline: "none", background: "none", fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: C.ink, width: "100%" }} /></div></Field>}
             <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: C.inkSoft }}>Creators earn <b style={{ color: C.ink }}>{commValid ? commissionLabel(f) : "-"}</b> per sale.</div>
+            <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px 14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 14.5, fontWeight: 700, color: C.ink }}>What you'll pay AI agents</span><span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 8px" }}>New</span></div>
+                <p style={{ margin: "3px 0 0", fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>AI agents that shop and sign up for people can recommend you. You pay only for results. <a href="/agentready" target="_blank" rel="noopener" style={{ color: C.accentD, fontWeight: 600 }}>How it works</a></p>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 6 }}>On each sale <span style={{ fontWeight: 500, color: C.muted }}>· a %, a fixed amount, or both</span></div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {[["agentSalePct", "%", "Percent", 90], ["agentSaleFlat", "$", "Fixed", 100000]].map(([k, sym, lbl, max]) => (
+                    <label key={k} style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "9px 12px", flex: "1 1 120px", maxWidth: 180 }}>
+                      <span style={{ fontSize: 12, color: C.muted, marginRight: 8 }}>{lbl}</span>
+                      {sym === "$" && <span style={{ fontSize: 15, color: C.muted, marginRight: 2 }}>$</span>}
+                      <input type="number" min="0" max={max} inputMode="decimal" aria-label={`AI agent ${lbl.toLowerCase()} per sale`} value={f[k] || ""} placeholder="0" onChange={(e) => set(k, Math.min(max, Math.max(0, +e.target.value || 0)))} style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "none", fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: C.ink, width: "100%" }} />
+                      {sym === "%" && <span style={{ fontSize: 15, color: C.muted, marginLeft: 2 }}>%</span>}
+                    </label>))}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 6 }}>Optional: pay for leads and signups too</div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {[["agentPerLead", "Per popup / form submission"], ["agentPerSignup", "Per signup"]].map(([k, lbl]) => (
+                    <label key={k} style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", gap: 5, fontSize: 12, color: C.muted }}>{lbl}
+                      <span style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "9px 12px" }}>
+                        <span style={{ fontSize: 15, color: C.muted, marginRight: 2 }}>$</span>
+                        <input type="number" min="0" inputMode="decimal" aria-label={`AI agent pay ${lbl.toLowerCase()}`} value={f[k] || ""} placeholder="0" onChange={(e) => set(k, Math.min(100000, Math.max(0, +e.target.value || 0)))} style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "none", fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: C.ink, width: "100%" }} />
+                      </span></label>))}
+                </div>
+              </div>
+              <div style={{ background: C.panel, borderRadius: 10, padding: "10px 12px", fontSize: 13, color: C.inkSoft }}>
+                {agentPayText(f) ? <>AI agents earn <b style={{ color: C.ink }}>{agentPayText(f)}</b>.</> : "Leave all at 0 if you don't want AI agents to recommend you yet."}
+              </div>
+            </div>
             <Field label="Customer perk" hint="Optional discount shown on your public listing.">
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <input type="range" min="0" max="40" value={f.discount} onChange={(e) => set("discount", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
@@ -1216,8 +1254,21 @@ function SetupTab({ token, business, onLive }) {
   const [checking, setChecking] = useState(false);
   const [plat, setPlat] = useState("Shopify"); const [url, setUrl] = useState(business && business.website ? business.website : "");
   const [note, setNote] = useState(""); const [busy, setBusy] = useState(false); const [sent, setSent] = useState(false); const [err, setErr] = useState("");
-  const loadPx = () => api(`/business/me/pixel?token=${encodeURIComponent(token)}`).then((r) => { setPx(r); if (r.platform && !platform) setPlatform(r.platform); return r; }).catch(() => null);
-  useEffect(() => { loadPx(); }, [token]);
+  const [se, setSe] = useState({ on: false, pct: "10", code: "" }); const [seSaving, setSeSaving] = useState(false); const [seMsg, setSeMsg] = useState(""); const [seErr, setSeErr] = useState("");
+  const loadPx = () => api(`/business/me/pixel?token=${encodeURIComponent(token)}`).then((r) => {
+    setPx(r); if (r.platform && !platform) setPlatform(r.platform);
+    setSe((x) => ({ on: !!r.shareEarn, pct: r.shareDiscount ? String(r.shareDiscount) : x.pct, code: r.shareCode || x.code }));
+    return r;
+  }).catch(() => null);
+  useEffect(() => { loadPx().then((r) => { if (r && !r.platform && (site || "").trim()) detect(); }); }, [token]);   // website known: work out the platform straight away
+  const saveSe = async (on) => {
+    setSeSaving(true); setSeErr(""); setSeMsg("");
+    try {
+      const r = await api("/business/me/share-earn", { method: "POST", body: { token, enabled: on, discount: Number(se.pct), code: se.code.trim() } });
+      setSe({ on: r.shareEarn, pct: String(r.shareDiscount || se.pct), code: r.shareCode || se.code });
+      setSeMsg(r.shareEarn ? `On. Shoppers who share a product get ${r.shareDiscount}% off with ${r.shareCode}.` : "Turned off. The button is hidden on your site.");
+    } catch (e) { setSeErr(e.message || "Couldn't save."); } finally { setSeSaving(false); }
+  };
   const key = (px && px.pixelKey) || "your-key";
   const pixelUrl = (px && px.pixelUrl) || `https://learntok-backend-2026-24c204fe508e.herokuapp.com/easyrecommend/px.js?key=${key}`;
   const convUrl = (px && px.conversionUrl) || pixelUrl.replace(/\/px\.js.*$/, "/conversion");
@@ -1233,7 +1284,6 @@ function SetupTab({ token, business, onLive }) {
     try { await api("/business/me/setup-request", { method: "POST", body: { token, platform: plat, siteUrl: url.trim(), note: note.trim() } }); setSent(true); }
     catch (e) { setErr(e.message || "Couldn't send."); } finally { setBusy(false); }
   };
-  const widgetSnippet = `<script src="${pixelUrl.replace("/px.js", "/widget.js")}" data-mode="both"></script>`;
   const shopifyPixel = `var EASYREC_KEY = "${key}";\nvar EASYREC_ENDPOINT = "${convUrl}";\nanalytics.subscribe("page_viewed", async (e) => { try { var h=(e.context.document.location.href)||""; var m=h.match(/[?&]er_click=([^&#]+)/); if(m) await browser.localStorage.setItem("er_click", decodeURIComponent(m[1])); } catch(_){} });\nanalytics.subscribe("checkout_completed", async (e) => { try { var cid=await browser.localStorage.getItem("er_click"); if(!cid) return; var co=(e.data&&e.data.checkout)||{}; var v=(co.subtotalPrice&&co.subtotalPrice.amount)||(co.totalPrice&&co.totalPrice.amount)||0; var oid=(co.order&&co.order.id)||co.token||""; await fetch(EASYREC_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({key:EASYREC_KEY,clickId:cid,orderId:String(oid),value:Number(v),via:"shopify"}),keepalive:true}); } catch(_){} });`;
   const P = PLATFORM_STEPS[platform] || null;
   const live = px && px.lastPixelAt;
@@ -1257,6 +1307,17 @@ function SetupTab({ token, business, onLive }) {
             <button className="er-btn er-btn-primary" disabled={!site.trim() || detecting} onClick={detect}>{detecting ? "Checking…" : <>Check my store <Arrow size={15} /></>}</button>
           </div>
           {det && <p style={{ margin: "10px 0 0", fontSize: 13.5, color: C.inkSoft }}>{det.reachable === false ? "We couldn't open that site, so pick your platform below." : <>Looks like <b>{(PLATFORM_STEPS[det.platform] || PLATFORM_STEPS.custom).name}</b>{det.alreadyInstalled ? <> · <b style={{ color: C.accentD }}>the line is already on your homepage ✓</b></> : ""}.</>}</p>}
+          <details style={{ marginTop: 10, fontSize: 13, color: C.inkSoft }}>
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>Not sure what your site is built on?</summary>
+            <p style={{ margin: "8px 0 4px", lineHeight: 1.5 }}>Paste your address above and tap <b>Check my store</b>, we'll tell you. Or look at the address you use to log in and edit your site:</p>
+            <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}>
+              <li><b>admin.shopify.com</b> or <b>yourstore.myshopify.com/admin</b> → Shopify</li>
+              <li><b>yoursite.com/wp-admin</b> → WordPress (WooCommerce if you sell there)</li>
+              <li><b>manage.wix.com</b> → Wix · <b>squarespace.com/config</b> → Squarespace</li>
+              <li><b>webflow.com/dashboard</b> → Webflow · <b>framer.com</b> → Framer · <b>login.bigcommerce.com</b> → BigCommerce</li>
+              <li>Someone built it for you? Pick <b>Custom website</b> and send them the message in step 2.</li>
+            </ul>
+          </details>
           <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 6 }}>
             {Object.keys(PLATFORM_STEPS).map((k) => <button key={k} type="button" onClick={() => setPlatform(k)} style={{ cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "5px 10px", borderRadius: 999, border: `1px solid ${platform === k ? C.ink : C.line}`, background: platform === k ? C.ink : "#fff", color: platform === k ? C.paper : C.inkSoft }}>{PLATFORM_STEPS[k].name}</button>)}
           </div>
@@ -1272,6 +1333,10 @@ function SetupTab({ token, business, onLive }) {
           </ol>
           <CopyBox text={P.shopify ? shopifyPixel : oneLine} label={P.shopify ? "Copy pixel" : "Copy line"} />
           {P.alt && <p style={{ margin: "8px 0 0", fontSize: 12.5, color: C.muted }}>{P.alt}</p>}
+          {!P.shopify && <details style={{ marginTop: 12, fontSize: 13, color: C.inkSoft }}>
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>Someone else manages your site? Send them this</summary>
+            <CopyBox label="Copy message" text={`Hi! Can you add this one line inside the <head> of every page on ${site.trim() || "our website"}? It's for Easy Recommend (creator referrals and a share-for-discount button). Nothing else is needed.\n\n${oneLine}\n\nThanks!`} />
+          </details>}
         </div></div>
       </div>}
 
@@ -1287,6 +1352,38 @@ function SetupTab({ token, business, onLive }) {
         </div></div>
       </div>}
 
+      <div className="er-card" style={{ padding: 20, marginBottom: 14, border: `1px solid ${se.on ? C.accent : C.line}` }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>Add &ldquo;Share &amp; get a discount&rdquo; to your product pages?</div>
+            <p style={{ margin: "4px 0 0", fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55 }}>Shoppers see a button on each product. They share the product with a friend, then get your discount code straight away. More people hear about you, and the shopper is more likely to buy. Uses the same line, no extra code.</p>
+          </div>
+          <button type="button" role="switch" aria-checked={se.on} aria-label="Share and get a discount button" disabled={seSaving}
+            onClick={() => { if (se.on) saveSe(false); else setSe((x) => ({ ...x, on: true })); }}
+            style={{ flexShrink: 0, width: 52, height: 30, borderRadius: 999, border: "none", cursor: "pointer", position: "relative", background: se.on ? C.accent : C.line, transition: "background .15s" }}>
+            <span style={{ position: "absolute", top: 3, left: se.on ? 25 : 3, width: 24, height: 24, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,.3)", transition: "left .15s" }} />
+          </button>
+        </div>
+        {se.on && <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: "0 1 160px" }}><Field label="Discount after sharing (%)"><input className="er-input" type="number" inputMode="numeric" min="1" max="90" value={se.pct} onChange={(e) => setSe((x) => ({ ...x, pct: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) }))} /></Field></div>
+            <div style={{ flex: "1 1 200px" }}><Field label="Discount code from your store"><input className="er-input" placeholder="e.g. SHARE10" value={se.code} onChange={(e) => setSe((x) => ({ ...x, code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 40) }))} /></Field></div>
+          </div>
+          <p style={{ margin: 0, fontSize: 12.5, color: C.muted, lineHeight: 1.55 }}>Create this code in your store first, with the same % off: <b>Shopify</b> Discounts → Create discount · <b>WooCommerce</b> Marketing → Coupons → Add coupon · <b>Wix</b> Marketing → Coupons · <b>Squarespace</b> Commerce → Discounts. We only show it to shoppers after they share.</p>
+          {platform === "shopify" && <div style={{ background: "#FFF7ED", border: "1px solid #FDBA74", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#9A3412", lineHeight: 1.55 }}>On Shopify the pixel can't show buttons, so add the line to your theme too: <b>Online Store → Themes → … → Edit code → theme.liquid</b>, paste it just before <code>&lt;/head&gt;</code>, Save.<CopyBox text={oneLine} label="Copy line" /></div>}
+          {/* preview of what shoppers see */}
+          <div style={{ background: C.panel, borderRadius: 12, padding: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12.5, color: C.muted }}>Shoppers see, bottom right of product pages:</span>
+            <span style={{ background: "#111", color: "#fff", borderRadius: 999, padding: "9px 15px", fontSize: 13.5, fontWeight: 700 }}>Share &amp; get {se.pct || "10"}% off</span>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="er-btn er-btn-primary" disabled={seSaving || !se.pct || !se.code} onClick={() => saveSe(true)}>{seSaving ? "Saving…" : "Save and turn on"}</button>
+            {px && px.shareUnlocks > 0 && <span style={{ fontSize: 13, color: C.muted }}>{px.shareUnlocks} shopper{px.shareUnlocks !== 1 ? "s have" : " has"} shared so far</span>}
+          </div>
+        </div>}
+        {seMsg && <p style={{ margin: "12px 0 0", fontSize: 13, color: C.accentD }}>{seMsg}{se.on && !live ? " It appears once the line is on your site." : ""}</p>}
+        {seErr && <p style={{ margin: "12px 0 0", fontSize: 13, color: "#9B3024" }}>{seErr}</p>}
+      </div>
       <details style={{ margin: "4px 0 18px", fontSize: 13.5, color: C.inkSoft }}>
         <summary style={{ cursor: "pointer", fontWeight: 600 }}>Unusual checkout or sales not showing up?</summary>
         <p style={{ margin: "8px 0 0", lineHeight: 1.55 }}>The line reads your order-confirmation page (order number and total) and also picks up Google Analytics purchase events. If your thank-you page is unusual, add this on it with your real order ID and amount:</p>
@@ -1310,13 +1407,6 @@ function SetupTab({ token, business, onLive }) {
         </>}
       </div>
 
-      <div className="er-card" style={{ padding: "22px", marginTop: 8, border: `1px solid ${C.accent}` }}>
-        <span style={{ display: "inline-block", fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "4px 10px" }}>Optional · after tracking is set up</span>
-        <h3 className="er-serif" style={{ margin: "12px 0 0", fontSize: 20, fontWeight: 500 }}>Add &ldquo;Share &amp; earn&rdquo; buttons to your site</h3>
-        <p style={{ margin: "8px 0 0", fontSize: 13.5, color: C.muted, lineHeight: 1.55 }}>A small floating button where customers can <b>share you with friends</b> (friends get your discount, they earn) or <b>become an affiliate</b>. Each person gets their own tracked link.</p>
-        <CopyBox text={widgetSnippet} />
-        <p style={{ margin: "8px 0 0", fontSize: 12.5, color: C.muted }}>Paste it before <code>&lt;/body&gt;</code>. Use <code>data-mode="share"</code> or <code>data-mode="affiliate"</code> to show one option, and <code>data-position="left"</code> to move it.</p>
-      </div>
     </div>
   );
 }
@@ -4355,6 +4445,131 @@ function FindPage({ session, onHome, onLegal, onCreator }) {
     </div>
   );
 }
+/* /agentready: for tools and platforms. Shows how to get listed on the marketplace AI agents search,
+   and what an agent earns (per signup and % of sales) when it sends you a customer. */
+function agentEarnParts(b) {
+  const a = b && b.agent;
+  if (a) {   // the brand set what it pays AI agents
+    const m = (n) => { const v = toViewer(n, a.currency, a.fx), d = v < 10 && Math.round(v) !== v ? 2 : 0;   // small amounts keep their cents ($0.40, not $0)
+      try { return new Intl.NumberFormat(VIEWER_CUR === "INR" ? "en-IN" : "en-US", { style: "currency", currency: VIEWER_CUR, minimumFractionDigits: d, maximumFractionDigits: d }).format(v); } catch (e) { return money(v); } };
+    return [a.perLead > 0 && { big: m(a.perLead), small: "per lead" }, a.perSignup > 0 && { big: m(a.perSignup), small: "per signup" },
+      a.salePct > 0 && { big: `${a.salePct}%`, small: "of every sale" }, a.saleFlat > 0 && { big: m(a.saleFlat), small: "per sale" }].filter(Boolean);
+  }
+  const e = b && b.earn; if (!e) return [];
+  const out = [];
+  if (e.flat > 0) out.push({ big: money(toViewer(e.flat, e.currency, e.fx)), small: b.online ? "per signup" : "per sale" });
+  if (e.pct > 0) out.push({ big: `${e.pct}%`, small: "of every sale" });
+  return out;
+}
+function AgentReadyPage({ session, onHome, onList }) {
+  const [all, setAll] = useState(() => cachedBusinesses());
+  useEffect(() => { fetchBusinesses().then(setAll).catch(() => setAll((x) => x || [])); }, []);
+  const listed = (all || []).filter((b) => b.online && !b.catalogOnly && agentEarnParts(b).length).slice(0, 6);
+  const isBrand = session && session.role === "business";
+  const goSetup = () => { window.history.pushState({}, "", "/my-business"); window.dispatchEvent(new PopStateEvent("popstate")); window.scrollTo(0, 0); };
+  const cta = isBrand ? goSetup : onList;
+  const ctaText = isBrand ? "Go to my listing" : "List my business, free";
+  const h2 = { margin: "0 0 6px", fontSize: "clamp(24px,4vw,32px)", fontWeight: 500, lineHeight: 1.15, color: C.ink };
+  const steps = [
+    { t: "List your business", d: "Add your name, website and what you do. We read your site for the rest: products, pricing and description. Takes about 2 minutes." },
+    { t: "Set what agents earn", d: "On each sale pay a %, a fixed amount, or both. Optionally pay per lead (a popup or form submission) and per signup too. It's shown on your listing, so agents see what recommending you is worth." },
+    { t: "Add one line to your site", d: "Paste one line into your website (we give exact steps for Shopify, WordPress, Wix, Webflow and others). It credits each signup and sale to the agent that sent it." },
+    { t: "Get recommended, pay on results", d: "When someone asks an AI agent for a tool like yours, the agent can find you here and link to you. You pay only when that link turns into a signup or a sale." },
+  ];
+  const faqs = [
+    ["What is Easy Recommend for agents?", "A marketplace of tools, platforms and brands that AI agents can search when a user asks for a recommendation. Every listing says what the agent earns per signup and per sale, the same way affiliate programs work for creators."],
+    ["Who pays the agent?", "You do, and only for results: a tracked signup or sale that came from the agent's link. Listing is free. Easy Recommend takes a small platform fee from the commission."],
+    ["How is a signup or sale tracked?", "Agents link to you through Easy Recommend. The one line on your site remembers that visit and reports the signup or order confirmation, so the right agent is credited."],
+    ["Do I need a developer?", "No for most sites. We detect your platform and show click-by-click steps. If someone else runs your site, the setup page has a message you can send them with the line."],
+    ["Can creators recommend me too?", "Yes. The same listing and commission work for creators sharing you on Instagram, YouTube and in their recommendation lists."],
+  ];
+  return (
+    <div style={{ minHeight: "100vh", background: C.paper }}>
+      <PageHeader onHome={onHome} right={null} />
+
+      <section className="er-wrap" style={{ padding: "34px 20px 10px", maxWidth: 1040, margin: "0 auto", display: "grid", gap: 30, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,330px),1fr))", alignItems: "center" }}>
+        <div>
+          <span className="er-eyebrow">Agent ready</span>
+          <h1 className="er-serif" style={{ margin: "10px 0 12px", fontSize: "clamp(34px,6vw,52px)", fontWeight: 500, lineHeight: 1.05, letterSpacing: "-.01em" }}>Get recommended by AI agents</h1>
+          <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.6, color: C.inkSoft }}>People now ask AI agents which tool or platform to use. Easy Recommend is the marketplace those agents search. Every listing shows what the agent earns for a signup or a sale, so recommending you pays.</p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 22 }}>
+            <button className="er-btn er-btn-primary" onClick={cta}>{ctaText} <Arrow size={15} /></button>
+            <a href="#how" className="er-btn er-btn-light" style={{ textDecoration: "none" }}>How it works</a>
+          </div>
+          <p style={{ margin: "12px 0 0", fontSize: 13, color: C.muted }}>Free to list. You only pay commission on real signups and sales.</p>
+        </div>
+        <WayVisual k="agent" />
+      </section>
+
+      <section id="how" className="er-wrap" style={{ padding: "44px 20px 10px", maxWidth: 1040, margin: "0 auto" }}>
+        <h2 className="er-serif" style={h2}>List yourself for agents in 4 steps</h2>
+        <p style={{ margin: "0 0 20px", fontSize: 15, color: C.muted }}>Same listing works for AI agents and creators.</p>
+        <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))" }}>
+          {steps.map((s, i) => (
+            <li key={i} className="er-card" style={{ padding: "18px 18px 20px" }}>
+              <span style={{ width: 32, height: 32, borderRadius: "50%", background: C.ink, color: "#fff", display: "grid", placeItems: "center", fontSize: 14, fontWeight: 800 }}>{i + 1}</span>
+              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 12 }}>{s.t}</div>
+              <p style={{ margin: "6px 0 0", fontSize: 14, lineHeight: 1.55, color: C.inkSoft }}>{s.d}</p>
+            </li>
+          ))}
+        </ol>
+        <div style={{ marginTop: 18, display: "flex", justifyContent: "center" }}><button className="er-btn er-btn-primary" onClick={cta}>{ctaText} <Arrow size={15} /></button></div>
+      </section>
+
+      <section className="er-wrap" style={{ padding: "44px 20px 10px", maxWidth: 1040, margin: "0 auto" }}>
+        <h2 className="er-serif" style={h2}>What an agent sees</h2>
+        <p style={{ margin: "0 0 20px", fontSize: 15, color: C.muted }}>Each listing shows what you do and what the agent earns for sending you a customer.</p>
+        {all === null ? <p style={{ color: C.muted }}>Loading…</p> : listed.length ? (
+          <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,290px),1fr))" }}>
+            {listed.map((b) => (
+              <div key={b.id} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", gap: 12, alignItems: "center", padding: "16px 16px 12px" }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 12, overflow: "hidden", flexShrink: 0 }}><BrandArt b={b} mini fs={18} style={{ width: 48, height: 48 }} /></div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</div>
+                    <div style={{ fontSize: 12.5, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(b.categories || []).slice(0, 2).join(" · ") || "Online"}</div>
+                  </div>
+                </div>
+                {b.blurb && <p style={{ margin: "0 16px 12px", fontSize: 13.5, lineHeight: 1.5, color: C.inkSoft, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{b.blurb}</p>}
+                <div style={{ marginTop: "auto", background: C.accentSoft, padding: "12px 16px", display: "flex", gap: 18, flexWrap: "wrap", alignItems: "baseline" }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD, width: "100%" }}>Agent earns</span>
+                  {agentEarnParts(b).map((x, i) => <span key={i} style={{ fontSize: 13, color: C.accentD }}><b style={{ fontSize: 18 }}>{x.big}</b> {x.small}</span>)}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="er-card" style={{ padding: 18, maxWidth: 380 }}>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>Your tool</div>
+            <div style={{ fontSize: 12.5, color: C.muted }}>Software · Productivity</div>
+            <div style={{ marginTop: 12, background: C.accentSoft, borderRadius: 10, padding: "10px 12px", fontSize: 13, color: C.accentD }}><b style={{ fontSize: 18 }}>{demoMoney(5)}</b> per signup · <b style={{ fontSize: 18 }}>20%</b> of every sale</div>
+          </div>
+        )}
+      </section>
+
+      <section className="er-wrap" style={{ padding: "44px 20px 10px", maxWidth: 760, margin: "0 auto" }}>
+        <h2 className="er-serif" style={h2}>Questions</h2>
+        <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+          {faqs.map(([q, a], i) => (
+            <details key={i} className="er-card" style={{ padding: "14px 16px" }}>
+              <summary style={{ cursor: "pointer", fontSize: 15, fontWeight: 700, color: C.ink }}>{q}</summary>
+              <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.6, color: C.inkSoft }}>{a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section className="er-wrap" style={{ padding: "44px 20px 60px", maxWidth: 760, margin: "0 auto" }}>
+        <div style={{ background: C.ink, color: "#fff", borderRadius: 22, padding: "26px 22px", textAlign: "center" }}>
+          <div className="er-serif" style={{ fontSize: "clamp(24px,4vw,30px)", fontWeight: 500 }}>Be the tool agents recommend</div>
+          <p style={{ margin: "8px auto 18px", maxWidth: 440, fontSize: 15, lineHeight: 1.55, color: "rgba(255,255,255,.75)" }}>List once, set your commission, add one line. Free until an agent sends you a customer.</p>
+          <button className="er-btn" onClick={cta} style={{ background: "#fff", color: C.ink }}>{ctaText} <Arrow size={15} /></button>
+        </div>
+        <div style={{ marginTop: 26 }}><AgentAccessForm /></div>
+      </section>
+    </div>
+  );
+}
 /* Shop: search every product; products your friends recommend come first (and earn them the commission). */
 function ShopPage({ onHome }) {
   const [q, setQ] = useState(""); const [cats, setCats] = useState(catalogMem); const [picks, setPicks] = useState(null); const [cat, setCat] = useState("");
@@ -4608,20 +4823,21 @@ function ShareStorySlide({ onShare }) {
   );
 }
 /* Homepage "How it works": the three ways to earn. */
-function ThreeWaysSlide({ onCreator, onShare, onAffiliate, onListPage, heading, bare }) {
+function ThreeWaysSlide({ onCreator, onShare, onAffiliate, onListPage, heading, bare, agents }) {
   const igGrad = "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)";
   const ways = [
     { n: "1", tag: "Make a list & share", title: "Build a list of brands you love", body: "Pick your favourite brands, put one link in your bio, and earn on every sale from your list.", cta: "Create my list", act: onCreator, more: onListPage, bg: C.ink, color: C.paper },
     { n: "2", tag: "Share & earn", title: "Share a brand you love, get a discount", body: "Share a brand to your Instagram story with your own link. Friends get a discount, and you earn when they buy.", cta: "Share a brand", act: onShare, more: onShare, bg: igGrad, color: "#fff" },
     { n: "3", tag: "Create content", title: "Interested in creating content?", body: "Get your affiliate link, make posts, reels or videos about brands you love, and earn a commission on every sale.", note: "For serious creators, bloggers, YouTubers and more", cta: "Get my affiliate link", act: onAffiliate, more: onAffiliate, bg: C.accent, color: "#fff" },
-  ];
+    agents && { n: "4", tag: "AI agents", title: "Own a brand or tool? Get recommended by AI agents", body: "AI agents that shop, book and sign up for people look here for what to recommend. List your business and choose what agents earn per lead, signup or sale.", note: "For brands, apps and online tools", cta: "List for AI agents", act: () => navTo("/agentready"), more: () => navTo("/agentready"), bg: "linear-gradient(135deg,#2D1B69 0%,#6C3FA0 100%)", color: "#fff" },
+  ].filter(Boolean);
   return (
     <section style={bare ? {} : { background: C.paper, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
       <div className="er-wrap" style={{ padding: bare ? "0" : "56px 22px" }}>
         <div style={{ textAlign: "center", maxWidth: 620, margin: "0 auto 30px" }}>
           <span className="er-eyebrow">How it works</span>
-          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em" }}>{heading || "Three ways to earn"}</h2>
-          <p style={{ margin: 0, fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>Free to join. Pick one or do all three, you earn a commission on every sale either way.</p>
+          <h2 className="er-serif" style={{ margin: "10px 0 8px", fontSize: "clamp(26px,4vw,42px)", fontWeight: 500, letterSpacing: "-.01em" }}>{heading || (agents ? "Four ways to get started" : "Three ways to earn")}</h2>
+          <p style={{ margin: 0, fontSize: 15.5, color: C.muted, lineHeight: 1.55 }}>{agents ? "Free to join. Creators earn a commission on every sale. Businesses get recommended by AI agents and pay only for results." : "Free to join. Pick one or do all three, you earn a commission on every sale either way."}</p>
         </div>
         <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,260px),1fr))" }}>
           {ways.map((w) => (
@@ -4651,7 +4867,7 @@ function HomeSlides({ onCreator, onShare, onAffiliate, onListPage }) {
   // Manual only: tabs, arrows, dots and swipe (no auto-advance).
   const [i, setI] = useState(0); const touch = useRef(null); const top = useRef(null);
   const slides = [
-    ["How it works", <ThreeWaysSlide onCreator={onCreator} onShare={onShare} onAffiliate={onAffiliate} onListPage={onListPage} />],
+    ["How it works", <ThreeWaysSlide agents onCreator={onCreator} onShare={onShare} onAffiliate={onAffiliate} onListPage={onListPage} />],
     ["Make a list", (
     <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
       <div className="er-wrap" style={{ padding: "64px 22px" }}>
@@ -5231,6 +5447,7 @@ function EasyApp() {
       {view === "affiliate" && <AffiliatePage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onAuth={login} onLegal={() => setLegalOpen(true)} />}
       {view === "share" && <SharePage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onAuth={login} onLegal={() => setLegalOpen(true)} />}
       {view === "shop" && <ShopPage onHome={goHome} />}
+      {view === "agentready" && <AgentReadyPage session={session} onHome={goHome} onList={() => setBrandOpen(true)} />}
       {view === "find" && <FindPage session={session} onHome={goHome} onLegal={() => setLegalOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} />}
       {view === "brands" && <BrandsPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
       {view === "business" && <BusinessPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
