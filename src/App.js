@@ -173,15 +173,25 @@ function goToBrand(username, businessId, url) {
   window.open(base + (base.includes("?") ? "&" : "?") + "er_click=" + clickId, "_blank", "noopener");
 }
 
-/* Friends: opening someone's list makes them your friend (kept in this browser). The list owner only sees a count, never who. */
+/* Circle: opening someone's list adds them to your circle (kept in this browser, and on your account when logged in).
+   The list owner only sees a count, never who. Following is separate, named, and notifies them. */
 const lsGet = (k) => { try { const a = JSON.parse(localStorage.getItem(k) || "[]"); return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; } catch (e) { return []; } };
-const lsSet = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a.slice(0, 200))); } catch (e) {} };
+const lsSet = (k, a) => { try { localStorage.setItem(k, JSON.stringify(a.slice(0, 300))); } catch (e) {} };
 const getFriends = () => lsGet("er_friends");
+const myToken = () => { const s = getSession(); return s && s.role === "creator" ? s.token : undefined; };
 function viewerId() { try { let v = localStorage.getItem("er_vid"); if (!v) { v = erClickId(); localStorage.setItem("er_vid", v); } return v; } catch (e) { return ""; } }
 function setFriend(handle, on) {
   const f = getFriends().filter((h) => h !== handle), off = lsGet("er_unfriended").filter((h) => h !== handle);
   lsSet("er_friends", on ? [handle, ...f] : f); lsSet("er_unfriended", on ? off : [handle, ...off]);
-  const viewer = viewerId(); if (viewer) api("/friends", { method: on ? "POST" : "DELETE", body: { viewer, handle } }).catch(() => {});
+  const viewer = viewerId(); if (viewer) api("/friends", { method: on ? "POST" : "DELETE", body: { viewer, handle, token: myToken() } }).catch(() => {});
+}
+// Logged in: merge this browser's circle with the account's (once per page load) so it's the same on every device.
+let circleSyncP = null;
+function syncCircle() {
+  const token = myToken(); if (!token) return Promise.resolve(getFriends());
+  if (!circleSyncP) circleSyncP = api("/circle/sync", { method: "POST", body: { token, handles: getFriends(), removed: lsGet("er_unfriended") } })
+    .then((list) => { if (Array.isArray(list)) lsSet("er_friends", list); return getFriends(); }).catch(() => getFriends());
+  return circleSyncP;
 }
 // Go to an in-app page without reloading.
 function navTo(path) { window.history.pushState({}, "", path); window.dispatchEvent(new PopStateEvent("popstate")); window.scrollTo(0, 0); }
@@ -200,6 +210,7 @@ function parseRoute() {
   if (p === "/find") { window.history.replaceState({}, "", "/imagesearch"); return { view: "find", handle: null }; }   // old link
   if (p === "/shop") return { view: "shop", handle: null };
   if (p === "/agentready") return { view: "agentready", handle: null };
+  if (p === "/classic") return { view: "classic", handle: null };   // the previous creator-first homepage, kept but not linked
   if (p === "/affiliate") return { view: "affiliate", handle: null };
   if (p === "/list") return { view: "listpage", handle: null };
   if (p === "/influencers") return { view: "influencers", handle: null };
@@ -643,7 +654,7 @@ function BusinessDetail({ id, onClose, onRecommend, autoLink, onAuth }) {
 /* ---------- Brand onboarding ---------- */
 function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: "", phone: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, agentSalePct: 15, agentSaleFlat: 0, agentPerLead: 0, agentPerSignup: 0 });
+  const [f, setF] = useState({ name: "", phone: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, discOn: false, discountCode: "", agentSalePct: 15, agentSaleFlat: 0, agentPerLead: 0, agentPerSignup: 0 });
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const [searching, setSearching] = useState(false); const [revealed, setRevealed] = useState(false);
   const [otp, setOtp] = useState(""); const [sent, setSent] = useState(false); const [sending, setSending] = useState(false);
@@ -651,7 +662,8 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleCat = (c) => set("categories", f.categories.includes(c) ? f.categories.filter((x) => x !== c) : [...f.categories, c]);
   const commValid = (f.commissionType === "percent" && f.commissionPct > 0) || (f.commissionType === "flat" && f.commissionFlat > 0) || (f.commissionType === "both" && f.commissionPct > 0 && f.commissionFlat > 0);
-  const valid = [f.website.trim() && f.categories.length > 0, f.name.trim() && f.phone.trim() && (f.online || f.city.trim()), commValid, /^\d{6}$/.test(otp.trim())];
+  const discValid = !f.discOn || (f.discount > 0 && f.discountCode.length >= 2);   // a customer discount needs its code
+  const valid = [f.website.trim() && f.categories.length > 0, f.name.trim() && f.phone.trim() && (f.online || f.city.trim()), commValid && discValid, /^\d{6}$/.test(otp.trim())];
   const titles = ["Get discovered", "About your business", "Your terms", "Verify your number"];
   const sendCode = async () => { if (!f.phone.trim()) return; setSending(true); setErr(""); try { await api("/otp/send", { method: "POST", body: { phone: f.phone } }); setSent(true); } catch (e) { setErr(e.message); } finally { setSending(false); } };
   useEffect(() => { if (step === 3 && !sent && f.phone.trim()) sendCode(); }, [step]);
@@ -672,7 +684,7 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const submit = async () => {
     setBusy(true); setErr("");
     try {
-      const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, otp: otp.trim(), website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discount, agentSalePct: f.agentSalePct, agentSaleFlat: f.agentSaleFlat, agentPerLead: f.agentPerLead, agentPerSignup: f.agentPerSignup, contacts: ["website"] } });
+      const r = await api("/business", { method: "POST", body: { name: f.name, phone: f.phone, otp: otp.trim(), website: f.website, categories: f.categories, city: f.city, online: f.online, commissionType: f.commissionType, commissionPct: f.commissionPct, commissionFlat: f.commissionFlat, discount: f.discOn ? f.discount : 0, discountCode: f.discOn ? f.discountCode : "", agentSalePct: f.agentSalePct, agentSaleFlat: f.agentSaleFlat, agentPerLead: f.agentPerLead, agentPerSignup: f.agentPerSignup, contacts: ["website"] } });
       if (r && r.token) onLogin({ role: "brand", token: r.token, phone: f.phone });
       onRefresh(); onDone({ name: f.name, live: r && r.status === "approved" });
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
@@ -720,25 +732,11 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
             <Field label="Country" hint={f.online ? "Optional for online businesses." : "Where your business is based."}><input className="er-input" placeholder="United States" value={f.city} onChange={(e) => set("city", e.target.value)} /></Field>
           </>}
           {step === 2 && <>
-            <Field label="How you'll reward creators" hint="Kept private, creators see it only when they generate a link.">
-              <div style={{ display: "flex", gap: 8 }}>
-                {[["percent", "Percentage"], ["flat", "Flat cash"], ["both", "Both"]].map(([t, lbl]) => { const on = f.commissionType === t;
-                  return <button key={t} type="button" onClick={() => set("commissionType", t)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, padding: "10px 8px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{lbl}</button>; })}
-              </div>
-            </Field>
-            {(f.commissionType === "percent" || f.commissionType === "both") && <Field label="Percentage of each sale">
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <input type="range" min="1" max="40" value={f.commissionPct} onChange={(e) => set("commissionPct", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
-                <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.accentSoft, color: C.accentD }}>{f.commissionPct}%</span></div></Field>}
-            {(f.commissionType === "flat" || f.commissionType === "both") && <Field label="Flat cash per sale" hint="A fixed amount paid on every conversion.">
-              <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "11px 14px", maxWidth: 180 }}>
-                <span style={{ fontSize: 15, color: C.muted, marginRight: 2 }}>$</span>
-                <input type="number" min="0" value={f.commissionFlat} onChange={(e) => set("commissionFlat", Math.max(0, +e.target.value))} style={{ flex: 1, border: "none", outline: "none", background: "none", fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: C.ink, width: "100%" }} /></div></Field>}
-            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: C.inkSoft }}>Creators earn <b style={{ color: C.ink }}>{commValid ? commissionLabel(f) : "-"}</b> per sale.</div>
-            <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px 14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 14.5, fontWeight: 700, color: C.ink }}>What you'll pay AI agents</span><span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "2px 8px" }}>New</span></div>
-                <p style={{ margin: "3px 0 0", fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>AI agents that shop and sign up for people can recommend you. You pay only for results. <a href="/agentready" target="_blank" rel="noopener" style={{ color: C.accentD, fontWeight: 600 }}>How it works</a></p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+            <section style={{ border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px 16px 18px", display: "flex", flexDirection: "column", gap: 14, background: "#fff" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <span style={{ width: 26, height: 26, borderRadius: "50%", background: C.ink, color: "#fff", display: "grid", placeItems: "center", fontSize: 12.5, fontWeight: 800, flexShrink: 0 }}>1</span>
+                <div><div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink }}>AI agent commission</div><p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>AI agents that shop and sign up for people can recommend you. You pay only for results. <a href="/agentready" target="_blank" rel="noopener" style={{ color: C.accentD, fontWeight: 600 }}>How it works</a></p></div>
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 6 }}>On each sale <span style={{ fontWeight: 500, color: C.muted }}>· a %, a fixed amount, or both</span></div>
@@ -766,15 +764,49 @@ function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
               <div style={{ background: C.panel, borderRadius: 10, padding: "10px 12px", fontSize: 13, color: C.inkSoft }}>
                 {agentPayText(f) ? <>AI agents earn <b style={{ color: C.ink }}>{agentPayText(f)}</b>.</> : "Leave all at 0 if you don't want AI agents to recommend you yet."}
               </div>
-            </div>
-            <Field label="Customer perk" hint="Optional discount shown on your public listing.">
+            </section>
+            <section style={{ border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px 16px 18px", display: "flex", flexDirection: "column", gap: 14, background: "#fff" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <span style={{ width: 26, height: 26, borderRadius: "50%", background: C.ink, color: "#fff", display: "grid", placeItems: "center", fontSize: 12.5, fontWeight: 800, flexShrink: 0 }}>2</span>
+                <div><div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink }}>Influencer commission</div><p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>What creators earn when their followers buy through their link.</p></div>
+              </div>
+            <Field label="How you'll pay" hint="Kept private, creators see it only when they generate a link.">
+              <div style={{ display: "flex", gap: 8 }}>
+                {[["percent", "Percentage"], ["flat", "Flat cash"], ["both", "Both"]].map(([t, lbl]) => { const on = f.commissionType === t;
+                  return <button key={t} type="button" onClick={() => set("commissionType", t)} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, padding: "10px 8px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{lbl}</button>; })}
+              </div>
+            </Field>
+            {(f.commissionType === "percent" || f.commissionType === "both") && <Field label="Percentage of each sale">
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <input type="range" min="0" max="40" value={f.discount} onChange={(e) => set("discount", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
-                <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.panel, color: C.ink }}>{f.discount}%</span></div></Field>
-            {f.discount > 0 && <div style={{ background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 12, padding: "12px 14px" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.accentD, marginBottom: 4 }}>Shown to shoppers</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>Get {f.discount}% off when you shop {f.name || "us"} through this link{f.website ? ` at ${f.website}` : ""}.</div>
-            </div>}
+                <input type="range" min="1" max="40" value={f.commissionPct} onChange={(e) => set("commissionPct", +e.target.value)} style={{ flex: 1, accentColor: C.accent }} />
+                <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.accentSoft, color: C.accentD }}>{f.commissionPct}%</span></div></Field>}
+            {(f.commissionType === "flat" || f.commissionType === "both") && <Field label="Flat cash per sale" hint="A fixed amount paid on every conversion.">
+              <div style={{ display: "flex", alignItems: "center", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 11, padding: "11px 14px", maxWidth: 180 }}>
+                <span style={{ fontSize: 15, color: C.muted, marginRight: 2 }}>$</span>
+                <input type="number" min="0" value={f.commissionFlat} onChange={(e) => set("commissionFlat", Math.max(0, +e.target.value))} style={{ flex: 1, border: "none", outline: "none", background: "none", fontFamily: "inherit", fontSize: 15, fontWeight: 600, color: C.ink, width: "100%" }} /></div></Field>}
+            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", fontSize: 13.5, color: C.inkSoft }}>Creators earn <b style={{ color: C.ink }}>{commValid ? commissionLabel(f) : "-"}</b> per sale.</div>
+            </section>
+            <section style={{ border: `1px solid ${C.line}`, borderRadius: 16, padding: "16px 16px 18px", display: "flex", flexDirection: "column", gap: 14, background: "#fff" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <span style={{ width: 26, height: 26, borderRadius: "50%", background: C.ink, color: "#fff", display: "grid", placeItems: "center", fontSize: 12.5, fontWeight: 800, flexShrink: 0 }}>3</span>
+                <div><div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink }}>Do customers get a discount too?</div><p style={{ margin: "2px 0 0", fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>Optional. A discount helps creators and agents convince people to buy.</p></div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[[true, "Yes"], [false, "No"]].map(([v, lbl]) => { const on = f.discOn === v;
+                  return <button key={lbl} type="button" aria-pressed={on} onClick={() => { set("discOn", v); if (v && !f.discount) set("discount", 10); }} style={{ flex: 1, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, padding: "10px 8px", borderRadius: 10, border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : "#fff", color: on ? C.accentD : C.inkSoft }}>{lbl}</button>; })}
+              </div>
+              {f.discOn && <>
+                <Field label="Discount for customers">
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <input type="range" min="1" max="40" value={f.discount} onChange={(e) => set("discount", +e.target.value)} aria-label="Customer discount percent" style={{ flex: 1, accentColor: C.accent }} />
+                    <span style={{ minWidth: 48, textAlign: "center", fontWeight: 700, fontSize: 14, padding: "5px 8px", borderRadius: 8, background: C.accentSoft, color: C.accentD }}>{f.discount}%</span></div></Field>
+                <Field label="Discount code" hint="Create this code in your store first (Shopify: Discounts, WooCommerce: Coupons), with the same % off.">
+                  <input className="er-input" style={{ maxWidth: 240 }} placeholder="e.g. EASY10" value={f.discountCode} onChange={(e) => set("discountCode", e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 30))} />
+                </Field>
+                <div style={{ background: C.panel, borderRadius: 10, padding: "10px 12px", fontSize: 13, color: C.inkSoft }}>Shoppers see: <b style={{ color: C.ink }}>Get {f.discount}% off at {f.name || "your store"} with code {f.discountCode || "…"}</b></div>
+              </>}
+            </section>
+            </div>
           </>}
           {step === 3 && <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <p style={{ margin: 0, fontSize: 14, color: C.muted }}>We texted a 6-digit code to <b style={{ color: C.ink }}>{f.phone}</b>. Enter it to finish, we'll review your listing shortly.</p>
@@ -3168,18 +3200,212 @@ function ListPromoPopup({ onCreate }) {
     </div>
   );
 }
-function FriendButton({ handle }) {
+/* People in your circle: photo, name and how many products they recommend (cached per page load). */
+const peopleMem = new Map();
+function fetchPeople(handles) {
+  const need = handles.filter((h) => !peopleMem.has(h));
+  const done = () => Object.fromEntries(handles.filter((h) => peopleMem.has(h)).map((h) => [h, peopleMem.get(h)]));
+  if (!need.length) return Promise.resolve(done());
+  return api(`/circle/people?handles=${encodeURIComponent(need.join(","))}`).then((rows) => { (rows || []).forEach((p) => peopleMem.set(p.username, p)); need.forEach((h) => { if (!peopleMem.has(h)) peopleMem.set(h, null); }); return done(); }).catch(() => done());
+}
+// On someone's list: Follow (named, notifies them) + Circle (anonymous, on by default).
+function CircleFollow({ handle, session, onCreator }) {
+  const token = session && session.role === "creator" ? session.token : "";
   const [on, setOn] = useState(() => getFriends().includes(handle));
-  useEffect(() => {   // friend by default on open, unless they unfriended this list before
+  const [fol, setFol] = useState({ following: false, followers: 0 }); const [busy, setBusy] = useState(false);
+  useEffect(() => {   // in your circle by default on open, unless you removed them before
     if (getFriends().includes(handle)) setOn(true);
     else if (!lsGet("er_unfriended").includes(handle)) { setFriend(handle, true); setOn(true); }
     else setOn(false);
   }, [handle]);
-  const toggle = () => { setFriend(handle, !on); setOn(!on); toast(on ? "Removed from friends" : "✓ Added to friends"); };
+  const doFollow = async (yes) => {
+    setBusy(true);
+    try { const r = await api("/follow", { method: yes ? "POST" : "DELETE", body: { token, handle } }); setFol({ following: r.following, followers: r.followers }); if (yes) { setOn(true); if (!getFriends().includes(handle)) lsSet("er_friends", [handle, ...getFriends()]); } toast(yes ? `✓ Following @${handle}` : `Unfollowed @${handle}`); }
+    catch (e) { toast(e.message || "Couldn't do that. Try again."); } finally { setBusy(false); }
+  };
+  useEffect(() => {
+    api(`/follow/status?handle=${encodeURIComponent(handle)}${token ? `&token=${encodeURIComponent(token)}` : ""}`).then((r) => {
+      setFol(r);
+      let pending = ""; try { pending = localStorage.getItem("er_pending_follow") || ""; } catch (e) {}
+      if (token && pending === handle && !r.following) { try { localStorage.removeItem("er_pending_follow"); } catch (e) {} doFollow(true); }   // they signed up to follow: finish it
+    }).catch(() => {});
+  }, [handle, token]);
+  const followClick = () => {
+    if (!token) { try { localStorage.setItem("er_pending_follow", handle); } catch (e) {} toast(`Make your free list to follow @${handle}`); onCreator && onCreator(); return; }
+    doFollow(!fol.following);
+  };
+  const toggleCircle = () => { setFriend(handle, !on); setOn(!on); toast(on ? "Removed from your circle" : "✓ Added to your circle"); };
   return (
-    <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-      <button type="button" className="er-btn er-btn-sm er-btn-light" aria-pressed={on} onClick={toggle} style={on ? { color: C.accentD, borderColor: C.accent, background: C.accentSoft } : {}}>{on ? <><Check size={14} /> Friends</> : <><Plus size={14} /> Add friend</>}</button>
-      <span style={{ fontSize: 12.5, color: C.muted }}>{on ? <>Their picks show first when you <a href="/shop" onClick={(e) => { e.preventDefault(); navTo("/shop"); }} style={{ color: C.accentD, fontWeight: 700 }}>shop</a>. @{handle} isn't told it's you.</> : "Add to see their picks first when you shop."}</span>
+    <div style={{ marginTop: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <button type="button" className={`er-btn er-btn-sm ${fol.following ? "er-btn-light" : "er-btn-primary"}`} aria-pressed={fol.following} disabled={busy} onClick={followClick}>{fol.following ? <><Check size={14} /> Following</> : <><Plus size={14} /> Follow</>}</button>
+        <button type="button" className="er-btn er-btn-sm er-btn-light" aria-pressed={on} onClick={toggleCircle} style={on ? { color: C.accentD, borderColor: C.accent, background: C.accentSoft } : {}}>{on ? <><Check size={14} /> In your circle</> : <><Plus size={14} /> Add to circle</>}</button>
+        {fol.followers > 0 && <span style={{ fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{fol.followers} follower{fol.followers !== 1 ? "s" : ""}</span>}
+      </div>
+      <p style={{ margin: "6px 0 0", fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>{on ? <>Their picks show first when you <a href="/shop" onClick={(e) => { e.preventDefault(); navTo("/shop"); }} style={{ color: C.accentD, fontWeight: 700 }}>search products</a>. Your circle is private; following lets @{handle} know it's you.</> : "Add to your circle to see their picks first when you search."}</p>
+    </div>
+  );
+}
+// List owner: who followed them.
+function NotificationsBell({ token }) {
+  const [d, setD] = useState({ unread: 0, items: [] }); const [open, setOpen] = useState(false);
+  useEffect(() => { if (token) api(`/notifications?token=${encodeURIComponent(token)}`).then(setD).catch(() => {}); }, [token]);
+  const toggle = () => { const o = !open; setOpen(o); if (o && d.unread) { api("/notifications/read", { method: "POST", body: { token } }).catch(() => {}); setTimeout(() => setD((x) => ({ ...x, unread: 0 })), 1500); } };
+  const ago = (t) => { const m = Math.round((Date.now() - new Date(t)) / 60000); return m < 60 ? `${Math.max(1, m)}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
+  return (
+    <div style={{ position: "relative" }}>
+      <button type="button" className="er-btn er-btn-light er-btn-sm" onClick={toggle} aria-expanded={open} aria-label={`Notifications${d.unread ? `, ${d.unread} new` : ""}`} style={{ position: "relative" }}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg> Notifications
+        {d.unread > 0 && <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, borderRadius: 999, background: "#D62976", color: "#fff", fontSize: 11, fontWeight: 800, display: "grid", placeItems: "center", padding: "0 4px" }}>{d.unread}</span>}
+      </button>
+      {open && <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 30, width: 290, maxWidth: "calc(100vw - 40px)", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 14, boxShadow: "0 14px 40px rgba(0,0,0,.14)", padding: 8, textAlign: "left" }}>
+        {d.items.length ? d.items.slice(0, 20).map((n) => (
+          <a key={n.id} href={`/@${n.from}`} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 8px", borderRadius: 10, textDecoration: "none", background: n.read ? "transparent" : C.accentSoft }}>
+            <span style={{ flex: 1, fontSize: 13.5, color: C.ink, lineHeight: 1.4 }}>{n.text}</span>
+            <span style={{ fontSize: 11.5, color: C.muted, flexShrink: 0 }}>{ago(n.at)}</span>
+          </a>)) : <p style={{ margin: 0, padding: "10px 8px", fontSize: 13.5, color: C.muted }}>No notifications yet. When someone follows you, you'll see it here.</p>}
+      </div>}
+    </div>
+  );
+}
+// "Recommended by" row: up to 3 small photos + names.
+function RecBy({ handles, people, rating }) {
+  const shown = handles.slice(0, 3);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ display: "flex" }}>{shown.map((h, i) => <span key={h} style={{ marginLeft: i ? -8 : 0, borderRadius: "50%", boxShadow: "0 0 0 2px #fff", display: "inline-flex" }}><Avatar name={h} image={(people[h] || {}).image} size={22} /></span>)}</span>
+      <span style={{ fontSize: 12, fontWeight: 700, color: C.accentD, lineHeight: 1.3 }}>Recommended by @{handles[0]}{handles.length > 1 ? ` +${handles.length - 1}` : ""}{rating > 0 ? ` · ★ ${rating}` : ""}</span>
+    </div>
+  );
+}
+/* Search every product; ones recommended by your circle come first, with who recommended them.
+   focus: the list you're on (their picks count most). embedded: the "Search products" tab on a list. */
+function CircleSearch({ focus = "", embedded = false }) {
+  const [q, setQ] = useState(""); const [cats, setCats] = useState(catalogMem); const [picks, setPicks] = useState(null); const [cat, setCat] = useState("");
+  const [circle, setCircle] = useState(() => getFriends()); const [people, setPeople] = useState({});
+  useEffect(() => { syncCircle().then(setCircle); }, []);
+  const handles = useMemo(() => [...new Set([focus, ...circle].filter(Boolean))], [focus, circle]);
+  useEffect(() => { api("/products/catalog").then((r) => { catalogMem = Array.isArray(r) ? r : []; setCats(catalogMem); }).catch(() => setCats((x) => x || [])); }, []);
+  useEffect(() => {
+    if (!handles.length) { setPicks([]); return; }
+    api(`/shop/friends?handles=${encodeURIComponent(handles.join(","))}`).then((r) => setPicks(Array.isArray(r) ? r : [])).catch(() => setPicks([]));
+    fetchPeople(handles).then(setPeople);
+  }, [handles.join(",")]);
+  const byKey = useMemo(() => {   // the list you're on comes first among recommenders
+    const m = new Map(); (picks || []).forEach((p) => m.set(p.key, { ...p, friends: focus && p.friends.includes(focus) ? [focus, ...p.friends.filter((h) => h !== focus)] : p.friends })); return m;
+  }, [picks, focus]);
+  const t = q.trim().toLowerCase();
+  const match = (p) => !t || `${p.name} ${p.brand.name} ${(p.category && p.category.title) || ""}`.toLowerCase().includes(t);
+  const all = useMemo(() => (cats || []).flatMap((c) => c.items.map((p) => ({ ...p, category: { key: c.key, title: c.title, emoji: c.emoji } }))), [cats]);
+  const score = (p) => { const f = byKey.get(p.key); return f ? f.friends.length + (focus && f.friends[0] === focus ? 100 : 0) : 0; };
+  const pool = (t ? all.filter(match) : all.filter((p) => (!cat || p.category.key === cat) && !byKey.has(p.key))).slice().sort((a, b) => score(b) - score(a));
+  const circlePicks = [...byKey.values()].filter(match).sort((a, b) => score(b) - score(a));
+  const shop = (p) => {
+    const u = p.url || p.brand.website; const fp = byKey.get(p.key);
+    if (fp && fp.friends.length) return goToBrand(fp.friends[0], p.brand.id, u);   // the person who recommended it earns
+    if (u) window.open(/^https?:\/\//i.test(u) ? u : `https://${u}`, "_blank", "noopener");
+  };
+  const grid = { display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,210px),1fr))" };
+  const card = (p) => { const fp = byKey.get(p.key); return (
+    <div key={p.key} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", ...(fp ? { boxShadow: `0 0 0 2px ${C.accent}` } : {}) }}>
+      <ProductPhoto p={p} />
+      <div style={{ padding: "10px 12px 12px", display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+        {fp && <RecBy handles={fp.friends} people={people} rating={fp.rating} />}
+        <div>
+          {p.category && <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted }}>{awardTitle(p.category.title)}</div>}
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em", marginTop: 2 }}>{p.brand.name}</div>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</div>
+          {priceText(p) && <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3 }}>{priceText(p)}</div>}
+        </div>
+        {offText(p.brand) && <div style={{ background: C.accentSoft, color: C.accentD, borderRadius: 10, padding: "6px 10px", fontSize: 12.5, fontWeight: 800 }}>Discount of {offText(p.brand)}</div>}
+        {(p.url || p.brand.website) && <button type="button" className={`er-btn er-btn-sm ${fp ? "er-btn-primary" : "er-btn-light"}`} style={{ marginTop: "auto" }} onClick={() => shop(p)}>Shop it <Arrow size={14} /></button>}
+      </div>
+    </div>); };
+  const h2 = { margin: "0 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft };
+  const others = Math.max(0, handles.length - (focus ? 1 : 0));
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input className="er-input" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search sunscreen, shampoo, a brand…" aria-label="Search products" style={{ flex: 1 }} autoFocus={embedded} />
+        <a href="/imagesearch" onClick={(e) => { e.preventDefault(); navTo("/imagesearch"); }} className="er-btn er-btn-light" style={{ flexShrink: 0, textDecoration: "none", whiteSpace: "nowrap" }} aria-label="Find a product from a photo"><CameraIcon size={16} /> Photo</a>
+      </div>
+      {!t && embedded && <div style={{ textAlign: "center", padding: "40px 10px 20px" }}>
+        <div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink }}>Search for anything you want to buy</div>
+        <p style={{ margin: "6px auto 0", maxWidth: 380, fontSize: 13.5, lineHeight: 1.55, color: C.muted }}>Products recommended by @{focus}{others ? ` and ${others} other${others !== 1 ? "s" : ""} in your circle` : ""} show first, with who recommended them.</p>
+        {(cats || []).length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 16 }}>
+          {cats.slice(0, 8).map((c) => <button key={c.key} type="button" className="er-btn er-btn-sm er-btn-light" onClick={() => setQ(c.title.replace(/^Best /i, ""))}>{c.emoji} {c.title.replace(/^Best /i, "")}</button>)}
+        </div>}
+      </div>}
+      {!t && !embedded && <div style={{ marginTop: 26 }}>
+        <h2 style={h2}>From your circle</h2>
+        {picks === null ? <p style={{ color: C.muted }}>Loading…</p>
+          : circlePicks.length ? <div style={grid}>{circlePicks.map(card)}</div>
+          : <div style={{ background: C.panel, borderRadius: 14, padding: "18px 16px", fontSize: 14, color: C.inkSoft, lineHeight: 1.5 }}>{handles.length ? "No one in your circle has rated these products yet." : "Open someone's recommendation list and they join your circle automatically. Their picks will show up first."}</div>}
+      </div>}
+      {(t || !embedded) && <div style={{ marginTop: t ? 18 : 30 }}>
+        <h2 style={h2}>{t ? `Results for “${q.trim()}”` : "All products"}</h2>
+        {!t && (cats || []).length > 0 && <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 12 }}>
+          {[{ key: "", title: "All", emoji: "" }, ...cats].map((c) => <button key={c.key || "all"} type="button" onClick={() => setCat(c.key)} className="er-btn er-btn-sm er-btn-light" aria-pressed={cat === c.key} style={{ flexShrink: 0, whiteSpace: "nowrap", ...(cat === c.key ? { background: C.ink, color: "#fff", borderColor: C.ink } : {}) }}>{c.emoji} {c.key ? awardTitle(c.title) : "All"}</button>)}
+        </div>}
+        {cats === null ? <p style={{ color: C.muted }}>Loading…</p> : pool.length ? <div style={grid}>{pool.slice(0, t ? 120 : 60).map(card)}</div> : <p style={{ color: C.muted }}>No products match “{q.trim()}”.</p>}
+      </div>}
+    </div>
+  );
+}
+// Your circle on /shop: see everyone, open their list, remove them, or add someone by username.
+function CircleManager({ session }) {
+  const [list, setList] = useState(() => getFriends()); const [people, setPeople] = useState({}); const [add, setAdd] = useState(""); const [msg, setMsg] = useState(""); const [open, setOpen] = useState(false);
+  useEffect(() => { syncCircle().then(setList); }, []);
+  useEffect(() => { if (list.length) fetchPeople(list).then(setPeople); }, [list.join(",")]);
+  const remove = (h) => { setFriend(h, false); setList(getFriends()); toast(`Removed @${h} from your circle`); };
+  const addOne = async () => {
+    const h = add.trim().replace(/^@/, "").toLowerCase(); if (!h) return; setMsg("");
+    const got = await fetchPeople([h]);
+    if (!got[h]) { setMsg(`We couldn't find @${h}.`); return; }
+    setFriend(h, true); setList(getFriends()); setAdd(""); toast(`✓ Added @${h} to your circle`);
+  };
+  const loggedIn = session && session.role === "creator";
+  return (
+    <div className="er-card" style={{ padding: "14px 16px", marginTop: 18 }}>
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+        <span style={{ display: "flex" }}>{list.slice(0, 5).map((h, i) => <span key={h} style={{ marginLeft: i ? -8 : 0, borderRadius: "50%", boxShadow: "0 0 0 2px #fff", display: "inline-flex" }}><Avatar name={h} image={(people[h] || {}).image} size={26} /></span>)}</span>
+        <span style={{ flex: 1, fontSize: 14.5, fontWeight: 700, color: C.ink }}>Your circle · {list.length} {list.length === 1 ? "person" : "people"}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.accentD }}>{open ? "Hide" : "Manage"}</span>
+      </button>
+      {open && <div style={{ marginTop: 12 }}>
+        <p style={{ margin: "0 0 10px", fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>Anyone whose list you open joins automatically. It's private: they never see who's in your circle. {loggedIn ? "Saved to your account." : "Saved on this device. Log in to keep it on every device."}</p>
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <input className="er-input" value={add} onChange={(e) => setAdd(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addOne(); }} placeholder="Add by username, e.g. @priya" aria-label="Add someone to your circle by username" style={{ flex: 1 }} />
+          <button type="button" className="er-btn er-btn-light" onClick={addOne}>Add</button>
+        </div>
+        {msg && <p style={{ margin: "0 0 8px", fontSize: 13, color: "#9B3024" }}>{msg}</p>}
+        {list.length ? <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 320, overflowY: "auto" }}>
+          {list.map((h) => (
+            <div key={h} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px" }}>
+              <Avatar name={h} image={(people[h] || {}).image} size={32} />
+              <a href={`/@${h}`} style={{ flex: 1, minWidth: 0, textDecoration: "none" }}>
+                <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.ink }}>@{h}</span>
+                <span style={{ display: "block", fontSize: 12, color: C.muted }}>{people[h] ? `${people[h].picks} product${people[h].picks !== 1 ? "s" : ""} recommended` : ""}</span>
+              </a>
+              <button type="button" className="er-btn er-btn-sm er-btn-light" onClick={() => remove(h)} aria-label={`Remove @${h} from your circle`}>Remove</button>
+            </div>))}
+        </div> : <p style={{ margin: 0, fontSize: 13.5, color: C.muted }}>No one yet. Open a recommendation list and they're added here.</p>}
+      </div>}
+    </div>
+  );
+}
+/* /shop: your circle + search, picks from your circle first. */
+function ShopPage({ onHome, session }) {
+  return (
+    <div style={{ minHeight: "100vh", background: C.paper }}>
+      <PageHeader onHome={onHome} right={null} />
+      <section className="er-wrap" style={{ padding: "30px 20px 50px", maxWidth: 980, margin: "0 auto" }}>
+        <span className="er-eyebrow">Shop</span>
+        <h1 className="er-serif" style={{ margin: "10px 0 6px", fontSize: "clamp(30px,6vw,42px)", fontWeight: 500, lineHeight: 1.08 }}>Shop what your circle swears by</h1>
+        <p style={{ margin: 0, fontSize: 15, color: C.muted }}>Search any product. The ones people in your circle recommend show up first.</p>
+        <CircleManager session={session} />
+        <div style={{ marginTop: 18 }}><CircleSearch /></div>
+      </section>
     </div>
   );
 }
@@ -3187,6 +3413,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
   const [data, setData] = useState(null); const [err, setErr] = useState(""); const [editing, setEditing] = useState(false); const [copied, setCopied] = useState(false); const [photoBusy, setPhotoBusy] = useState(false);
   const [linkBiz, setLinkBiz] = useState(null); const [shareBiz, setShareBiz] = useState(null); const [joinBiz, setJoinBiz] = useState(null);
   const [shareProd, setShareProd] = useState(null);
+  const [tab, setTab] = useState("list");   // list | search
   const shareBrand = (b, p = null) => { setShareProd(p); if (session && session.role === "creator") setShareBiz(b); else setJoinBiz(b); };
   const isOwner = session && session.role === "creator" && session.username === handle;
   const profileUrl = `${window.location.origin}/@${handle}`;
@@ -3224,13 +3451,13 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
             <div style={{ flex: "1 1 200px", minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}><h1 className="er-serif" style={{ margin: 0, fontSize: 30, fontWeight: 500, overflowWrap: "anywhere" }}>@{data.username}</h1><Seal size={20} /></div>
               <p style={{ margin: "2px 0 0", fontSize: 14.5, color: C.muted }}>{data.bio || "Curating businesses worth trusting."}</p>
-              <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{isOwner && data.followers > 0 ? `${data.followersLabel} followers · ` : ""}{isOwner && data.friendsCount > 0 ? `${data.friendsCount} friend${data.friendsCount !== 1 ? "s" : ""} · ` : ""}{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
+              <p style={{ margin: "8px 0 0", fontSize: 12.5, fontWeight: 600, color: C.inkSoft }}>{isOwner && data.followers > 0 ? `${data.followersLabel} followers · ` : ""}{isOwner && data.friendsCount > 0 ? `In ${data.friendsCount} circle${data.friendsCount !== 1 ? "s" : ""} · ` : ""}{recs.length} recommendation{recs.length !== 1 ? "s" : ""}</p>
               <div style={{ marginTop: 12 }}>
                 <button className="er-btn er-btn-sm" onClick={shareStory} style={{ border: "none", color: "#fff", background: "linear-gradient(135deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%)", boxShadow: "0 2px 10px rgba(214,41,118,.3)" }}>
                   <IgIcon size={14} /> Share on Instagram story
                 </button>
               </div>
-              {!isOwner && <FriendButton handle={data.username} />}
+              {!isOwner && <CircleFollow handle={data.username} session={session} onCreator={onCreator} />}
               {(data.channels && data.channels.length > 0)
                 ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                     {data.channels.map((c, i) => { const u = socialUrl(c.platform, c.handle);
@@ -3251,11 +3478,20 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
               <button className="er-btn er-btn-light er-btn-sm" onClick={copyLink} style={{ color: copied ? C.accent : C.ink }}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}</button>
               <a href="https://www.instagram.com/nycdesihangouts/" target="_blank" rel="noopener noreferrer" className="er-link" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: C.muted, textDecoration: "none", textAlign: "right", lineHeight: 1.3 }}><IgIcon size={12} /> See how creators add this to Linktree or bio</a>
               {isOwner && <button className="er-btn er-btn-light er-btn-sm" onClick={() => setEditing(true)}><Edit size={14} /> Edit profile</button>}
+              {isOwner && <NotificationsBell token={session.token} />}
             </div>
           </div>
         </div>
       </div>
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 22px 60px" }}>
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "22px 22px 60px" }}>
+        <div role="tablist" aria-label="List sections" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, background: C.panel, border: `1px solid ${C.line}`, padding: 4, borderRadius: 12, marginBottom: 24 }}>
+          {[["list", isOwner ? "My recommendations" : "Recommendations"], ["search", "Search products"]].map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} style={{ fontFamily: "inherit", fontSize: 14, fontWeight: 700, border: "none", borderRadius: 9, padding: "11px 8px", cursor: "pointer", background: tab === k ? C.ink : "transparent", color: tab === k ? "#fff" : C.inkSoft, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              {k === "search" && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>}{l}
+            </button>))}
+        </div>
+        {tab === "search" && <CircleSearch focus={data.username} embedded />}
+        {tab === "list" && <>
         <AwardsSection recs={recs} username={data.username} isOwner={isOwner} session={session} reload={load} onShare={shareBrand} midSlot={isOwner ? null : <PromoCard dark onCreate={onCreator} />} />
         {!isOwner && !recs.some((b) => (b.products || []).length) && <div style={{ margin: "0 0 30px" }}><PromoCard onCreate={onCreator} /></div>}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -3315,6 +3551,7 @@ function InfluencerProfile({ handle, session, dataVersion, onBack, onBrowse, onO
         <div style={{ marginTop: 28, background: C.ink, borderRadius: 18, padding: "26px 24px", textAlign: "center" }}>
           <p className="er-serif" style={{ margin: 0, color: C.paper, fontSize: 19, fontWeight: 500 }}>Earn by sharing your favorite brand recommendations</p>
           <button className="er-btn er-btn-sm" style={{ marginTop: 14, background: C.paper, color: C.ink }} onClick={onBrowse}>Browse all brands <Arrow size={15} /></button></div>
+        </>}
       </div>
       {<section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, marginTop: 40 }}>
         <div className="er-wrap" style={{ padding: "44px 22px 50px", textAlign: "center" }}>
@@ -4570,72 +4807,6 @@ function AgentReadyPage({ session, onHome, onList }) {
     </div>
   );
 }
-/* Shop: search every product; products your friends recommend come first (and earn them the commission). */
-function ShopPage({ onHome }) {
-  const [q, setQ] = useState(""); const [cats, setCats] = useState(catalogMem); const [picks, setPicks] = useState(null); const [cat, setCat] = useState("");
-  const friends = useMemo(() => getFriends(), []);
-  useEffect(() => { api("/products/catalog").then((r) => { catalogMem = Array.isArray(r) ? r : []; setCats(catalogMem); }).catch(() => setCats((x) => x || [])); }, []);
-  useEffect(() => {
-    if (!friends.length) { setPicks([]); return; }
-    api(`/shop/friends?handles=${encodeURIComponent(friends.join(","))}`).then((r) => setPicks(Array.isArray(r) ? r : [])).catch(() => setPicks([]));
-  }, [friends]);
-  const byKey = useMemo(() => new Map((picks || []).map((p) => [p.key, p])), [picks]);
-  const t = q.trim().toLowerCase();
-  const match = (p) => !t || `${p.name} ${p.brand.name} ${(p.category && p.category.title) || ""}`.toLowerCase().includes(t);
-  const all = useMemo(() => (cats || []).flatMap((c) => c.items.map((p) => ({ ...p, category: { key: c.key, title: c.title, emoji: c.emoji } }))), [cats]);
-  const friendFirst = (a, b) => ((byKey.get(b.key) || {}).friends || []).length - ((byKey.get(a.key) || {}).friends || []).length;
-  const pool = (t ? all.filter(match) : all.filter((p) => (!cat || p.category.key === cat) && !byKey.has(p.key))).slice().sort(friendFirst);   // no search: friend picks already sit above
-  const friendPicks = (picks || []).filter(match);
-  const shop = (p) => {
-    const u = p.url || p.brand.website; const fp = byKey.get(p.key);
-    if (fp && fp.friends.length) return goToBrand(fp.friends[0], p.brand.id, u);   // credit the friend whose pick it is
-    if (u) window.open(/^https?:\/\//i.test(u) ? u : `https://${u}`, "_blank", "noopener");
-  };
-  const grid = { display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,210px),1fr))" };
-  const card = (p) => { const fp = byKey.get(p.key); return (
-    <div key={p.key} className="er-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", ...(fp ? { boxShadow: `0 0 0 2px ${C.accent}` } : {}) }}>
-      <ProductPhoto p={p} />
-      <div style={{ padding: "10px 12px 12px", display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
-        {fp && <div style={{ fontSize: 12, fontWeight: 800, color: C.accentD }}>Recommended by {fp.friends.slice(0, 2).map((h) => `@${h}`).join(", ")}{fp.friends.length > 2 ? ` +${fp.friends.length - 2}` : ""}{fp.rating > 0 ? ` · ★ ${fp.rating}` : ""}</div>}
-        <div>
-          {p.category && <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted }}>{awardTitle(p.category.title)}</div>}
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em", marginTop: 2 }}>{p.brand.name}</div>
-          <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginTop: 2 }}>{p.name}</div>
-          {priceText(p) && <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3 }}>{priceText(p)}</div>}
-        </div>
-        {offText(p.brand) && <div style={{ background: C.accentSoft, color: C.accentD, borderRadius: 10, padding: "6px 10px", fontSize: 12.5, fontWeight: 800 }}>Discount of {offText(p.brand)}</div>}
-        {(p.url || p.brand.website) && <button type="button" className={`er-btn er-btn-sm ${fp ? "er-btn-primary" : "er-btn-light"}`} style={{ marginTop: "auto" }} onClick={() => shop(p)}>Shop it <Arrow size={14} /></button>}
-      </div>
-    </div>); };
-  const h2 = { margin: "0 0 12px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.inkSoft };
-  return (
-    <div style={{ minHeight: "100vh", background: C.paper }}>
-      <PageHeader onHome={onHome} right={null} />
-      <section className="er-wrap" style={{ padding: "30px 20px 50px", maxWidth: 980, margin: "0 auto" }}>
-        <span className="er-eyebrow">Shop</span>
-        <h1 className="er-serif" style={{ margin: "10px 0 6px", fontSize: "clamp(30px,6vw,42px)", fontWeight: 500, lineHeight: 1.08 }}>Shop what your friends swear by</h1>
-        <p style={{ margin: 0, fontSize: 15, color: C.muted }}>Search any product. The ones your friends recommend show up first.</p>
-        <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-          <input className="er-input" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search sunscreen, shampoo, a brand…" aria-label="Search products" style={{ flex: 1 }} />
-          <a href="/imagesearch" onClick={(e) => { e.preventDefault(); navTo("/imagesearch"); }} className="er-btn er-btn-light" style={{ flexShrink: 0, textDecoration: "none", whiteSpace: "nowrap" }} aria-label="Find a product from a photo"><CameraIcon size={16} /> Photo</a>
-        </div>
-        {!t && <div style={{ marginTop: 26 }}>
-          <h2 style={h2}>From your friends</h2>
-          {picks === null ? <p style={{ color: C.muted }}>Loading…</p>
-            : friendPicks.length ? <div style={grid}>{friendPicks.map(card)}</div>
-            : <div style={{ background: C.panel, borderRadius: 14, padding: "18px 16px", fontSize: 14, color: C.inkSoft, lineHeight: 1.5 }}>{friends.length ? "Your friends haven't rated any of these products yet." : "Open a friend's recommendation list and they're added here automatically. Their picks will show up first."}</div>}
-        </div>}
-        <div style={{ marginTop: 30 }}>
-          <h2 style={h2}>{t ? `Results for “${q.trim()}”` : "All products"}</h2>
-          {!t && (cats || []).length > 0 && <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 12 }}>
-            {[{ key: "", title: "All", emoji: "" }, ...cats].map((c) => <button key={c.key || "all"} type="button" onClick={() => setCat(c.key)} className="er-btn er-btn-sm er-btn-light" aria-pressed={cat === c.key} style={{ flexShrink: 0, whiteSpace: "nowrap", ...(cat === c.key ? { background: C.ink, color: "#fff", borderColor: C.ink } : {}) }}>{c.emoji} {c.key ? awardTitle(c.title) : "All"}</button>)}
-          </div>}
-          {cats === null ? <p style={{ color: C.muted }}>Loading…</p> : pool.length ? <div style={grid}>{pool.slice(0, t ? 120 : 60).map(card)}</div> : <p style={{ color: C.muted }}>No products match “{q.trim()}”.</p>}
-        </div>
-      </section>
-    </div>
-  );
-}
 function SharePage({ session, onHome, onLogin, onLegal, onAuth }) {
   const isCreator = session && session.role === "creator";
   const [list, setList] = useState(() => cachedBusinesses()); const [q, setQ] = useState(""); const [cat, setCat] = useState("__products");
@@ -4910,15 +5081,132 @@ function HomeSlides({ onCreator, onShare, onAffiliate, onListPage }) {
     </div>
   );
 }
-function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage, onBrands, onShare, onAffiliate, onListPage }) {
+/* Homepage (AI-agent first). The old creator homepage is kept at /classic. */
+function AgentRunVisual() {
+  const steps = [
+    ["Searched brands on Easy Recommend", "300+ products, 40 creator reviews"],
+    ["Picked Minimalist SPF 50 Sunscreen", "₹399 · best rated for oily skin"],
+    ["Applied code EASY15", "Saved ₹60"],
+    ["Placed the order", "Arriving Friday · receipt sent"],
+  ];
+  return (
+    <div style={{ background: "#0F1115", color: "#fff", borderRadius: 24, padding: 18, boxShadow: "0 30px 70px -30px rgba(0,0,0,.55)", maxWidth: 420, width: "100%", justifySelf: "center" }} aria-label="Example: an AI agent buying a product end to end">
+      <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,.1)" }}>
+        <span style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#6C3FA0,#D62976)", display: "grid", placeItems: "center", fontSize: 15 }}>✦</span>
+        <div><div style={{ fontSize: 14, fontWeight: 700 }}>Your AI agent</div><div style={{ fontSize: 11.5, color: "rgba(255,255,255,.55)" }}>Working on it · you can close the app</div></div>
+      </div>
+      <div style={{ margin: "14px 0 14px auto", maxWidth: "85%", background: "#2B5CE6", borderRadius: "16px 16px 4px 16px", padding: "10px 13px", fontSize: 14, lineHeight: 1.45 }}>Find me a sunscreen for oily skin under ₹700 and order it.</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {steps.map(([t, d], i) => (
+          <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <span style={{ width: 20, height: 20, borderRadius: "50%", background: "#1F8A5B", display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1 }}><Check size={12} /></span>
+            <div><div style={{ fontSize: 13.5, fontWeight: 700 }}>{t}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,.6)" }}>{d}</div></div>
+          </div>))}
+      </div>
+      <div style={{ marginTop: 14, background: "rgba(255,255,255,.07)", borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: "rgba(255,255,255,.8)", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+        <span>Done. Nothing for you to click.</span><span style={{ color: "#7EE2B0", fontWeight: 700 }}>Brand paid the agent ₹24</span>
+      </div>
+    </div>
+  );
+}
+function AgentHomeBody({ onList, onCreator, onShare }) {
+  const go = (e) => { e.preventDefault(); navTo("/agentready"); };
+  const h2 = { margin: "0 0 8px", fontSize: "clamp(26px,4.4vw,36px)", fontWeight: 500, lineHeight: 1.12, color: C.ink };
+  const jobs = [
+    ["🛍️", "Shop for me", "Finds the right product, applies a discount and checks out.", "Brand pays on the sale"],
+    ["✈️", "Book it", "Picks the flight or stay, fills in the forms, pays.", "Pays on the booking"],
+    ["📝", "Sign me up", "Chooses the right app or service and creates the account.", "Pays per signup"],
+    ["💸", "Save me money", "Switches you to a cheaper plan and cancels the old one.", "Pays per switch"],
+  ];
+  return (
+    <>
+      <section className="er-wrap" style={{ padding: "44px 22px 30px", display: "grid", gap: 34, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,340px),1fr))", alignItems: "center" }}>
+        <div>
+          <span className="er-eyebrow">The marketplace for AI agents</span>
+          <h1 className="er-serif" style={{ margin: "12px 0 14px", fontSize: "clamp(38px,6.6vw,62px)", fontWeight: 500, lineHeight: 1.02, letterSpacing: "-.015em" }}>AI agents don't just chat now. <span className="er-luma-grad">They buy.</span></h1>
+          <p style={{ margin: 0, fontSize: 17, lineHeight: 1.6, color: C.inkSoft, maxWidth: 520 }}>Personal agents like Meta's Muse now book, shop and sign up for people from start to finish. Easy Recommend is where agents find brands that welcome them, and what each brand pays for a customer.</p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 24 }}>
+            <button className="er-btn er-btn-primary" onClick={onList}>List my business for AI agents <Arrow size={15} /></button>
+            <a href="/agentready" onClick={go} className="er-btn er-btn-light" style={{ textDecoration: "none" }}>How it works</a>
+          </div>
+          <p style={{ margin: "12px 0 0", fontSize: 13, color: C.muted }}>Free to list. Pay only when an agent sends a lead, signup or sale.</p>
+        </div>
+        <AgentRunVisual />
+      </section>
+
+      <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
+        <div className="er-wrap" style={{ padding: "48px 22px", display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,300px),1fr))" }}>
+          <div style={{ gridColumn: "1 / -1" }}><h2 className="er-serif" style={h2}>From answers to actions</h2><p style={{ margin: 0, fontSize: 15.5, color: C.muted }}>The shopper no longer visits ten sites. Their agent does, and picks one.</p></div>
+          <div className="er-card" style={{ padding: "18px 18px 20px" }}>
+            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted }}>Before: chat</div>
+            <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 14.5, lineHeight: 1.75, color: C.inkSoft }}><li>Suggests a few options</li><li>You open each site</li><li>You compare, find a code, check out</li><li>Brands pay for ads you scroll past</li></ul>
+          </div>
+          <div className="er-card" style={{ padding: "18px 18px 20px", boxShadow: `0 0 0 2px ${C.accent}` }}>
+            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>Now: agents that act</div>
+            <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 14.5, lineHeight: 1.75, color: C.ink }}><li>Searches and compares for you</li><li>Applies the best discount</li><li>Buys, books or signs up</li><li>Brands pay only for the customer</li></ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="er-wrap" style={{ padding: "52px 22px 20px" }}>
+        <h2 className="er-serif" style={h2}>What agents do for people, and what brands pay for</h2>
+        <p style={{ margin: "0 0 20px", fontSize: 15.5, color: C.muted }}>Each finished job is a customer. You choose what you pay an agent for each one.</p>
+        <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))" }}>
+          {jobs.map(([e, t, d, pay]) => (
+            <div key={t} className="er-card" style={{ padding: "18px 18px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 26 }} aria-hidden="true">{e}</span>
+              <div style={{ fontSize: 16.5, fontWeight: 700, color: C.ink }}>“{t}”</div>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: C.inkSoft, flex: 1 }}>{d}</p>
+              <span style={{ alignSelf: "flex-start", marginTop: 6, fontSize: 12, fontWeight: 800, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "4px 10px" }}>{pay}</span>
+            </div>))}
+        </div>
+      </section>
+
+      <section className="er-wrap" style={{ padding: "44px 22px 20px" }}>
+        <h2 className="er-serif" style={h2}>Get picked by agents in 3 steps</h2>
+        <ol style={{ listStyle: "none", margin: "18px 0 0", padding: 0, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,240px),1fr))" }}>
+          {[["List your business", "Add your website. We read the rest: products, prices, description."],
+            ["Set what agents earn", "Per lead, per signup, and on each sale as a % or a fixed amount. Add a customer discount if you like."],
+            ["Add one line to your site", "Exact steps for Shopify, WordPress, Wix and more. It credits each customer to the agent that sent them."]].map(([t, d], i) => (
+            <li key={t} className="er-card" style={{ padding: "18px 18px 20px" }}>
+              <span style={{ width: 30, height: 30, borderRadius: "50%", background: C.ink, color: "#fff", display: "grid", placeItems: "center", fontSize: 13.5, fontWeight: 800 }}>{i + 1}</span>
+              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 12 }}>{t}</div>
+              <p style={{ margin: "6px 0 0", fontSize: 14, lineHeight: 1.55, color: C.inkSoft }}>{d}</p>
+            </li>))}
+        </ol>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 22 }}>
+          <button className="er-btn er-btn-primary" onClick={onList}>List my business, free <Arrow size={15} /></button>
+          <a href="/agentready" onClick={go} className="er-btn er-btn-light" style={{ textDecoration: "none" }}>See what agents see</a>
+        </div>
+      </section>
+
+      <section className="er-wrap" style={{ padding: "44px 22px 24px" }}>
+        <div style={{ background: C.ink, color: "#fff", borderRadius: 22, padding: "26px 22px", display: "flex", gap: 18, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+          <div style={{ maxWidth: 520 }}>
+            <div className="er-serif" style={{ fontSize: "clamp(22px,3.6vw,28px)", fontWeight: 500 }}>People still trust people</div>
+            <p style={{ margin: "6px 0 0", fontSize: 14.5, lineHeight: 1.55, color: "rgba(255,255,255,.75)" }}>Agents read what real creators recommend. Make your list of products you love, and earn when people (or their agents) buy from it.</p>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="er-btn" style={{ background: "#fff", color: C.ink }} onClick={onCreator}>Make my list</button>
+            <button className="er-btn" style={{ background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,.4)" }} onClick={onShare}>Share &amp; earn</button>
+          </div>
+        </div>
+        <p style={{ margin: "14px 0 0", fontSize: 11.5, color: C.muted, textAlign: "center" }}>Muse is a Meta product. Easy Recommend is independent and not affiliated with Meta.</p>
+      </section>
+    </>
+  );
+}
+function Landing({ agentHome, creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage, onBrands, onShare, onAffiliate, onListPage }) {
   const top = () => window.scrollTo({ top: 0, behavior: "smooth" });
   const [joinOpen, setJoinOpen] = useState(false);
   return (
     <div>
       {joinOpen && <JoinChooser onClose={() => setJoinOpen(false)} onCreator={onCreator} onList={onList} />}
-      <button onClick={onCreator} style={{ display: "block", width: "100%", border: "none", cursor: "pointer", fontFamily: "inherit", background: C.ink, color: C.paper, textAlign: "center", fontSize: 13.5, fontWeight: 600, padding: "9px 16px", letterSpacing: ".01em" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap" }}><Spark size={14} /> Get paid for sharing recommendations →</span>
-      </button>
+      {agentHome
+        ? <a href="/agentready" onClick={(e) => { e.preventDefault(); navTo("/agentready"); }} style={{ display: "block", textDecoration: "none", background: C.ink, color: C.paper, textAlign: "center", fontSize: 13.5, fontWeight: 600, padding: "9px 16px" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Spark size={14} /> AI agents now shop for people. Get your brand picked →</span></a>
+        : <button onClick={onCreator} style={{ display: "block", width: "100%", border: "none", cursor: "pointer", fontFamily: "inherit", background: C.ink, color: C.paper, textAlign: "center", fontSize: 13.5, fontWeight: 600, padding: "9px 16px", letterSpacing: ".01em" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", flexWrap: "wrap" }}><Spark size={14} /> Get paid for sharing recommendations →</span>
+        </button>}
       <header style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(253,252,250,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
           <button onClick={top} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}><Seal size={20} /><span className="er-serif" style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-.01em", color: C.ink, whiteSpace: "nowrap" }}>Easy Recommend</span></button>
@@ -4934,18 +5222,20 @@ function Landing({ creators, session, onList, onCreator, onAdmin, onProfile, onL
               <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onShare}>Share &amp; earn</button>
               <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onBusinessPage}>For business</button>
               <button className="er-btn er-btn-ghost er-btn-sm er-hide-sm" onClick={onInfluencerPage}>For creators</button>
-              <button className="er-btn er-btn-ghost er-btn-sm" onClick={onLogin}>Log in</button>
-              <button className="er-btn er-btn-primary er-btn-sm" onClick={() => setJoinOpen(true)}>Sign up</button>
+              <button className="er-btn er-btn-ghost er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={onLogin}>Log in</button>
+              <button className="er-btn er-btn-primary er-btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => setJoinOpen(true)}>Sign up</button>
             </>}
           </div>
         </div>
       </header>
 
+      {agentHome ? <AgentHomeBody onList={onList} onCreator={onCreator} onShare={onShare} /> : <>
       <LumaHero title={<>Share what<br />you love,<br /><span className="er-luma-grad">get paid.</span></>} onCreator={onCreator} onList={onList} onShare={onShare} link={["Are you a brand? See more", onBrands]}
         sub="Three ways to earn: make a list of brands you love, share a brand on your story, or create content with your affiliate link. Get a commission on every sale." />
       <BrandStrip label="Recommend 1,000+ brands, including" />
 
       <HomeSlides onCreator={onCreator} onShare={onShare} onAffiliate={onAffiliate} onListPage={onListPage} />
+      </>}
 
       <footer style={{ borderTop: `1px solid ${C.line}` }}>
         <div className="er-wrap" style={{ padding: "44px 22px 6px", display: "grid", gap: 28, gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
@@ -5439,14 +5729,14 @@ function EasyApp() {
     <div className="er-root">
       <GlobalAlerts />
       {signupOpen && <QuickJoin general onClose={() => setSignupOpen(false)} onDone={(sess) => { setSignupOpen(false); login(sess); toast("✓ You're in! You'll stay logged in on this device"); }} />}
-      {view === "home" && <Landing businesses={businesses} creators={creators} loading={loading} error={error} session={session}
+      {(view === "home" || view === "classic") && <Landing agentHome={view === "home"} businesses={businesses} creators={creators} loading={loading} error={error} session={session}
         onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onAdmin={goAdmin} onProfile={goProfile} onOpenBusiness={(id) => setDetailId(id)}
         onLogin={() => setLoginOpen(true)} onLogout={logout} onMyProfile={() => session && goProfile(session.username)} onMyBiz={() => { setView("mybiz"); nav("/my-business"); }} onSettings={goSettings} onLegal={() => setLegalOpen(true)} onBusinessPage={goBusinessPage} onInfluencerPage={goInfluencerPage} onBrands={goBrands} onShare={goShare} onAffiliate={goAffiliate} onListPage={goListPage} />}
       {view === "claim" && <ClaimPage />}
       {view === "listpage" && <ListPage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} />}
       {view === "affiliate" && <AffiliatePage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onAuth={login} onLegal={() => setLegalOpen(true)} />}
       {view === "share" && <SharePage session={session} onHome={goHome} onLogin={() => setLoginOpen(true)} onAuth={login} onLegal={() => setLegalOpen(true)} />}
-      {view === "shop" && <ShopPage onHome={goHome} />}
+      {view === "shop" && <ShopPage onHome={goHome} session={session} />}
       {view === "agentready" && <AgentReadyPage session={session} onHome={goHome} onList={() => setBrandOpen(true)} />}
       {view === "find" && <FindPage session={session} onHome={goHome} onLegal={() => setLegalOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} />}
       {view === "brands" && <BrandsPage onHome={goHome} onList={() => setBrandOpen(true)} onCreator={() => { setCreatorPreselect(null); setCreatorOpen(true); }} onLogin={() => setLoginOpen(true)} onLegal={() => setLegalOpen(true)} />}
