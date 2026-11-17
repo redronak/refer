@@ -7,10 +7,12 @@ import { useState, useEffect, useRef, useMemo, Fragment } from "react";
    - No external packages, no Tailwind (inline styles + injected <style>).
    ========================================================================== */
 
+// REACT_APP_API_BASE (in .env.local) picks the server, e.g. the live one while developing locally.
+const API_ENV = (() => { try { return process.env.REACT_APP_API_BASE || ""; } catch (e) { return ""; } })();   // eslint-disable-line no-undef
 const API_BASE =
-  (typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname)
+  (API_ENV || (typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname)
     ? "http://localhost:9000"
-    : "https://learntok-backend-2026-24c204fe508e.herokuapp.com") + "/easyrecommend";
+    : "https://learntok-backend-2026-24c204fe508e.herokuapp.com")).replace(/\/+$/, "") + "/easyrecommend";
 
 // Admin key is entered at runtime (verified against the server), never shipped in the bundle.
 function adminKey() { try { return sessionStorage.getItem("er_admin_key") || ""; } catch (e) { return ""; } }
@@ -654,7 +656,7 @@ function BusinessDetail({ id, onClose, onRecommend, autoLink, onAuth }) {
 /* ---------- Brand onboarding ---------- */
 function BrandModal({ onClose, onDone, onRefresh, onLogin }) {
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: "", phone: "", website: "", categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, discOn: false, discountCode: "", agentSalePct: 15, agentSaleFlat: 0, agentPerLead: 0, agentPerSignup: 0 });
+  const [f, setF] = useState(() => ({ name: "", phone: "", website: (() => { try { const v = sessionStorage.getItem("er_prefill_site") || ""; sessionStorage.removeItem("er_prefill_site"); return v; } catch (e) { return ""; } })(), categories: [], city: "", online: false, commissionType: "percent", commissionPct: 15, commissionFlat: 25, discount: 0, discOn: false, discountCode: "", agentSalePct: 15, agentSaleFlat: 0, agentPerLead: 0, agentPerSignup: 0 }));
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const [searching, setSearching] = useState(false); const [revealed, setRevealed] = useState(false);
   const [otp, setOtp] = useState(""); const [sent, setSent] = useState(false); const [sending, setSending] = useState(false);
@@ -4601,7 +4603,7 @@ function FindPage({ session, onHome, onLegal, onCreator }) {
             : <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
               {/* the box is sized to the photo's own shape, so item boxes (0-1000 coordinates) line up exactly */}
               <div style={{ position: "relative", width: `min(100%, ${Math.round(520 * ar)}px)` }}>
-                <img src={img} alt="Your photo" onLoad={(e) => { const t = e.currentTarget; if (t.naturalHeight) setAr(t.naturalWidth / t.naturalHeight); }} style={{ display: "block", width: "100%", height: "auto", borderRadius: 16, background: C.panel }} />
+                <img src={img} alt="What you uploaded" onLoad={(e) => { const t = e.currentTarget; if (t.naturalHeight) setAr(t.naturalWidth / t.naturalHeight); }} style={{ display: "block", width: "100%", height: "auto", borderRadius: 16, background: C.panel }} />
                 {!busy && items.map((it, i) => it.box && (
                   <button key={i} type="button" onClick={() => searchItem(i)} aria-label={`Find ${it.label}`} aria-pressed={sel === i}
                     style={{ position: "absolute", top: `${it.box[0] / 10}%`, left: `${it.box[1] / 10}%`, height: `${(it.box[2] - it.box[0]) / 10}%`, width: `${(it.box[3] - it.box[1]) / 10}%`,
@@ -4724,19 +4726,18 @@ function AgentReadyPage({ session, onHome, onList }) {
     <div style={{ minHeight: "100vh", background: C.paper }}>
       <PageHeader onHome={onHome} right={null} />
 
-      <section className="er-wrap" style={{ padding: "34px 20px 10px", maxWidth: 1040, margin: "0 auto", display: "grid", gap: 30, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,330px),1fr))", alignItems: "center" }}>
-        <div>
-          <span className="er-eyebrow">Agent ready</span>
-          <h1 className="er-serif" style={{ margin: "10px 0 12px", fontSize: "clamp(34px,6vw,52px)", fontWeight: 500, lineHeight: 1.05, letterSpacing: "-.01em" }}>Get recommended by AI agents</h1>
-          <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.6, color: C.inkSoft }}>People now ask AI agents which tool or platform to use. Easy Recommend is the marketplace those agents search. Every listing shows what the agent earns for a signup or a sale, so recommending you pays.</p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 22 }}>
+      <div style={{ background: "radial-gradient(70% 70% at 50% 0%, #FFE3D1 0%, #FFF4EC 45%, #FFFFFF 78%)" }}>
+        <section style={{ maxWidth: 860, margin: "0 auto", padding: "40px 22px 24px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", color: H.orangeD }}>Agent ready</span>
+          <h1 style={{ ...homeSerif, margin: 0, fontSize: "clamp(38px,6.5vw,58px)", lineHeight: 1.05, letterSpacing: "-0.02em", color: H.ink }}>Get picked when an agent <span style={{ color: H.orange }}>does the job.</span></h1>
+          <p style={{ margin: 0, maxWidth: 620, fontSize: "clamp(16px,2.2vw,17.5px)", lineHeight: 1.6, color: H.body }}>Shoppers and businesses now hand whole tasks to AI agents like Muse. Whether it's a product or software, the agent picks a brand, signs up or buys, and that brand pays the agent. Every signup and sale is checked for fraud before payout.</p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
             <button className="er-btn er-btn-primary" onClick={cta}>{ctaText} <Arrow size={15} /></button>
             <a href="#how" className="er-btn er-btn-light" style={{ textDecoration: "none" }}>How it works</a>
           </div>
-          <p style={{ margin: "12px 0 0", fontSize: 13, color: C.muted }}>Free to list. You only pay commission on real signups and sales.</p>
-        </div>
-        <WayVisual k="agent" />
-      </section>
+        </section>
+        <AgentJobs />
+      </div>
 
       <section id="how" className="er-wrap" style={{ padding: "44px 20px 10px", maxWidth: 1040, margin: "0 auto" }}>
         <h2 className="er-serif" style={h2}>List yourself for agents in 4 steps</h2>
@@ -5081,119 +5082,263 @@ function HomeSlides({ onCreator, onShare, onAffiliate, onListPage }) {
     </div>
   );
 }
-/* Homepage (AI-agent first). The old creator homepage is kept at /classic. */
-function AgentRunVisual() {
-  const steps = [
-    ["Searched brands on Easy Recommend", "300+ products, 40 creator reviews"],
-    ["Picked Minimalist SPF 50 Sunscreen", "₹399 · best rated for oily skin"],
-    ["Applied code EASY15", "Saved ₹60"],
-    ["Placed the order", "Arriving Friday · receipt sent"],
-  ];
+/* Homepage: two tabs. "For brands" = get customers from AI agents; "For influencers" = wishlist + share + earn.
+   The previous creator-first homepage is kept at /classic. */
+const H = { ink: "#17150F", body: "#4A463E", muted: "#5E5A52", line: "#EFE3D9", soft: "#FFF7F1", orange: "#D9481B", orangeD: "#B23D12", orangeBg: "#FFF0E6", green: "#0F6B4F", greenBg: "#E3F3EA" };
+const homeSerif = { fontFamily: "Fraunces, Georgia, serif", fontWeight: 500, letterSpacing: "-0.015em" };
+const HTick = ({ c = H.green, s = 16 }) => <svg aria-hidden="true" width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M5 12.5l4 4L19 7" /></svg>;
+const HShield = () => <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z" /><path d="M9 12l2 2 4-4" /></svg>;
+const Verified = ({ label = "Verified" }) => <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: H.green, background: H.greenBg, borderRadius: 999, padding: "5px 10px", whiteSpace: "nowrap" }}><HShield />{label}</span>;
+const Status = ({ kind, children }) => { const m = { ok: [H.green, H.greenBg], wait: ["#7A4F00", "#FFF1D6"], no: ["#9B2C1F", "#FCE6E2"] }[kind]; return <span style={{ fontSize: 12, fontWeight: 700, color: m[0], background: m[1], borderRadius: 999, padding: "4px 9px", whiteSpace: "nowrap" }}>{children}</span>; };
+
+function HomeFeature({ n, title, children, art, id }) {
   return (
-    <div style={{ background: "#0F1115", color: "#fff", borderRadius: 24, padding: 18, boxShadow: "0 30px 70px -30px rgba(0,0,0,.55)", maxWidth: 420, width: "100%", justifySelf: "center" }} aria-label="Example: an AI agent buying a product end to end">
-      <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,.1)" }}>
-        <span style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#6C3FA0,#D62976)", display: "grid", placeItems: "center", fontSize: 15 }}>✦</span>
-        <div><div style={{ fontSize: 14, fontWeight: 700 }}>Your AI agent</div><div style={{ fontSize: 11.5, color: "rgba(255,255,255,.55)" }}>Working on it · you can close the app</div></div>
+    <div id={id} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,400px),1fr))", border: `1px solid ${H.line}`, borderRadius: 22, overflow: "hidden", background: "#fff" }}>
+      <div style={{ padding: "clamp(22px,4vw,34px)", display: "flex", flexDirection: "column", gap: 12, justifyContent: "center" }}>
+        <span style={{ alignSelf: "flex-start", fontSize: 12, fontWeight: 800, color: H.orangeD, background: H.orangeBg, borderRadius: 999, padding: "4px 10px" }}>{n}</span>
+        <h3 style={{ margin: 0, fontSize: "clamp(22px,3vw,28px)", fontWeight: 700, letterSpacing: "-0.01em", color: H.ink }}>{title}</h3>
+        {children}
       </div>
-      <div style={{ margin: "14px 0 14px auto", maxWidth: "85%", background: "#2B5CE6", borderRadius: "16px 16px 4px 16px", padding: "10px 13px", fontSize: 14, lineHeight: 1.45 }}>Find me a sunscreen for oily skin under ₹700 and order it.</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {steps.map(([t, d], i) => (
-          <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <span style={{ width: 20, height: 20, borderRadius: "50%", background: "#1F8A5B", display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1 }}><Check size={12} /></span>
-            <div><div style={{ fontSize: 13.5, fontWeight: 700 }}>{t}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,.6)" }}>{d}</div></div>
-          </div>))}
-      </div>
-      <div style={{ marginTop: 14, background: "rgba(255,255,255,.07)", borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: "rgba(255,255,255,.8)", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-        <span>Done. Nothing for you to click.</span><span style={{ color: "#7EE2B0", fontWeight: 700 }}>Brand paid the agent ₹24</span>
-      </div>
+      <div style={{ background: H.soft, padding: "clamp(20px,3vw,30px)", display: "grid", placeItems: "center" }}>{art}</div>
     </div>
   );
 }
-function AgentHomeBody({ onList, onCreator, onShare }) {
-  const go = (e) => { e.preventDefault(); navTo("/agentready"); };
-  const h2 = { margin: "0 0 8px", fontSize: "clamp(26px,4.4vw,36px)", fontWeight: 500, lineHeight: 1.12, color: C.ink };
-  const jobs = [
-    ["🛍️", "Shop for me", "Finds the right product, applies a discount and checks out.", "Brand pays on the sale"],
-    ["✈️", "Book it", "Picks the flight or stay, fills in the forms, pays.", "Pays on the booking"],
-    ["📝", "Sign me up", "Chooses the right app or service and creates the account.", "Pays per signup"],
-    ["💸", "Save me money", "Switches you to a cheaper plan and cancels the old one.", "Pays per switch"],
-  ];
+const homeP = { margin: 0, fontSize: 15.5, lineHeight: 1.6, color: H.body };
+function HomeChecks({ items }) {
+  return <ul style={{ margin: "4px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8, fontSize: 14.5, color: "#3D3A33" }}>{items.map((t) => <li key={t} style={{ display: "flex", gap: 8 }}><HTick s={18} />{t}</li>)}</ul>;
+}
+function HomeSteps({ title, steps }) {
   return (
-    <>
-      <section className="er-wrap" style={{ padding: "44px 22px 30px", display: "grid", gap: 34, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,340px),1fr))", alignItems: "center" }}>
-        <div>
-          <span className="er-eyebrow">The marketplace for AI agents</span>
-          <h1 className="er-serif" style={{ margin: "12px 0 14px", fontSize: "clamp(38px,6.6vw,62px)", fontWeight: 500, lineHeight: 1.02, letterSpacing: "-.015em" }}>AI agents don't just chat now. <span className="er-luma-grad">They buy.</span></h1>
-          <p style={{ margin: 0, fontSize: 17, lineHeight: 1.6, color: C.inkSoft, maxWidth: 520 }}>Personal agents like Meta's Muse now book, shop and sign up for people from start to finish. Easy Recommend is where agents find brands that welcome them, and what each brand pays for a customer.</p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 24 }}>
-            <button className="er-btn er-btn-primary" onClick={onList}>List my business for AI agents <Arrow size={15} /></button>
-            <a href="/agentready" onClick={go} className="er-btn er-btn-light" style={{ textDecoration: "none" }}>How it works</a>
-          </div>
-          <p style={{ margin: "12px 0 0", fontSize: 13, color: C.muted }}>Free to list. Pay only when an agent sends a lead, signup or sale.</p>
-        </div>
-        <AgentRunVisual />
-      </section>
+    <section className="er-wrap" style={{ maxWidth: 1160, margin: "0 auto", padding: "60px 22px" }}>
+      <h2 style={{ ...homeSerif, margin: "0 0 26px", fontSize: "clamp(30px,4.6vw,42px)", lineHeight: 1.12, color: H.ink }}><span style={{ color: H.orange }}>3 minutes</span> {title}</h2>
+      <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))", gap: 16 }}>
+        {steps.map(([t, d], i) => (
+          <li key={t} style={{ border: `1px solid ${H.line}`, borderRadius: 20, padding: 24, display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={{ width: 34, height: 34, borderRadius: "50%", background: H.ink, color: "#fff", display: "grid", placeItems: "center", fontWeight: 800 }}>{i + 1}</span>
+            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: H.ink }}>{t}</h3>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55, color: H.body }}>{d}</p>
+          </li>))}
+      </ol>
+    </section>
+  );
+}
+function HomeCTA({ title, sub, cta, onClick }) {
+  return (
+    <section style={{ padding: "0 22px 70px" }}>
+      <div style={{ maxWidth: 1060, margin: "0 auto", borderRadius: 28, background: "radial-gradient(80% 90% at 50% 100%, #FFD2B8 0%, #FFF1E8 55%, #FFFFFF 100%)", border: "1px solid #F3DED0", padding: "clamp(40px,7vw,64px) 22px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+        <h2 style={{ ...homeSerif, margin: 0, fontSize: "clamp(30px,5vw,46px)", lineHeight: 1.1, color: H.ink }}>{title}</h2>
+        <p style={{ margin: 0, fontSize: 16, color: H.body }}>{sub}</p>
+        <button type="button" onClick={onClick} style={{ border: "none", cursor: "pointer", fontFamily: "inherit", color: "#fff", background: H.ink, padding: "15px 26px", borderRadius: 999, fontSize: 15, fontWeight: 700, marginTop: 4 }}>{cta}</button>
+      </div>
+    </section>
+  );
+}
+function HomeStrip({ label, items }) {
+  return (
+    <section style={{ borderTop: "1px solid #F2E9E1", borderBottom: "1px solid #F2E9E1", background: "#FFFCF9" }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "20px 22px", display: "flex", alignItems: "center", justifyContent: "center", gap: "12px 30px", flexWrap: "wrap" }}>
+        <span style={{ fontSize: 13, color: "#6B665C", fontWeight: 600 }}>{label}</span>
+        {items.map((t) => <span key={t} style={{ fontSize: 16.5, fontWeight: 800, color: "#3D3A33" }}>{t}</span>)}
+      </div>
+    </section>
+  );
+}
 
-      <section style={{ background: C.panel, borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
-        <div className="er-wrap" style={{ padding: "48px 22px", display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,300px),1fr))" }}>
-          <div style={{ gridColumn: "1 / -1" }}><h2 className="er-serif" style={h2}>From answers to actions</h2><p style={{ margin: 0, fontSize: 15.5, color: C.muted }}>The shopper no longer visits ten sites. Their agent does, and picks one.</p></div>
-          <div className="er-card" style={{ padding: "18px 18px 20px" }}>
-            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted }}>Before: chat</div>
-            <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 14.5, lineHeight: 1.75, color: C.inkSoft }}><li>Suggests a few options</li><li>You open each site</li><li>You compare, find a code, check out</li><li>Brands pay for ads you scroll past</li></ul>
-          </div>
-          <div className="er-card" style={{ padding: "18px 18px 20px", boxShadow: `0 0 0 2px ${C.accent}` }}>
-            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.accentD }}>Now: agents that act</div>
-            <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 14.5, lineHeight: 1.75, color: C.ink }}><li>Searches and compares for you</li><li>Applies the best discount</li><li>Buys, books or signs up</li><li>Brands pay only for the customer</li></ul>
-          </div>
-        </div>
-      </section>
+/* The three "agent does the whole job" cards (also used on /agentready). */
+const AGENT_JOBS = [
+  { tag: "Software · B2B", ask: "Find me 30 customers for my bakery supply business.",
+    steps: [["Compared 9 lead-finding tools", "On Easy Recommend, with creator ratings"], ["Signed you up for LeadSpark", "14-day free trial"], ["Found 30 cafés and bakeries nearby", "Intro emails ready for your OK"]],
+    pay: [["Signup", "₹400 to the agent", true], ["If the trial turns paid", "20% of first payment", true]] },
+  { tag: "Software · Apps", ask: "Find me a simple drawing tool for my daughter's school project.",
+    steps: [["Compared 6 drawing apps", "Free plan, easy for kids, works on iPad"], ["Picked Sketchly · rated 4.7", "Free plan covers the project"], ["Created the account, opened a blank canvas", "Login sent to your email"]],
+    pay: [["Signup", "₹60 to the agent", true], ["If they upgrade", "₹300", true]] },
+  { tag: "Products · Shopping", ask: "Find me a sunscreen for oily skin under ₹700 and order it.",
+    steps: [["Compared 14 sunscreens", "With creator ratings for oily skin"], ["Picked an SPF 50 · ₹399", "Applied the brand's code, saved ₹60"], ["Placed the order", "Arriving Friday"]],
+    pay: [["Sale", "10% to the agent", true], ["If it's returned", "Nothing paid", false]] },
+];
+function AgentJobs({ title = "Three jobs, start to finish", sub = "Products and software, same idea: you pay only for the customer." }) {
+  return (
+    <section aria-label="What agents do, end to end" className="er-wrap" style={{ maxWidth: 1160, margin: "0 auto", padding: "10px 22px 56px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+        <h2 style={{ ...homeSerif, margin: 0, fontSize: "clamp(28px,4vw,36px)", color: H.ink }}>{title}</h2>
+        <span style={{ fontSize: 14, color: H.muted }}>{sub}</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,320px),1fr))", gap: 16 }}>
+        {AGENT_JOBS.map((j) => (
+          <article key={j.tag} style={{ background: "#121212", color: "#fff", borderRadius: 22, padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase", color: "#FFB48A" }}>{j.tag}</span><span style={{ fontSize: 12, color: "#B9B3AA" }}>AI agent</span></div>
+            <div style={{ alignSelf: "flex-end", maxWidth: "88%", background: "#2B5CE6", borderRadius: "16px 16px 4px 16px", padding: "10px 13px", fontSize: 14, lineHeight: 1.45 }}>{j.ask}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {j.steps.map(([t, d]) => <div key={t} style={{ display: "flex", gap: 10 }}><span style={{ width: 20, height: 20, borderRadius: "50%", background: "#1F8A5B", flexShrink: 0, display: "grid", placeItems: "center" }}><HTick c="#fff" s={12} /></span><div><div style={{ fontSize: 13.5, fontWeight: 700 }}>{t}</div><div style={{ fontSize: 12, color: "#B9B3AA" }}>{d}</div></div></div>)}
+            </div>
+            <div style={{ marginTop: "auto", background: "rgba(255,255,255,.07)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+              {j.pay.map(([k, v, good]) => <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}><span style={{ color: "#D6D0C7" }}>{k}</span><b style={{ color: good ? "#7EE2B0" : "#FFB48A", textAlign: "right" }}>{v}</b></div>)}
+            </div>
+          </article>))}
+      </div>
+      <p style={{ margin: "12px 0 0", fontSize: 12.5, color: "#6B665C" }}>LeadSpark and Sketchly are made-up examples.</p>
+    </section>
+  );
+}
 
-      <section className="er-wrap" style={{ padding: "52px 22px 20px" }}>
-        <h2 className="er-serif" style={h2}>What agents do for people, and what brands pay for</h2>
-        <p style={{ margin: "0 0 20px", fontSize: 15.5, color: C.muted }}>Each finished job is a customer. You choose what you pay an agent for each one.</p>
-        <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))" }}>
-          {jobs.map(([e, t, d, pay]) => (
-            <div key={t} className="er-card" style={{ padding: "18px 18px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
-              <span style={{ fontSize: 26 }} aria-hidden="true">{e}</span>
-              <div style={{ fontSize: 16.5, fontWeight: 700, color: C.ink }}>“{t}”</div>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: C.inkSoft, flex: 1 }}>{d}</p>
-              <span style={{ alignSelf: "flex-start", marginTop: 6, fontSize: 12, fontWeight: 800, color: C.accentD, background: C.accentSoft, borderRadius: 999, padding: "4px 10px" }}>{pay}</span>
-            </div>))}
-        </div>
-      </section>
-
-      <section className="er-wrap" style={{ padding: "44px 22px 20px" }}>
-        <h2 className="er-serif" style={h2}>Get picked by agents in 3 steps</h2>
-        <ol style={{ listStyle: "none", margin: "18px 0 0", padding: 0, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,240px),1fr))" }}>
-          {[["List your business", "Add your website. We read the rest: products, prices, description."],
-            ["Set what agents earn", "Per lead, per signup, and on each sale as a % or a fixed amount. Add a customer discount if you like."],
-            ["Add one line to your site", "Exact steps for Shopify, WordPress, Wix and more. It credits each customer to the agent that sent them."]].map(([t, d], i) => (
-            <li key={t} className="er-card" style={{ padding: "18px 18px 20px" }}>
-              <span style={{ width: 30, height: 30, borderRadius: "50%", background: C.ink, color: "#fff", display: "grid", placeItems: "center", fontSize: 13.5, fontWeight: 800 }}>{i + 1}</span>
-              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 12 }}>{t}</div>
-              <p style={{ margin: "6px 0 0", fontSize: 14, lineHeight: 1.55, color: C.inkSoft }}>{d}</p>
-            </li>))}
-        </ol>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 22 }}>
-          <button className="er-btn er-btn-primary" onClick={onList}>List my business, free <Arrow size={15} /></button>
-          <a href="/agentready" onClick={go} className="er-btn er-btn-light" style={{ textDecoration: "none" }}>See what agents see</a>
-        </div>
-      </section>
-
-      <section className="er-wrap" style={{ padding: "44px 22px 24px" }}>
-        <div style={{ background: C.ink, color: "#fff", borderRadius: 22, padding: "26px 22px", display: "flex", gap: 18, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-          <div style={{ maxWidth: 520 }}>
-            <div className="er-serif" style={{ fontSize: "clamp(22px,3.6vw,28px)", fontWeight: 500 }}>People still trust people</div>
-            <p style={{ margin: "6px 0 0", fontSize: 14.5, lineHeight: 1.55, color: "rgba(255,255,255,.75)" }}>Agents read what real creators recommend. Make your list of products you love, and earn when people (or their agents) buy from it.</p>
+function HomeTabs({ onList, onCreator }) {
+  const initial = (() => { try { return new URLSearchParams(window.location.search).get("for") === "influencers" ? "inf" : "brands"; } catch (e) { return "brands"; } })();
+  const [tab, setTab] = useState(initial); const [site, setSite] = useState("");
+  const pick = (t) => { setTab(t); try { const u = new URL(window.location.href); if (t === "inf") u.searchParams.set("for", "influencers"); else u.searchParams.delete("for"); window.history.replaceState({}, "", u.pathname + u.search); } catch (e) {} };
+  const listBrand = (e) => { if (e) e.preventDefault(); try { if (site.trim()) sessionStorage.setItem("er_prefill_site", site.trim()); } catch (x) {} onList(); };
+  const brands = tab === "brands";
+  const pill = (on) => ({ border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: on ? 700 : 600, color: on ? "#fff" : "#3D3A33", background: on ? H.ink : "transparent", padding: "10px 18px", borderRadius: 999 });
+  const ticks = brands ? ["Free to list", "Pay per signup or sale", "Every result reviewed for fraud"] : ["Free, no follower minimum", "Paid per signup and sale", "Every result reviewed for fraud"];
+  return (
+    <div style={{ background: "#fff", color: H.ink }}>
+      <div style={{ background: "radial-gradient(70% 60% at 50% 0%, #FFE3D1 0%, #FFF4EC 45%, #FFFFFF 75%)" }}>
+        <section style={{ maxWidth: 900, margin: "0 auto", padding: "40px 22px 28px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
+          <div role="tablist" aria-label="Who is this for" style={{ display: "inline-flex", gap: 4, background: "#fff", border: "1px solid #F0DCCD", padding: 4, borderRadius: 999, boxShadow: "0 6px 20px -10px rgba(178,61,18,.35)" }}>
+            <button type="button" role="tab" aria-selected={brands} onClick={() => pick("brands")} style={pill(brands)}>For brands</button>
+            <button type="button" role="tab" aria-selected={!brands} onClick={() => pick("inf")} style={pill(!brands)}>For influencers</button>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="er-btn" style={{ background: "#fff", color: C.ink }} onClick={onCreator}>Make my list</button>
-            <button className="er-btn" style={{ background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,.4)" }} onClick={onShare}>Share &amp; earn</button>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: H.orangeD, background: H.orangeBg, border: "1px solid #FFD6BD", padding: "6px 12px", borderRadius: 999 }}>
+            {brands ? <><Spark size={13} /> Built for AI agents like Meta's Muse</> : "Free for creators of any size"}
+          </span>
+          <h1 style={{ ...homeSerif, margin: 0, fontSize: "clamp(40px,7vw,64px)", lineHeight: 1.04, letterSpacing: "-0.02em" }}>
+            {brands ? <>Let AI agents bring you <span style={{ color: H.orange }}>customers.</span></> : <>Share what you love. <span style={{ color: H.orange }}>Get paid.</span></>}
+          </h1>
+          <p style={{ margin: 0, maxWidth: 640, fontSize: "clamp(16px,2.2vw,18px)", lineHeight: 1.6, color: H.body }}>
+            {brands ? "Agents like Muse now shop, book and sign up for people. List your business and they can find you, recommend you and send you buyers. You pay only per signup and per sale, and we check every one for fraud before anyone is paid."
+              : "Create content, make a wishlist of products you actually use and share one link with your audience. You earn for every signup and sale it brings, each one checked for fraud so brands trust it and you get paid on time."}
+          </p>
+          {brands ? (
+            <form onSubmit={listBrand} style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", width: "100%", maxWidth: 520, marginTop: 4 }}>
+              <label htmlFor="home-site" style={{ position: "absolute", left: -9999 }}>Your website</label>
+              <input id="home-site" value={site} onChange={(e) => setSite(e.target.value)} placeholder="yourbrand.com" inputMode="url" autoComplete="url" style={{ flex: "1 1 220px", minWidth: 0, boxSizing: "border-box", height: 50, padding: "0 18px", borderRadius: 999, border: "1px solid #E6D7CB", background: "#fff", fontFamily: "inherit", fontSize: 15, color: H.ink }} />
+              <button type="submit" style={{ height: 50, padding: "0 22px", border: "none", borderRadius: 999, background: H.ink, color: "#fff", fontFamily: "inherit", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>List my business free</button>
+            </form>
+          ) : (
+            <button type="button" onClick={onCreator} style={{ height: 50, padding: "0 26px", border: "none", borderRadius: 999, background: H.ink, color: "#fff", fontFamily: "inherit", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 4 }}>Make my wishlist</button>
+          )}
+          <div style={{ display: "flex", gap: "8px 18px", flexWrap: "wrap", justifyContent: "center", fontSize: 13.5, color: H.muted }}>
+            {ticks.map((t) => <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><HTick s={15} />{t}</span>)}
           </div>
-        </div>
-        <p style={{ margin: "14px 0 0", fontSize: 11.5, color: C.muted, textAlign: "center" }}>Muse is a Meta product. Easy Recommend is independent and not affiliated with Meta.</p>
-      </section>
-    </>
+        </section>
+        {brands ? <AgentJobs /> : (
+          <section aria-label="A creator's wishlist and earnings" style={{ maxWidth: 1060, margin: "0 auto", padding: "10px 22px 60px", display: "flex", justifyContent: "center", alignItems: "center", gap: 28, flexWrap: "wrap" }}>
+            <div style={{ width: 290, maxWidth: "100%", background: H.ink, borderRadius: 40, padding: 12, boxShadow: "0 40px 80px -40px rgba(120,60,20,.45)" }}>
+              <div style={{ background: "#fff", borderRadius: 30, overflow: "hidden" }}>
+                <div style={{ padding: "20px 18px 14px", textAlign: "center", borderBottom: "1px solid #F2E9E1" }}>
+                  <div style={{ width: 56, height: 56, margin: "0 auto", borderRadius: "50%", background: "#FFE3D1", display: "grid", placeItems: "center", fontFamily: "Fraunces, Georgia, serif", fontSize: 24, color: H.orangeD }}>P</div>
+                  <div style={{ marginTop: 8, fontSize: 15, fontWeight: 700 }}>@priya's wishlist</div>
+                  <div style={{ fontSize: 12, color: "#6B665C" }}>My best of 2026 · 8 products</div>
+                </div>
+                <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                  {[["#FBE3B8", "Best sunscreen", "SPF 50 Sunscreen", "★★★★★"], ["#D7EBDD", "Best moisturizer", "Oil-Free Moisturizer", "★★★★☆"], ["#EDE6F7", "Best app", "Budget tracker app", "★★★★★"]].map(([bg, cat, name, stars]) => (
+                    <div key={cat} style={{ display: "flex", gap: 10, alignItems: "center", border: "1px solid #F2E9E1", borderRadius: 14, padding: 10 }}>
+                      <span style={{ width: 46, height: 46, borderRadius: 10, background: bg, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 800, color: H.orangeD, letterSpacing: ".06em", textTransform: "uppercase" }}>{cat}</div><div style={{ fontSize: 13.5, fontWeight: 700 }}>{name}</div><div style={{ fontSize: 12, color: "#6B665C" }} aria-label={`${stars.split("★").length - 1} stars`}>{stars}</div></div>
+                    </div>))}
+                  <div style={{ textAlign: "center", fontSize: 12.5, fontWeight: 700, color: "#fff", background: H.ink, borderRadius: 12, padding: 11 }}>Shop Priya's picks · 15% off</div>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 320, maxWidth: "100%" }}>
+              {[["Sale · SPF 50 Sunscreen", "From your Instagram story", "+₹40"], ["Signup · Budget tracker app", "From your bio link", "+₹50"]].map(([t, d, v]) => (
+                <div key={t} style={{ background: "#fff", border: `1px solid ${H.line}`, borderRadius: 16, padding: "14px 16px", boxShadow: "0 20px 40px -24px rgba(120,60,20,.35)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}><div><div style={{ fontSize: 14, fontWeight: 700 }}>{t}</div><div style={{ fontSize: 12.5, color: H.muted }}>{d}</div></div><b style={{ fontSize: 17, color: H.green }}>{v}</b></div>))}
+              <div style={{ background: "#fff", border: `1px solid ${H.line}`, borderRadius: 16, padding: "14px 16px", boxShadow: "0 20px 40px -24px rgba(120,60,20,.35)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}><div><div style={{ fontSize: 14, fontWeight: 700 }}>Both checked</div><div style={{ fontSize: 12.5, color: H.muted }}>Real buyers, no self-purchases</div></div><Verified /></div>
+            </div>
+          </section>
+        )}
+      </div>
+
+      {brands ? <>
+        <HomeStrip label="Set up in minutes on" items={["Shopify", "WordPress", "WooCommerce", "Wix", "Webflow", "Squarespace"]} />
+        <section className="er-wrap" style={{ maxWidth: 1160, margin: "0 auto", padding: "72px 22px 20px" }}>
+          <h2 style={{ ...homeSerif, margin: "0 0 10px", fontSize: "clamp(30px,4.6vw,42px)", lineHeight: 1.12 }}>Agents do the shopping. <span style={{ color: H.orange }}>You get the customer.</span></h2>
+          <p style={{ margin: "0 0 30px", fontSize: 17, color: H.muted, maxWidth: 640 }}>The shopper never opens ten tabs. Their agent does, picks one brand and checks out. Here's how that brand becomes you.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <HomeFeature n="01" title="Get found by AI agents" art={
+              <div style={{ width: "100%", maxWidth: 360, background: "#fff", border: `1px solid ${H.line}`, borderRadius: 16, padding: 18, boxShadow: "0 20px 40px -24px rgba(120,60,20,.35)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}><span style={{ width: 44, height: 44, borderRadius: 12, background: H.ink, color: "#fff", display: "grid", placeItems: "center", fontFamily: "Fraunces, Georgia, serif", fontSize: 20 }}>Y</span><div><div style={{ fontSize: 16, fontWeight: 700 }}>Your brand</div><div style={{ fontSize: 12.5, color: "#6B665C" }}>Skincare · ships across India</div></div></div>
+                <div style={{ marginTop: 14, display: "flex", gap: 6, flexWrap: "wrap" }}>{["SPF 50 · ₹399", "Serum · ₹549", "+12 more"].map((t) => <span key={t} style={{ fontSize: 12, background: "#F6F1EC", borderRadius: 999, padding: "4px 10px" }}>{t}</span>)}</div>
+                <div style={{ marginTop: 14, background: H.greenBg, color: "#0B5A41", borderRadius: 12, padding: "10px 12px", fontSize: 13 }}><div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase" }}>Agent earns</div><b style={{ fontSize: 17 }}>₹50</b> per signup · <b style={{ fontSize: 17 }}>10%</b> of every sale</div>
+              </div>}>
+              <p style={homeP}>Agents search Easy Recommend for what a shopper asked for. Your listing gives them everything they need: products, prices, your discount and what you pay them.</p>
+            </HomeFeature>
+            <HomeFeature n="02" title="Pay per signup and per sale" art={
+              <div style={{ width: "100%", maxWidth: 360, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[["Per lead (popup or form)", "₹10", false], ["Per signup", "₹50", false], ["Per sale", "10% or ₹40", true]].map(([k, v, hi]) => <div key={k} style={{ background: "#fff", border: hi ? `2px solid ${H.orange}` : `1px solid ${H.line}`, borderRadius: 14, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}><span style={{ fontSize: 14, color: "#3D3A33" }}>{k}</span><b style={{ fontSize: 16 }}>{v}</b></div>)}
+              </div>}>
+              <p style={homeP}>You choose the price. A fixed amount per signup or form fill, and a % or fixed amount on each sale. No ads, no monthly fee, nothing for clicks that go nowhere.</p>
+            </HomeFeature>
+            <HomeFeature id="fraud" n="03" title="Every signup and sale checked for fraud" art={
+              <div style={{ width: "100%", maxWidth: 360, background: "#fff", border: `1px solid ${H.line}`, borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[["Signup · an AI agent", "ok", "Paid"], ["Sale · ₹1,249", "wait", "In return window"], ["Signup · same device ×6", "no", "Blocked"]].map(([t, k, l]) => <div key={t} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}><span style={{ fontSize: 14, fontWeight: 700 }}>{t}</span><Status kind={k}>{l}</Status></div>)}
+              </div>}>
+              <p style={homeP}>Nobody gets paid for fake traffic. Every conversion is reviewed before payout.</p>
+              <HomeChecks items={["Confirmed by your own order or signup page", "Duplicates and self-referrals removed", "Bot and click-farm traffic filtered out", "Refunds and cancellations reversed"]} />
+            </HomeFeature>
+          </div>
+        </section>
+        <HomeSteps title="to set up." steps={[["Add your website", "We read your products, prices and description from it."], ["Set what you pay", "Per signup, per sale, and an optional discount for shoppers."], ["Add one line to your site", "Click-by-click steps for your platform. It credits each customer to whoever sent them."]]} />
+        <section className="er-wrap" style={{ maxWidth: 1160, margin: "0 auto", padding: "0 22px 60px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,320px),1fr))", gap: 16 }}>
+            <div style={{ border: `1px solid ${H.line}`, borderRadius: 22, padding: 30, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#6B665C" }}>Listing</div>
+              <div style={{ ...homeSerif, fontSize: 52 }}>Free</div>
+              <p style={homeP}>List your business, set your terms and get the setup line. No card needed.</p>
+            </div>
+            <div style={{ border: `2px solid ${H.ink}`, borderRadius: 22, padding: 30, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#6B665C" }}>When it works</div>
+              <div style={{ ...homeSerif, fontSize: 52 }}>Your price</div>
+              <p style={homeP}>You pay what you set, only for checked signups and sales. Easy Recommend keeps 20% of it; the agent or creator gets the rest.</p>
+            </div>
+          </div>
+        </section>
+        <HomeCTA title={<>Your next customer may never visit your website. <span style={{ color: H.orange }}>Their agent will.</span></>} sub="Be the brand agents pick. Free until they send you a checked customer." cta="List my business free" onClick={() => listBrand()} />
+        <p style={{ maxWidth: 1160, margin: "-40px auto 30px", padding: "0 22px", fontSize: 11.5, color: "#6B665C", textAlign: "center" }}>Muse is a Meta product. Easy Recommend is independent and not affiliated with Meta.</p>
+      </> : <>
+        <HomeStrip label="Share your link on" items={["Instagram stories", "Link in bio", "YouTube", "WhatsApp groups"]} />
+        <section className="er-wrap" style={{ maxWidth: 1160, margin: "0 auto", padding: "72px 22px 20px" }}>
+          <h2 style={{ ...homeSerif, margin: "0 0 10px", fontSize: "clamp(30px,4.6vw,42px)", lineHeight: 1.12 }}>Your audience already asks what you use. <span style={{ color: H.orange }}>Now it pays.</span></h2>
+          <p style={{ margin: "0 0 30px", fontSize: 17, color: H.muted, maxWidth: 640 }}>One wishlist link for everything you recommend: skincare, apps, gadgets, the lot.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <HomeFeature n="01" title="Create content you'd make anyway" art={
+              <div style={{ width: 190, height: 300, borderRadius: 22, background: H.ink, color: "#fff", padding: 18, boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".12em", color: "#FFB48A" }}>MY BEST SUNSCREEN</div>
+                <div style={{ height: 130, borderRadius: 14, background: "#FBE3B8" }} />
+                <div style={{ fontSize: 12, fontWeight: 700, background: "#fff", color: H.ink, borderRadius: 10, padding: 8, textAlign: "center" }}>Link in story · 15% off</div>
+              </div>}>
+              <p style={homeP}>A reel, a story, a review video. We turn your picks into ready-made story images with the category heading on top.</p>
+            </HomeFeature>
+            <HomeFeature n="02" title="Build your wishlist in a quiz" art={
+              <div style={{ width: "100%", maxWidth: 340, background: "#fff", border: `1px solid ${H.line}`, borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#6B665C" }}>Question 3 of 8</div>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>Your best moisturizer?</div>
+                {["Oil-Free Moisturizer", "Water Gel Cream", "Ceramide Night Cream"].map((t, i) => <div key={t} style={{ border: i ? `1px solid ${H.line}` : `2px solid ${H.orange}`, borderRadius: 12, padding: "11px 12px", fontSize: 14, fontWeight: i ? 400 : 600 }}>{t}</div>)}
+              </div>}>
+              <p style={homeP}>Pick your favourite in each category and give it a star rating. A short note is optional. You get one link that's yours.</p>
+            </HomeFeature>
+            <HomeFeature n="03" title="Share it and get paid for signups and sales" art={
+              <div style={{ width: "100%", maxWidth: 340, background: "#fff", border: `1px solid ${H.line}`, borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#6B665C" }}>Example month</div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}><span>₹8,000 of sales at 6%</span><b>₹480</b></div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}><span>12 app signups at ₹50</span><b>₹600</b></div>
+                <div style={{ borderTop: "1px solid #F2E9E1", paddingTop: 8, display: "flex", justifyContent: "space-between", fontSize: 16 }}><span style={{ fontWeight: 700 }}>You earn</span><b style={{ color: H.green }}>₹1,080</b></div>
+                <div style={{ fontSize: 12, color: "#6B665C" }}>Example only. Rates are set by each brand.</div>
+              </div>}>
+              <p style={homeP}>Post it in your story, bio, groups or video. When someone signs up or buys from your list, you earn what that brand pays. Your followers get a discount too.</p>
+            </HomeFeature>
+            <HomeFeature id="fraud" n="04" title="Checked, so brands pay with confidence" art={
+              <div style={{ width: "100%", maxWidth: 340, background: "#fff", border: `1px solid ${H.line}`, borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[["Sale · ₹399", "ok", "Paid out"], ["Sale · ₹1,249", "wait", "In return window"], ["Signup · same phone ×5", "no", "Not counted"]].map(([t, k, l]) => <div key={t} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}><span style={{ fontSize: 14, fontWeight: 700 }}>{t}</span><Status kind={k}>{l}</Status></div>)}
+              </div>}>
+              <p style={homeP}>Every signup and sale is reviewed before payout. Honest creators get paid faster, because brands trust the numbers.</p>
+              <HomeChecks items={["Real orders and signups, confirmed by the brand's site", "Your own purchases and duplicate signups don't count", "Bot and fake clicks filtered out", "Returned orders are taken back"]} />
+            </HomeFeature>
+          </div>
+        </section>
+        <HomeSteps title="to your first link." steps={[["Pick your favourites", "One question per category, tap to choose."], ["Rate them", "Stars are required, a note is optional."], ["Share your link", "Story, bio, groups, YouTube. Earn from every checked signup and sale."]]} />
+        <HomeCTA title={<>Turn “what do you use?” into <span style={{ color: H.orange }}>income.</span></>} sub="Free to join. Paid for every checked signup and sale." cta="Make my wishlist" onClick={onCreator} />
+      </>}
+    </div>
   );
 }
 function Landing({ agentHome, creators, session, onList, onCreator, onAdmin, onProfile, onLogin, onLogout, onMyProfile, onMyBiz, onSettings, onLegal, onBusinessPage, onInfluencerPage, onBrands, onShare, onAffiliate, onListPage }) {
@@ -5229,7 +5374,7 @@ function Landing({ agentHome, creators, session, onList, onCreator, onAdmin, onP
         </div>
       </header>
 
-      {agentHome ? <AgentHomeBody onList={onList} onCreator={onCreator} onShare={onShare} /> : <>
+      {agentHome ? <HomeTabs onList={onList} onCreator={onCreator} /> : <>
       <LumaHero title={<>Share what<br />you love,<br /><span className="er-luma-grad">get paid.</span></>} onCreator={onCreator} onList={onList} onShare={onShare} link={["Are you a brand? See more", onBrands]}
         sub="Three ways to earn: make a list of brands you love, share a brand on your story, or create content with your affiliate link. Get a commission on every sale." />
       <BrandStrip label="Recommend 1,000+ brands, including" />
